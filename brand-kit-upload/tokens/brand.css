@@ -1,0 +1,25 @@
+/* Affilova brand tokens. Merge into app/globals.css (shadcn / Tailwind v3 HSL variable format). */
+:root {
+  --brand-50: 145 75% 97%;
+  --brand-100: 146 78% 93%;
+  --brand-200: 145 78% 84%;
+  --brand-300: 145 72% 72%;
+  --brand-400: 145 72% 56%;
+  --brand-500: 145 79% 37%;  /* logo green #14A953: icons, graphics, large UI only (3.07:1 on white) */
+  --brand-600: 145 78% 28%;  /* primary action colour: white text passes AA (4.96:1) */
+  --brand-700: 145 78% 23%;
+  --brand-800: 145 79% 18%;
+  --brand-900: 145 78% 14%;
+  --brand-950: 146 80% 8%;
+  --brand-ink: 80 7% 6%;      /* #0E0F0D, wordmark and headings */
+
+  /* shadcn semantic mapping */
+  --primary: 145 78% 28%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 145 79% 37%;
+}
+.dark {
+  --primary: 145 79% 37%;
+  --primary-foreground: 80 7% 6%;  /* ink on green 500 = 6.25:1 */
+  --ring: 145 72% 56%;
+}

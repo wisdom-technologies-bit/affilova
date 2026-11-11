@@ -21,6 +21,7 @@ import {
   Loader2,
 } from "lucide-react"
 import GlobalFooter from "@/components/global-footer"
+import { Logo } from "@/components/brand/logo"
 
 interface Comment {
   id: string
@@ -227,7 +228,7 @@ export default function BlogPostClient({ post: initialPost, popularPosts }: Blog
       <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2">
-            <img src="/affilova-logo.png" alt="Affilova" className="h-10 w-auto" />
+            <Logo variant="horizontal" className="h-10 w-auto" />
           </Link>
           <div className="hidden md:flex items-center gap-4">
             <Link href="/blog">

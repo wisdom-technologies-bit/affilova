@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Home, Search, ArrowLeft } from "lucide-react"
+import { Logo } from "@/components/brand/logo"
 
 export default function NotFound() {
   return (
@@ -12,7 +13,7 @@ export default function NotFound() {
         <CardContent className="p-8 text-center">
           <div className="mb-6">
             <div className="text-6xl font-bold text-gray-300 mb-2">404</div>
-            <img src="/affilova-logo.png" alt="Affilova" className="h-12 w-auto mx-auto" />
+            <Logo variant="stacked" className="h-12 w-auto mx-auto" />
           </div>
 
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Page Not Found</h1>

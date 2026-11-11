@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { AlertCircle, ArrowLeft, ShoppingCart } from "lucide-react"
 import { SquadPayment } from "@/components/squad-payment"
 import Link from "next/link"
+import { Logo } from "@/components/brand/logo"
 
 interface Product {
   id: string
@@ -149,7 +150,7 @@ export default function ProductPurchasePage() {
             </Button>
           </Link>
           <div className="flex items-center space-x-3">
-            <img src="/affilova-logo.png" alt="Affilova" className="h-8 w-auto" />
+            <Logo variant="horizontal" className="h-8 w-auto" />
             <div className="border-l pl-3">
               <h1 className="text-xl font-semibold text-gray-900">Secure Checkout</h1>
             </div>

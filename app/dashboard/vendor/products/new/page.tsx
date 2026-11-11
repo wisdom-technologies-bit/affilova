@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AlertCircle, Upload, X, Loader2, ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { Logo } from "@/components/brand/logo"
 
 export default function NewProductPage() {
   const router = useRouter()
@@ -163,7 +164,7 @@ export default function NewProductPage() {
             </Button>
           </Link>
           <div className="flex items-center space-x-3">
-            <img src="/affilova-logo.png" alt="Affilova" className="h-8 w-auto" />
+            <Logo variant="horizontal" className="h-8 w-auto" />
             <div className="border-l pl-3">
               <h1 className="text-xl font-semibold text-gray-900">Add New Product</h1>
             </div>

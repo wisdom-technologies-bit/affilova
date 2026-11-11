@@ -91,6 +91,7 @@ import {
   Briefcase,
   Columns,
 } from "lucide-react"
+import { Logo } from "@/components/brand/logo"
 
 export default function HowItWorksClient() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -155,7 +156,7 @@ export default function HowItWorksClient() {
       >
         <div className="container mx-auto px-4 h-16 md:h-20 flex justify-between items-center">
           <Link href="/" className="flex items-center space-x-2 group">
-            <img src="/affilova-logo.png" alt="Affilova" className="h-8 md:h-10 w-auto" />
+            <Logo variant="horizontal" className="h-8 md:h-10 w-auto" />
             <span className="font-bold text-xl md:text-2xl bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
               Affilova
             </span>

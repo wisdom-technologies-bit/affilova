@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { AlertCircle, Loader2, Building, Target } from "lucide-react"
+import { Logo } from "@/components/brand/logo"
 
 export default function SelectRolePage() {
   const router = useRouter()
@@ -84,7 +85,7 @@ export default function SelectRolePage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
-          <img src="/affilova-logo.png" alt="Affilova" className="h-12 w-auto mx-auto mb-6" />
+          <Logo variant="stacked" className="h-12 w-auto mx-auto mb-6" />
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Welcome to Affilova!</h1>
           <p className="text-xl text-gray-600 mb-2">Choose how you want to use our platform</p>
           <Badge className="bg-green-100 text-green-800">Free for first 6 months!</Badge>

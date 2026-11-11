@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertCircle, CheckCircle, Mail, Phone, MapPin, Clock, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { Logo } from "@/components/brand/logo"
 
 export default function ContactPage() {
   const [loading, setLoading] = useState(false)
@@ -80,7 +81,7 @@ export default function ContactPage() {
       <header className="bg-white shadow-sm">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center space-x-3">
-            <img src="/affilova-logo.png" alt="Affilova" className="h-10 w-auto" />
+            <Logo variant="horizontal" className="h-10 w-auto" />
           </Link>
           <div className="flex space-x-4">
             <Link href="/auth/login">

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { Logo } from "@/components/brand/logo"
 
 interface FooterProps {
   className?: string
@@ -41,7 +42,7 @@ export default function GlobalFooter({ className = "" }: FooterProps) {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="flex items-center space-x-2 mb-4">
-              <img src="/affilova-logo.png" alt="Affilova" className="h-8 w-auto" />
+              <Logo variant="horizontal" className="h-8 w-auto" />
               <span className="font-bold text-xl text-gray-900">Affilova</span>
             </Link>
             <p className="text-sm text-gray-600 mb-4">

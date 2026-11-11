@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { AlertCircle, ShoppingCart, Star, Users, ExternalLink } from "lucide-react"
 import Link from "next/link"
+import { Logo } from "@/components/brand/logo"
 
 interface Product {
   id: string
@@ -84,7 +85,7 @@ export default function ProductPage() {
       <header className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-3">
-            <img src="/affilova-logo.png" alt="Affilova" className="h-8 w-auto" />
+            <Logo variant="horizontal" className="h-8 w-auto" />
           </Link>
           <div className="flex items-center space-x-4">
             <Link href="/auth/login">

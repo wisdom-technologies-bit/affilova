@@ -27,6 +27,7 @@ import {
   Megaphone,
   BookOpen,
 } from "lucide-react"
+import { Logo } from "@/components/brand/logo"
 
 interface SidebarItem {
   title: string
@@ -99,7 +100,7 @@ export function DashboardSidebar({ role, user }: DashboardSidebarProps) {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="flex items-center gap-2 px-6 py-4 border-b">
-        <img src="/affilova-logo.png" alt="Affilova" className="h-8 w-auto" />
+        <Logo variant="horizontal" className="h-8 w-auto" />
         <span className="font-semibold text-lg">Affilova</span>
       </div>
 

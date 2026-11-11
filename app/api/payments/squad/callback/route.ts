@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
           htmlContent: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="text-align: center; padding: 20px;">
-                <img src="${process.env.NEXT_PUBLIC_APP_URL}/affilova-logo.png" alt="Affilova" style="height: 60px;">
+                <img src="${process.env.NEXT_PUBLIC_APP_URL}/brand/email/affilova-logo-email.png" alt="Affilova" style="height: 60px;">
               </div>
               <h1 style="color: #22c55e;">New Sale Notification!</h1>
               <p>Hi ${transaction.vendor_name},</p>
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
           htmlContent: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="text-align: center; padding: 20px;">
-                <img src="${process.env.NEXT_PUBLIC_APP_URL}/affilova-logo.png" alt="Affilova" style="height: 60px;">
+                <img src="${process.env.NEXT_PUBLIC_APP_URL}/brand/email/affilova-logo-email.png" alt="Affilova" style="height: 60px;">
               </div>
               <h1 style="color: #22c55e;">Commission Earned!</h1>
               <p>Hi ${transaction.affiliate_name},</p>

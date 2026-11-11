@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { AlertCircle, Loader2, Mail, Shield, BarChart3, Users, Zap } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
+import { Logo } from "@/components/brand/logo"
 
 declare global {
   interface Window {
@@ -340,7 +341,7 @@ export default function RegisterClient() {
 
         <div className="relative z-10 space-y-8">
           <Link href="/" className="flex items-center space-x-2 group">
-            <img src="/affilova-logo.png" alt="Affilova" className="h-12 w-auto" />
+            <Logo variant="stacked" tone="dark" className="h-12 w-auto" />
             <span className="font-bold text-2xl text-white">Affilova</span>
           </Link>
 
@@ -407,7 +408,7 @@ export default function RegisterClient() {
           {/* Mobile Header */}
           <div className="lg:hidden text-center mb-6">
             <div className="flex justify-center mb-4">
-              <img src="/affilova-logo.png" alt="Affilova" className="h-12 w-auto" />
+              <Logo variant="stacked" className="h-12 w-auto" />
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               {step === "form" ? "Create Your Account" : "Verify Your Email"}

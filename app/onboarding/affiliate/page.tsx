@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertCircle, Loader2, User, Target, Globe, Camera, Upload, ArrowRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { Logo } from "@/components/brand/logo"
 
 interface AffiliateOnboardingData {
   firstName: string
@@ -219,7 +220,7 @@ export default function AffiliateOnboardingPage() {
       <div className="max-w-3xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <img src="/affilova-logo.png" alt="Affilova" className="h-12 w-auto mx-auto mb-6" />
+          <Logo variant="stacked" className="h-12 w-auto mx-auto mb-6" />
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Complete Your Profile</h1>
           <p className="text-gray-600">Let's set up your affiliate profile to get you started</p>
         </div>

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AlertCircle, Loader2, Eye, EyeOff, BarChart3, Wallet, Lock } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
+import { Logo } from "@/components/brand/logo"
 
 declare global {
   interface Window {
@@ -244,7 +245,7 @@ export default function LoginClientPage() {
 
         <div className="relative z-10 space-y-8">
           <Link href="/" className="flex items-center space-x-2 group">
-            <img src="/affilova-logo.png" alt="Affilova" className="h-12 w-auto" />
+            <Logo variant="stacked" tone="dark" className="h-12 w-auto" />
             <span className="font-bold text-2xl text-white">Affilova</span>
           </Link>
 
@@ -309,7 +310,7 @@ export default function LoginClientPage() {
           {/* Mobile Header */}
           <div className="lg:hidden text-center mb-8">
             <div className="flex justify-center mb-4">
-              <img src="/affilova-logo.png" alt="Affilova" className="h-12 w-auto" />
+              <Logo variant="stacked" className="h-12 w-auto" />
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
             <p className="text-gray-600">Sign in to your Affilova account</p>

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Users, TrendingUp, Shield, Zap, Target, Award, Globe, Heart } from "lucide-react"
+import { Logo } from "@/components/brand/logo"
 
 export default function AboutPage() {
   return (
@@ -11,7 +12,7 @@ export default function AboutPage() {
       <header className="bg-white shadow-sm">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center space-x-3">
-            <img src="/affilova-logo.png" alt="Affilova" className="h-10 w-auto" />
+            <Logo variant="horizontal" className="h-10 w-auto" />
           </Link>
           <div className="flex space-x-4">
             <Link href="/auth/login">
@@ -311,7 +312,7 @@ export default function AboutPage() {
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
-              <img src="/affilova-logo.png" alt="Affilova" className="h-8 w-auto mb-4" />
+              <Logo variant="horizontal" className="h-8 w-auto mb-4" />
               <p className="text-gray-600 text-sm">
                 The premier affiliate marketplace connecting vendors with top-performing affiliates.
               </p>

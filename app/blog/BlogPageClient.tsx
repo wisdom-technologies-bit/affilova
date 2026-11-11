@@ -17,6 +17,7 @@ import {
   ChevronRight,
 } from "lucide-react"
 import GlobalFooter from "@/components/global-footer"
+import { Logo } from "@/components/brand/logo"
 
 interface BlogPost {
   id: string
@@ -112,7 +113,7 @@ export default function BlogPageClient() {
       <header className="bg-white border-b sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center space-x-2">
-            <img src="/affilova-logo.png" alt="Affilova" className="h-10 w-auto" />
+            <Logo variant="horizontal" className="h-10 w-auto" />
           </Link>
           <div className="hidden md:flex space-x-4">
             <Link href="/auth/login">

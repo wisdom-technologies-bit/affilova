@@ -22,7 +22,7 @@ export class BrevoService {
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
         <div style="text-align: center; padding: 30px 20px; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);">
-          <img src="${process.env.NEXT_PUBLIC_APP_URL}/affilova-logo.png" alt="Affilova" style="height: 60px; filter: brightness(0) invert(1);">
+          <img src="${process.env.NEXT_PUBLIC_APP_URL}/brand/email/affilova-logo-email-white.png" alt="Affilova" style="height: 60px;">
         </div>
         <div style="padding: 30px 20px;">
           ${content}

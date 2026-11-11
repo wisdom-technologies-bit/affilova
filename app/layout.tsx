@@ -12,9 +12,6 @@ export const metadata: Metadata = {
   title: "Affilova",
   description:
     "The premier affiliate marketplace connecting vendors and affiliates. Sell digital products, manage your affiliate program, and earn competitive commissions with Affilova.",
-  icons: {
-    icon: "/favicon.png",
-  },
   openGraph: {
     title: "Affilova - Affiliate Marketplace Platform",
     description:
@@ -28,7 +25,6 @@ export const metadata: Metadata = {
     title: "Affilova - Affiliate Marketplace Platform",
     description: "The premier affiliate marketplace connecting vendors and affiliates.",
   },
-    generator: 'v0.app'
 }
 
 export default function RootLayout({
@@ -39,7 +35,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <meta name="theme-color" content="#16A34A" />
+        <meta name="theme-color" content="#14A953" />
       </head>
       <body className={inter.className}>
         <HideV0Badge />

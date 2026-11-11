@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AlertCircle, CheckCircle, Loader2, Eye, EyeOff, Lock, ShieldCheck } from "lucide-react"
+import { Logo } from "@/components/brand/logo"
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -80,7 +81,7 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen bg-white flex items-center justify-center py-12 px-4">
         <div className="w-full max-w-md text-center">
           <div className="flex justify-center mb-6">
-            <img src="/affilova-logo.png" alt="Affilova" className="h-12 w-auto" />
+            <Logo variant="stacked" className="h-12 w-auto" />
           </div>
           <div className="flex justify-center mb-6">
             <div className="bg-green-100 p-4 rounded-full">
@@ -109,7 +110,7 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen bg-white flex items-center justify-center py-12 px-4">
         <div className="w-full max-w-md text-center">
           <div className="flex justify-center mb-6">
-            <img src="/affilova-logo.png" alt="Affilova" className="h-12 w-auto" />
+            <Logo variant="stacked" className="h-12 w-auto" />
           </div>
           <div className="flex justify-center mb-6">
             <div className="bg-red-100 p-4 rounded-full">
@@ -143,7 +144,7 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-6">
-            <img src="/affilova-logo.png" alt="Affilova" className="h-12 w-auto" />
+            <Logo variant="stacked" className="h-12 w-auto" />
           </div>
           <div className="flex justify-center mb-4">
             <div className="bg-green-100 p-4 rounded-full">

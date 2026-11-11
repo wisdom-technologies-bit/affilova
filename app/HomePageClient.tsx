@@ -19,6 +19,7 @@ import {
   Clock,
   Package,
 } from "lucide-react"
+import { Logo } from "@/components/brand/logo"
 
 export default function HomePageClient() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -46,7 +47,7 @@ export default function HomePageClient() {
       >
         <div className="container mx-auto px-4 h-16 md:h-20 flex justify-between items-center">
           <Link href="/" className="flex items-center space-x-2 group">
-            <img src="/affilova-logo.png" alt="Affilova" className="h-8 md:h-10 w-auto" />
+            <Logo variant="horizontal" className="h-8 md:h-10 w-auto" />
             <span className="font-bold text-xl md:text-2xl bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
               Affilova
             </span>
@@ -191,9 +192,8 @@ export default function HomePageClient() {
                 />
                 <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                   <div className="text-center">
-                    <img
-                      src="/affilova-logo.png"
-                      alt="Affilova"
+                    <Logo
+                      variant="stacked"
                       className="h-20 w-auto mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 drop-shadow-lg"
                     />
                   </div>

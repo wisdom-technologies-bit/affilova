@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle, Download, ExternalLink, Mail, AlertCircle } from "lucide-react"
 import Link from "next/link"
+import { Logo } from "@/components/brand/logo"
 
 interface PurchaseDetails {
   id: string
@@ -108,7 +109,7 @@ export default function PurchaseSuccessPage() {
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-center">
-          <img src="/affilova-logo.png" alt="Affilova" className="h-8 w-auto" />
+          <Logo variant="horizontal" className="h-8 w-auto" />
         </div>
       </header>
 

@@ -46,11 +46,8 @@ export default function HomePageClient() {
         className={`sticky top-0 z-50 transition-all duration-300 ${scrollY > 50 ? "bg-white shadow-lg" : "bg-white border-b border-gray-100"}`}
       >
         <div className="container mx-auto px-4 h-16 md:h-20 flex justify-between items-center">
-          <Link href="/" className="flex items-center space-x-2 group">
+          <Link href="/" className="flex items-center group">
             <Logo variant="horizontal" className="h-8 md:h-10 w-auto" />
-            <span className="font-bold text-xl md:text-2xl bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
-              Affilova
-            </span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -194,6 +191,7 @@ export default function HomePageClient() {
                   <div className="text-center">
                     <Logo
                       variant="stacked"
+                      tone="dark"
                       className="h-20 w-auto mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 drop-shadow-lg"
                     />
                   </div>

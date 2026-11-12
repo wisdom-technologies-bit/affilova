@@ -99,9 +99,8 @@ export function DashboardSidebar({ role, user }: DashboardSidebarProps) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="flex items-center gap-2 px-6 py-4 border-b">
+      <div className="flex items-center px-6 py-4 border-b">
         <Logo variant="horizontal" className="h-8 w-auto" />
-        <span className="font-semibold text-lg">Affilova</span>
       </div>
 
       {/* User Info */}

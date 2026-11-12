@@ -41,9 +41,8 @@ export default function GlobalFooter({ className = "" }: FooterProps) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="flex items-center space-x-2 mb-4">
+            <Link href="/" className="flex items-center mb-4">
               <Logo variant="horizontal" className="h-8 w-auto" />
-              <span className="font-bold text-xl text-gray-900">Affilova</span>
             </Link>
             <p className="text-sm text-gray-600 mb-4">
               The premier affiliate marketplace connecting vendors and affiliates worldwide.

@@ -1,8 +1,31 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { verifyToken } from "@/lib/auth"
+import { APP_HEADER, appForHost, hostMapFromEnv, type AppName } from "@/lib/hosts"
 
 export async function middleware(request: NextRequest) {
+  // Resolve which app this request belongs to and pass it down as a request
+  // header. Nothing below depends on it yet: every existing rule, redirect and
+  // return path is unchanged.
+  let app: AppName = "public"
+
+  try {
+    app = appForHost({
+      host: request.headers.get("host"),
+      hosts: hostMapFromEnv(),
+      appEnv: process.env.NEXT_PUBLIC_APP_ENV,
+      override: request.nextUrl.searchParams.get("app"),
+    })
+  } catch {
+    app = "public"
+  }
+
+  // Rebuild the headers so a client cannot spoof the app by sending its own
+  // x-affilova-app header.
+  const headers = new Headers(request.headers)
+  headers.delete(APP_HEADER)
+  headers.set(APP_HEADER, app)
+
   const { pathname } = request.nextUrl
   const token = request.cookies.get("auth-token")?.value
 
@@ -63,7 +86,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard/select-role", request.url))
   }
 
-  return NextResponse.next()
+  return NextResponse.next({ request: { headers } })
 }
 
 export const config = {

@@ -103,6 +103,39 @@ line starts with `--`).
 The `citext` and `pg_trgm` extensions are deliberately left in place by the
 rollback, because other things may depend on them.
 
+## The second migration: the job queue (20261112000200_job_queue)
+
+Run this one **after** `20261112000100_foundation.sql` has been applied and every
+check in its verify file is `t`. It assumes the foundation is already there.
+
+The steps are the same as above:
+
+1. **Step 1**: copy all of `supabase/migrations/20261112000200_job_queue.sql`
+   into a new SQL Editor query and click **Run**. It must succeed, and a second
+   **Run** must also succeed.
+2. **Step 2**: copy all of
+   `supabase/verify/20261112000200_job_queue_verify.sql`, click **Run**, and check
+   that every `passed` is `t`. This one has 16 checks.
+3. **Step 3**: what it created:
+   - `jobs`: the background work queue. One row per piece of work, with its type,
+     payload, attempt count and status (`queued`, `running`, `done`, `failed`,
+     `dead`).
+   - `cron_heartbeats`: one row per scheduled endpoint, recording when it last
+     ran, how long it took and whether it worked.
+   - Six server-only functions: `enqueue_job`, `claim_jobs`, `complete_job`,
+     `fail_job`, `release_job`, `record_heartbeat`. Only the server's service role
+     can call them.
+   - Staff can **read** both tables in the admin area. Nobody can write to them
+     from the app; only the server does, through those functions.
+
+The external scheduler setup is described in `docs/cron.md`. Nothing in this
+migration needs a scheduler to be applied.
+
+Its rollback block works the same way as the foundation's. One difference worth
+knowing: it drops the **functions before the tables**, because `claim_jobs`
+returns the `jobs` row type and the tables cannot be dropped while it exists. If
+you edit that block, keep the functions first.
+
 ## Creating the first admin
 
 Every new signup is created as a `customer`. The first admin has to be added by hand,

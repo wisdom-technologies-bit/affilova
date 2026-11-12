@@ -17,6 +17,30 @@ written to skip anything that already exists.
   `postgres` role. That role is allowed to change the database; ordinary app users
   are not.
 
+## Before you run: check the extensions
+
+The migration expects the `citext` and `pg_trgm` extensions to be either missing or
+installed in the `extensions` schema. Check that first.
+
+1. In **SQL Editor**, open a **New query**.
+2. Paste this and click **Run**:
+
+```sql
+select extname, extnamespace::regnamespace as schema
+from pg_extension
+where extname in ('citext','pg_trgm');
+```
+
+3. Read the result. It must be **either**:
+
+   - **no rows** (neither extension is installed yet: the migration will add both
+     to the `extensions` schema), **or**
+   - **both rows with `schema` = `extensions`**.
+
+If either row shows any other schema (for example `public`), **stop**. Do not run
+the migration. Send the query result to the project lead, because the extensions
+have to be moved by someone with database access first.
+
 ## Step 1: run the migration
 
 1. Open <https://supabase.com/dashboard> and pick the **staging** project.

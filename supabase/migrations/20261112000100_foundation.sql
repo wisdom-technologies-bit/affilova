@@ -285,6 +285,12 @@ CREATE TRIGGER settings_write_history
   FOR EACH ROW
   EXECUTE FUNCTION public.log_settings_change();
 
+DROP TRIGGER IF EXISTS settings_set_updated_at ON public.settings;
+CREATE TRIGGER settings_set_updated_at
+  BEFORE UPDATE ON public.settings
+  FOR EACH ROW
+  EXECUTE FUNCTION public.set_updated_at();
+
 REVOKE ALL ON FUNCTION public.log_settings_change() FROM PUBLIC, anon, authenticated;
 
 -- Seed values. These are placeholders pending owner decisions on pricing,
@@ -499,7 +505,26 @@ GRANT USAGE, SELECT ON SEQUENCE public.settings_history_id_seq TO service_role;
 GRANT USAGE, SELECT ON SEQUENCE public.audit_log_id_seq TO service_role;
 
 -- ----------------------------------------------------------------------------
--- 13. Record the migration
+-- 13. Server role (service_role) privileges
+-- Server code uses the service key. These grants are explicit so they do not
+-- depend on Supabase's default privileges for new tables.
+-- service_role deliberately gets no UPDATE, DELETE or TRUNCATE on audit_log:
+-- that table stays append-only for every role except postgres.
+-- ----------------------------------------------------------------------------
+GRANT USAGE ON SCHEMA public TO service_role;
+
+GRANT ALL ON TABLE
+  public.app_migrations,
+  public.profiles,
+  public.user_roles,
+  public.settings,
+  public.settings_history
+TO service_role;
+
+GRANT SELECT, INSERT ON TABLE public.audit_log TO service_role;
+
+-- ----------------------------------------------------------------------------
+-- 14. Record the migration
 -- ----------------------------------------------------------------------------
 INSERT INTO public.app_migrations (version, name)
 VALUES ('20261112000100', 'foundation')
@@ -523,6 +548,7 @@ COMMIT;
 --
 -- DROP TRIGGER IF EXISTS on_auth_user_email_changed ON auth.users;
 -- DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+-- DROP TRIGGER IF EXISTS settings_set_updated_at ON public.settings;
 --
 -- DROP POLICY IF EXISTS audit_log_select_staff ON public.audit_log;
 -- DROP POLICY IF EXISTS settings_history_select_staff ON public.settings_history;

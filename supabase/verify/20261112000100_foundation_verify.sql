@@ -309,3 +309,41 @@ SELECT
     FROM public.app_migrations
     WHERE version = '20261112000100' AND name = 'foundation'
   ) AS passed;
+
+-- 25. The server role can read every table in the migration.
+SELECT
+  'service_role_can_select_all_tables' AS check_name,
+  NOT EXISTS (
+    SELECT 1
+    FROM (VALUES
+      ('app_migrations'), ('profiles'), ('user_roles'),
+      ('settings'), ('settings_history'), ('audit_log')
+    ) AS t(tbl)
+    WHERE NOT has_table_privilege('service_role', format('public.%I', t.tbl), 'SELECT')
+  ) AS passed;
+
+-- 26. The server role can insert audit rows.
+SELECT
+  'service_role_can_insert_audit_log' AS check_name,
+  has_table_privilege('service_role', 'public.audit_log', 'INSERT') AS passed;
+
+-- 27. The server role cannot mutate or empty audit_log.
+SELECT
+  'service_role_cannot_mutate_audit_log' AS check_name,
+  NOT has_table_privilege('service_role', 'public.audit_log', 'UPDATE')
+  AND NOT has_table_privilege('service_role', 'public.audit_log', 'DELETE')
+  AND NOT has_table_privilege('service_role', 'public.audit_log', 'TRUNCATE') AS passed;
+
+-- 28. Settings carry an updated_at trigger.
+SELECT
+  'settings_updated_at_trigger_exists' AS check_name,
+  EXISTS (
+    SELECT 1
+    FROM pg_trigger tg
+    JOIN pg_class c ON c.oid = tg.tgrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'settings'
+      AND NOT tg.tgisinternal
+      AND tg.tgname = 'settings_set_updated_at'
+  ) AS passed;

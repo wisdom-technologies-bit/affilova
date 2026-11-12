@@ -65,6 +65,8 @@ const publicEnvSchema = z.object({
   NEXT_PUBLIC_HOST_ADMIN: hostName,
   NEXT_PUBLIC_SUPABASE_URL: requiredUrl,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: requiredString,
+  // Optional: cookies stay on the exact host when this is empty (vercel.app).
+  NEXT_PUBLIC_COOKIE_DOMAIN: optionalString,
   // Optional for now; required once the feature that uses them ships.
   NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: optionalString,
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: optionalString,
@@ -91,7 +93,6 @@ const serverEnvSchema = z.object({
   CLOUDINARY_CLOUD_NAME: optionalString,
   CLOUDINARY_API_KEY: optionalString,
   CLOUDINARY_API_SECRET: optionalString,
-  COOKIE_DOMAIN: optionalString,
   // Legacy variables, to be removed once the replacements above are in use.
   DATABASE_URL: optionalUrl,
   JWT_SECRET: optionalString,
@@ -159,6 +160,7 @@ export function getPublicEnv(): PublicEnv {
       NEXT_PUBLIC_HOST_ADMIN: process.env.NEXT_PUBLIC_HOST_ADMIN,
       NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
       NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      NEXT_PUBLIC_COOKIE_DOMAIN: process.env.NEXT_PUBLIC_COOKIE_DOMAIN,
       NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
     })

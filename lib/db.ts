@@ -1,3 +1,4 @@
+// DEPRECATED. Being replaced by Supabase feature by feature.
 import { neon } from "@neondatabase/serverless"
 
 if (!process.env.DATABASE_URL) {

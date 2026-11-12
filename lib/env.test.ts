@@ -56,6 +56,7 @@ describe("parsePublicEnv", () => {
   it("allows the optional public variables to be absent", () => {
     const env = parsePublicEnv(validPublicSource)
 
+    expect(env.NEXT_PUBLIC_COOKIE_DOMAIN).toBeUndefined()
     expect(env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY).toBeUndefined()
     expect(env.NEXT_PUBLIC_TURNSTILE_SITE_KEY).toBeUndefined()
   })
@@ -89,7 +90,6 @@ describe("parseServerEnv", () => {
     expect(env.BREVO_API_KEY).toBeUndefined()
     expect(env.TURNSTILE_SECRET_KEY).toBeUndefined()
     expect(env.CLOUDINARY_API_KEY).toBeUndefined()
-    expect(env.COOKIE_DOMAIN).toBeUndefined()
     expect(env.DATABASE_URL).toBeUndefined()
     expect(env.JWT_SECRET).toBeUndefined()
   })

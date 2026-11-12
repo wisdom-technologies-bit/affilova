@@ -244,9 +244,8 @@ export default function LoginClientPage() {
         </div>
 
         <div className="relative z-10 space-y-8">
-          <Link href="/" className="flex items-center space-x-2 group">
-            <Logo variant="stacked" tone="dark" className="h-12 w-auto" />
-            <span className="font-bold text-2xl text-white">Affilova</span>
+          <Link href="/" className="flex items-center group">
+            <Logo variant="horizontal" tone="white" className="h-10 w-auto" />
           </Link>
 
           <div className="space-y-6">

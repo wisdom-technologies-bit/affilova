@@ -4,10 +4,8 @@ const sql = neon(process.env.DATABASE_URL!)
 
 export async function GET() {
   try {
-    console.log("[v0] Admin dashboard stats API called")
 
     // Get user stats
-    console.log("[v0] Fetching user stats...")
     const userStats = await sql`
       SELECT 
         COUNT(*) as total_users,
@@ -16,20 +14,16 @@ export async function GET() {
       FROM users
       WHERE is_active = true
     `
-    console.log("[v0] User stats:", userStats[0])
 
     // Get product stats
-    console.log("[v0] Fetching product stats...")
     const productStats = await sql`
       SELECT 
         COUNT(*) as total_products,
         SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END) as active_products
       FROM products
     `
-    console.log("[v0] Product stats:", productStats[0])
 
     // Get transaction stats
-    console.log("[v0] Fetching transaction stats...")
     const transactionStats = await sql`
       SELECT 
         COUNT(*) as total_transactions,
@@ -38,10 +32,8 @@ export async function GET() {
         SUM(CASE WHEN payment_status = 'completed' THEN 1 ELSE 0 END) as completed_transactions
       FROM transactions
     `
-    console.log("[v0] Transaction stats:", transactionStats[0])
 
     // Get withdrawal stats
-    console.log("[v0] Fetching withdrawal stats...")
     const withdrawalStats = await sql`
       SELECT 
         COUNT(*) as total_withdrawals,
@@ -49,20 +41,16 @@ export async function GET() {
         SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_withdrawals
       FROM withdrawal_requests
     `
-    console.log("[v0] Withdrawal stats:", withdrawalStats[0])
 
     // Get support tickets
-    console.log("[v0] Fetching support ticket stats...")
     const supportStats = await sql`
       SELECT 
         COUNT(*) as total_tickets,
         SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) as open_tickets
       FROM support_tickets
     `
-    console.log("[v0] Support stats:", supportStats[0])
 
     // Get monthly revenue trend (last 12 months)
-    console.log("[v0] Fetching monthly revenue trend...")
     const monthlyRevenue = await sql`
       SELECT 
         DATE_TRUNC('month', created_at) as month,
@@ -73,10 +61,8 @@ export async function GET() {
       GROUP BY DATE_TRUNC('month', created_at)
       ORDER BY month ASC
     `
-    console.log("[v0] Monthly revenue data points:", monthlyRevenue.length)
 
     // Get top vendors by sales
-    console.log("[v0] Fetching top vendors...")
     const topVendors = await sql`
       SELECT 
         v.id,
@@ -90,7 +76,6 @@ export async function GET() {
       ORDER BY total_sales DESC
       LIMIT 5
     `
-    console.log("[v0] Top vendors count:", topVendors.length)
 
     const response = {
       users: userStats[0],
@@ -110,7 +95,6 @@ export async function GET() {
       })),
     }
 
-    console.log("[v0] Admin dashboard stats response prepared successfully")
     return Response.json(response)
   } catch (error) {
     console.error("[v0] Dashboard stats error:", error)

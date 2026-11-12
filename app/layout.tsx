@@ -4,7 +4,6 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 
 import ClientWrapper from "./ClientWrapper"
-import { HideV0Badge } from "@/components/HideV0Badge"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -38,7 +37,6 @@ export default function RootLayout({
         <meta name="theme-color" content="#14A953" />
       </head>
       <body className={inter.className}>
-        <HideV0Badge />
         <ClientWrapper>{children}</ClientWrapper>
       </body>
     </html>

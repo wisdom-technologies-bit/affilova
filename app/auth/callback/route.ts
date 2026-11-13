@@ -16,7 +16,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const code = searchParams.get("code")
   const next = safeNextPath(searchParams.get("next"))
 
-  const failed = NextResponse.redirect(new URL("/auth/login?error=callback_failed", origin))
+  const failed = NextResponse.redirect(new URL("/sign-in?error=callback_failed", origin))
 
   if (!code) {
     return failed

@@ -38,7 +38,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const type = parseOtpType(searchParams.get("type"))
   const next = safeNextPath(searchParams.get("next"))
 
-  const invalid = NextResponse.redirect(new URL("/auth/login?error=link_invalid", origin))
+  const invalid = NextResponse.redirect(new URL("/sign-in?error=link_invalid", origin))
 
   if (!tokenHash || type === null) {
     return invalid

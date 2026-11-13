@@ -136,6 +136,49 @@ knowing: it drops the **functions before the tables**, because `claim_jobs`
 returns the `jobs` row type and the tables cannot be dropped while it exists. If
 you edit that block, keep the functions first.
 
+## The third migration: profile names from signup metadata (20261112000300)
+
+Run this one **after** `20261112000100_foundation.sql` has been applied and every
+check in its verify file is `t`. It does not depend on the job queue, but the
+foundation is required: it replaces the signup trigger function that the
+foundation created.
+
+It changes one thing: `public.handle_new_user()`, the function behind the
+`auth.users` signup trigger, now also copies `first_name` and `last_name` from
+`raw_user_meta_data` into `public.profiles` and builds `display_name` from them.
+
+The steps are the same as above:
+
+1. **Step 1**: copy all of
+   `supabase/migrations/20261112000300_profile_names_from_metadata.sql` into a
+   new SQL Editor query and click **Run**. It must succeed, and a second **Run**
+   must also succeed. It only replaces a function and adds a row to
+   `app_migrations`, so it is quick and touches no data.
+2. **Step 2**: copy all of
+   `supabase/verify/20261112000300_profile_names_verify.sql`, click **Run**, and
+   check that every `passed` is `t`. This one has 13 checks.
+3. **Step 3**: what it changed:
+   - The metadata is treated as untrusted text, because whoever signs up
+     supplies it. A missing key, a JSON `null`, or a value that is not a string
+     (a number, an object, an array) leaves that name empty instead of raising.
+   - Names lose their control characters, are trimmed, and are cut to 100
+     characters each.
+   - `display_name` is "first last", or whichever of the two is present, or
+     `NULL` when neither is.
+   - The customer role insert, the `ON CONFLICT DO NOTHING` clauses, and the
+     exception block that stops a failure here from blocking a signup are all
+     unchanged.
+
+Existing rows are not backfilled: users who signed up before this migration have
+no names until they set them. There is no automatic way to recover names from
+`auth.users` for those users.
+
+Its rollback block works the same way as the others: strip the leading `-- ` from
+every line between `BEGIN;` and `COMMIT;` and run it. It restores the previous
+version of `handle_new_user()`, which leaves the three name columns empty for
+future signups. It does **not** clear names already copied into `profiles`, and it
+deletes no rows.
+
 ## Creating the first admin
 
 Every new signup is created as a `customer`. The first admin has to be added by hand,

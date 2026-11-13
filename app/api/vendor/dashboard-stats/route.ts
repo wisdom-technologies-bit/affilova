@@ -1,17 +1,21 @@
 import { neon } from "@neondatabase/serverless"
-import { cookies } from "next/headers"
+
+import { requireRole } from "@/lib/auth"
 
 const sql = neon(process.env.DATABASE_URL!)
 
 export async function GET() {
+  const auth = await requireRole(["vendor"])
+
+  if (!auth.ok) {
+    return auth.status === 401
+      ? Response.json({ error: "Unauthorized" }, { status: 401 })
+      : Response.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  const userId = auth.session.userId
+
   try {
-
-    const cookieStore = await cookies()
-    const userId = cookieStore.get("user_id")?.value
-
-    if (!userId) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 })
-    }
 
     // Get vendor ID
     const vendorResult = await sql`SELECT id FROM vendors WHERE user_id = ${userId}`
@@ -93,7 +97,7 @@ export async function GET() {
 
     return Response.json(response)
   } catch (error) {
-    console.error("[v0] Vendor dashboard stats error:", error)
+    console.error("dashboard-stats failed")
     return Response.json({ error: "Failed to fetch stats" }, { status: 500 })
   }
 }

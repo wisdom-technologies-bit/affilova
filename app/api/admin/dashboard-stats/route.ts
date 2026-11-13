@@ -1,8 +1,18 @@
 import { neon } from "@neondatabase/serverless"
 
+import { requireRole } from "@/lib/auth"
+
 const sql = neon(process.env.DATABASE_URL!)
 
 export async function GET() {
+  const auth = await requireRole(["admin"])
+
+  if (!auth.ok) {
+    return auth.status === 401
+      ? Response.json({ error: "Unauthorized" }, { status: 401 })
+      : Response.json({ error: "Forbidden" }, { status: 403 })
+  }
+
   try {
 
     // Get user stats
@@ -97,7 +107,7 @@ export async function GET() {
 
     return Response.json(response)
   } catch (error) {
-    console.error("[v0] Dashboard stats error:", error)
+    console.error("dashboard-stats failed")
     return Response.json({ error: "Failed to fetch stats" }, { status: 500 })
   }
 }

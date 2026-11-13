@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { neon } from "@neondatabase/serverless"
 import { cookies } from "next/headers"
-import { jwtVerify } from "jose"
+
+import { verifyToken } from "@/lib/auth"
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -22,11 +23,11 @@ export async function POST(request: NextRequest) {
     const token = cookieStore.get("auth_token")?.value
 
     if (token) {
-      try {
-        const secret = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key")
-        const { payload } = await jwtVerify(token, secret)
-        userId = payload.userId as string
-      } catch (tokenError) {
+      const session = await verifyToken(token)
+
+      if (session) {
+        userId = session.userId
+      } else {
         console.log("Token verification failed, proceeding with IP-based rating")
       }
     }

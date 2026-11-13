@@ -45,6 +45,18 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    --brand-50: 145 75% 97%;
+    --brand-100: 146 78% 93%;
+    --brand-200: 145 78% 84%;
+    --brand-300: 145 72% 72%;
+    --brand-400: 145 72% 56%;
+    --brand-500: 145 79% 37%;
+    --brand-600: 145 78% 28%;
+    --brand-700: 145 78% 23%;
+    --brand-800: 145 79% 18%;
+    --brand-900: 145 78% 14%;
+    --brand-950: 146 80% 8%;
+    --brand-ink: 80 7% 6%;
   }
   .dark {
     --background: 0 0% 3.9%;

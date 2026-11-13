@@ -22,7 +22,12 @@ export default async function ForgotPasswordPage({
   const params = await searchParams
 
   return (
-    <AuthShell>
+    <AuthShell
+      panel={{
+        heading: "Reset your password.",
+        body: "Enter your email address and we will send you a reset link.",
+      }}
+    >
       <ForgotPasswordForm error={single(params.error)} />
     </AuthShell>
   )

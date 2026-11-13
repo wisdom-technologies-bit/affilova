@@ -10,7 +10,12 @@ export const metadata: Metadata = {
 
 export default function SignUpPage() {
   return (
-    <AuthShell>
+    <AuthShell
+      panel={{
+        heading: "Start on Affilova.",
+        body: "Create one account. Sell your own products, promote other people's, or do both.",
+      }}
+    >
       <SignUpForm />
     </AuthShell>
   )

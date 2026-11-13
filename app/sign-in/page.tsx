@@ -22,7 +22,12 @@ export default async function SignInPage({
   const params = await searchParams
 
   return (
-    <AuthShell>
+    <AuthShell
+      panel={{
+        heading: "Welcome back.",
+        body: "Sign in to manage your products, links and earnings.",
+      }}
+    >
       <SignInForm next={single(params.next)} error={single(params.error)} />
     </AuthShell>
   )

@@ -92,7 +92,7 @@ describe("GET /auth/confirm", () => {
   it("rejects a missing token_hash", async () => {
     const response = await GET(request("https://affilova.vercel.app/auth/confirm?type=signup"))
 
-    expect(locationOf(response).pathname).toBe("/auth/login")
+    expect(locationOf(response).pathname).toBe("/sign-in")
     expect(locationOf(response).searchParams.get("error")).toBe("link_invalid")
     expect(verifyOtp).not.toHaveBeenCalled()
   })
@@ -125,7 +125,7 @@ describe("GET /auth/confirm", () => {
       request("https://affilova.vercel.app/auth/confirm?token_hash=old&type=recovery"),
     )
 
-    expect(locationOf(response).pathname).toBe("/auth/login")
+    expect(locationOf(response).pathname).toBe("/sign-in")
     expect(locationOf(response).searchParams.get("error")).toBe("link_invalid")
   })
 

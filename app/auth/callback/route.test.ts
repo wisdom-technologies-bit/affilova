@@ -76,7 +76,7 @@ describe("GET /auth/callback", () => {
 
     const response = await GET(request("https://affilova.vercel.app/auth/callback"))
 
-    expect(locationOf(response).pathname).toBe("/auth/login")
+    expect(locationOf(response).pathname).toBe("/sign-in")
     expect(locationOf(response).searchParams.get("error")).toBe("callback_failed")
     expect(createSupabaseServerClient).not.toHaveBeenCalled()
   })
@@ -88,7 +88,7 @@ describe("GET /auth/callback", () => {
       request("https://affilova.vercel.app/auth/callback?code=stale&next=%2Fdashboard"),
     )
 
-    expect(locationOf(response).pathname).toBe("/auth/login")
+    expect(locationOf(response).pathname).toBe("/sign-in")
     expect(locationOf(response).searchParams.get("error")).toBe("callback_failed")
   })
 
@@ -97,7 +97,7 @@ describe("GET /auth/callback", () => {
 
     const response = await GET(request("https://affilova.vercel.app/auth/callback?code=c"))
 
-    expect(locationOf(response).pathname).toBe("/auth/login")
+    expect(locationOf(response).pathname).toBe("/sign-in")
     expect(locationOf(response).searchParams.get("error")).toBe("callback_failed")
   })
 

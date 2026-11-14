@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { requireRole } from "@/lib/auth"
 import { sql } from "@/lib/db"
 import { generateLongAlphanumericId } from "@/lib/utils"
 import { brevoService } from "@/lib/brevo"
@@ -105,6 +106,16 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  // Every ticket carries the name and email address of the person who opened
+  // it, so the list is staff only.
+  const auth = await requireRole(["admin"])
+
+  if (!auth.ok) {
+    return auth.status === 401
+      ? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      : NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status") || "all"

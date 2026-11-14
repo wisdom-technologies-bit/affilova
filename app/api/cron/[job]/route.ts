@@ -20,9 +20,14 @@ export const maxDuration = 25
 
 const PROCESS_QUEUE_JOB = "process-queue"
 const HEARTBEAT_CHECK_JOB = "heartbeat-check"
+const CLEANUP_JOB = "cleanup"
 
-// The endpoint only accepts these names, and these are the schedules whose
-// heartbeats are watched.
+// The endpoint only accepts these names.
+const ALLOWED_JOBS = [PROCESS_QUEUE_JOB, HEARTBEAT_CHECK_JOB, CLEANUP_JOB]
+
+// The schedules whose heartbeats are watched, with the five minute staleness
+// rule below. cleanup is deliberately not one of them: it runs once a day, so
+// it would always look overdue.
 const EXPECTED_JOBS = [PROCESS_QUEUE_JOB, HEARTBEAT_CHECK_JOB]
 
 // process-queue runs every minute; anything older than this is overdue.
@@ -92,6 +97,27 @@ async function staleJobs(): Promise<string[]> {
   })
 }
 
+// Empty the rate_limits table of windows that can no longer be counted against.
+// public.cleanup_rate_limits() returns the number of rows it deleted; the RPC
+// answer is treated as untrusted and read defensively.
+async function cleanupRateLimits(): Promise<number> {
+  const { data, error } = await getSupabaseAdminClient().rpc("cleanup_rate_limits")
+
+  if (error) {
+    throw new Error("Could not clean up rate limits")
+  }
+
+  if (typeof data === "number") {
+    return data
+  }
+
+  if (Array.isArray(data) && typeof data[0] === "number") {
+    return data[0]
+  }
+
+  return 0
+}
+
 export async function POST(request: Request, context: RouteContext): Promise<NextResponse> {
   // 1. The secret is checked before anything else, and a failure says nothing
   //    beyond "unauthorized".
@@ -107,10 +133,10 @@ export async function POST(request: Request, context: RouteContext): Promise<Nex
     return json({ error: "unauthorized" }, 401)
   }
 
-  // 2. Only the two scheduled jobs exist.
+  // 2. Only the scheduled jobs exist.
   const { job } = await context.params
 
-  if (job !== PROCESS_QUEUE_JOB && job !== HEARTBEAT_CHECK_JOB) {
+  if (!ALLOWED_JOBS.includes(job)) {
     return json({ error: "not_found" }, 404)
   }
 
@@ -130,6 +156,20 @@ export async function POST(request: Request, context: RouteContext): Promise<Nex
       return json({ ok: true, ...counts }, 200)
     } catch (error) {
       await recordHeartbeatSafely(PROCESS_QUEUE_JOB, "error", startedAt, shortMessage(error))
+
+      return json({ ok: false }, 500)
+    }
+  }
+
+  if (job === CLEANUP_JOB) {
+    try {
+      const deleted = await cleanupRateLimits()
+
+      await recordHeartbeatSafely(CLEANUP_JOB, "ok", startedAt)
+
+      return json({ ok: true, deleted }, 200)
+    } catch (error) {
+      await recordHeartbeatSafely(CLEANUP_JOB, "error", startedAt, shortMessage(error))
 
       return json({ ok: false }, 500)
     }

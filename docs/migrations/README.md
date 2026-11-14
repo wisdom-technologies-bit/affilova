@@ -179,6 +179,53 @@ version of `handle_new_user()`, which leaves the three name columns empty for
 future signups. It does **not** clear names already copied into `profiles`, and it
 deletes no rows.
 
+## The fourth migration: rate limits (20261113000200_rate_limits)
+
+Run this one **after** `20261112000100_foundation.sql` has been applied and every
+check in its verify file is `t`. It does not depend on the job queue or on the
+profile names migration.
+
+It adds a small rate limiter that lives in Postgres. Nothing else is installed:
+no extra service and no extra bill.
+
+The steps are the same as above:
+
+1. **Step 1**: copy all of
+   `supabase/migrations/20261113000200_rate_limits.sql` into a new SQL Editor
+   query and click **Run**. It must succeed, and a second **Run** must also
+   succeed.
+2. **Step 2**: copy all of `supabase/verify/20261113000200_rate_limits_verify.sql`,
+   click **Run**, and check that every `passed` is `t`. This one has 15 checks.
+3. **Step 3**: what it created:
+   - `rate_limits`: one row per (key, window) with a hit count. A key is a
+     **hashed** identifier, so no IP address and no email address is ever stored
+     in plain text.
+   - `rate_limit_hit(key, limit, window_seconds)`: counts one hit and answers
+     whether it is allowed, how many are left, and when the window resets. The
+     window is fixed and rounds down to a boundary, so it rolls over on its own
+     and no sweeper is needed.
+   - `cleanup_rate_limits()`: deletes windows older than a day and reports how
+     many rows went.
+   - Both functions are SECURITY DEFINER with an empty `search_path`, and only
+     the server's `service_role` can execute them.
+   - The table has **row level security on and no policy at all**, so even a
+     signed-in user reads nothing. There is no client write path either.
+
+Where it is used: the four sign-in, sign-up, password-reset and password-update
+server actions in `app/auth/actions.ts`, and the browser CSP report endpoint in
+`app/api/csp-report/route.ts`. The `cleanup` cron job in `docs/cron.md` empties
+old windows.
+
+A limit of `N` allows the first `N` hits in a window and refuses the next one. The
+counters are advisory safeguards, not business limits: if the database call fails
+the sign-in actions still let the request through (`onError: "allow"`), because a
+database hiccup must not lock everyone out of their account.
+
+Its rollback block works the same way as the others: strip the leading `-- ` from
+every line between `BEGIN;` and `COMMIT;` and run it. It drops the table and both
+functions, so any rate limiting in progress is forgotten. Nothing else is
+touched.
+
 ## Creating the first admin
 
 Every new signup is created as a `customer`. The first admin has to be added by hand,

@@ -49,10 +49,12 @@ already covered by the hotfix.
 | 16 | `app/api/payments/squad/config/route.ts` | GET | To be replaced (`payments/squad/*`) | Legacy Squad flow. Publishes the Squad public key; harmless alone, but part of the flow being removed. |
 | 17 | `app/api/payments/squad/webhook/route.ts` | POST | To be replaced (`payments/squad/*`) | Legacy Squad flow. Duplicate of the callback route and likewise has no signature validation; it does re-verify the transaction with the Squad API using the secret key. |
 | 18 | `app/api/support/tickets/route.ts` | POST | Public by design | Support ticket form used by signed out visitors. Zod validated, and the ticket is written with a generated alphanumeric id. |
-| 19 | `app/api/support/tickets/route.ts` | GET | NEEDS REVIEW | Lists every support ticket, including each ticket holder's name and email address, with no session check at all. This is the only route in this audit that looks like a genuine unauthenticated data leak. Fixing it needs a decision about who reads tickets, so it is reported and not changed here. |
+| 19 | `app/api/support/tickets/route.ts` | GET | Fixed (`feat/security-headers-rate-limits`) | Lists every support ticket, including each ticket holder's name and email address, so it is staff only: `requireRole(["admin"])`, 401 `Unauthorized` / 403 `Forbidden`. `POST` stays public by design. Covered by a Vitest test. |
 
 Rows 18 and 19 are the two handlers of one file, split because their verdicts
-differ. Counting files, 18 routes are listed.
+differ. Counting files, 18 routes are listed. Only row 19 is left: every handler
+above except `support/tickets GET` is either public by design or secret
+protected.
 
 ## Covered by this hotfix (no longer in the list)
 
@@ -71,9 +73,10 @@ do not appear in the list above, but they are public by design.
 
 ## Observations
 
-1. `GET /api/support/tickets` (row 19) exposes every ticket's name and email
-   address without any authentication. Highest priority follow-up in this
-   document.
+1. `GET /api/support/tickets` (row 19) exposed every ticket's name and email
+   address without any authentication. **Fixed** on
+   `feat/security-headers-rate-limits`: the handler now requires the `admin`
+   role before it reads anything.
 2. `lib/squad.ts` falls back to `"test_pk_sample-public-key-1"` when
    `SQUAD_PUBLIC_KEY` is unset. Not a session issue, and the module is being
    removed with the Squad flow, but the fallback should go before that.
@@ -86,8 +89,15 @@ do not appear in the list above, but they are public by design.
 
 ## Not changed
 
-No route outside the five in "Covered by this hotfix" was modified. In
-particular nothing in `app/api/auth/*`, `app/api/support/*`, `app/api/blog/route.ts`,
+For the audit itself, no route outside the five in "Covered by this hotfix" was
+modified: nothing in `app/api/auth/*`, `app/api/blog/route.ts`,
 `app/api/blog/[slug]`, `app/api/blog/category/*` or `app/api/payments/squad/*`
 was edited, and neither were `middleware.ts`, `lib/supabase/*`, `lib/identity/*`,
 `lib/jobs/*`, `supabase/*` or any login or register page.
+
+The single follow-up the audit asked for, row 19, was fixed afterwards on
+`feat/security-headers-rate-limits`: `GET` on `app/api/support/tickets` now
+requires `requireRole(["admin"])`, which answers 401 `Unauthorized` without a
+session and 403 `Forbidden` for any other role. `POST` on the same file is
+unchanged. A test in `app/api/support/tickets/route.test.ts` covers the three
+outcomes.

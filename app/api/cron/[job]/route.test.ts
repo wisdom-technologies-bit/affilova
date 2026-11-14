@@ -16,6 +16,10 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key"
 const adminState = vi.hoisted(() => ({
   rows: [] as { job: string; last_run_at: string }[],
   error: null as { message: string } | null,
+  // cleanup_rate_limits(): the RPC answer, or an error to throw on.
+  cleanupData: 0 as unknown,
+  cleanupError: null as { message: string } | null,
+  keepOldRateLimits: 0,
 }))
 
 vi.mock("@/lib/jobs/queue", () => ({
@@ -31,6 +35,13 @@ vi.mock("@/lib/supabase/admin", () => ({
     from: () => ({
       select: async () => ({ data: adminState.rows, error: adminState.error }),
     }),
+    rpc: async (name: string) => {
+      if (name !== "cleanup_rate_limits") {
+        return { data: null, error: { message: `unexpected rpc ${name}` } }
+      }
+
+      return { data: adminState.cleanupData, error: adminState.cleanupError }
+    },
   }),
 }))
 
@@ -72,6 +83,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   adminState.rows = []
   adminState.error = null
+  adminState.cleanupData = 0
+  adminState.cleanupError = null
 })
 
 describe("POST /api/cron/[job]", () => {
@@ -179,6 +192,83 @@ describe("POST /api/cron/[job]", () => {
     const response = await callRoute("heartbeat-check", `Bearer ${SECRET}`)
 
     expect(await response.json()).toEqual({ ok: true, stale: [] })
+  })
+
+  it("runs the cleanup job and reports how many rows went", async () => {
+    adminState.cleanupData = 7
+
+    const response = await callRoute("cleanup", `Bearer ${SECRET}`)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ ok: true, deleted: 7 })
+    expect(queue.recordHeartbeat).toHaveBeenCalledWith(
+      "cleanup",
+      "ok",
+      expect.any(Number),
+      null,
+    )
+    // The queue is not touched by cleanup.
+    expect(queue.claimJobs).not.toHaveBeenCalled()
+  })
+
+  it("accepts the RPC answer in an array shape too", async () => {
+    adminState.cleanupData = [3]
+
+    const response = await callRoute("cleanup", `Bearer ${SECRET}`)
+
+    expect(await response.json()).toEqual({ ok: true, deleted: 3 })
+  })
+
+  it("treats an unexpected cleanup answer as zero, not as a failure", async () => {
+    adminState.cleanupData = null
+
+    const response = await callRoute("cleanup", `Bearer ${SECRET}`)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ ok: true, deleted: 0 })
+  })
+
+  it("records an error heartbeat and answers 500 when cleanup fails", async () => {
+    adminState.cleanupError = { message: "permission denied for table rate_limits" }
+
+    const response = await callRoute("cleanup", `Bearer ${SECRET}`)
+    const body = (await response.json()) as Record<string, unknown>
+
+    expect(response.status).toBe(500)
+    expect(body).toEqual({ ok: false })
+    // The database message never leaves the server.
+    expect(JSON.stringify(body)).not.toContain("rate_limits")
+    expect(queue.recordHeartbeat).toHaveBeenCalledWith(
+      "cleanup",
+      "error",
+      expect.any(Number),
+      "Could not clean up rate limits",
+    )
+  })
+
+  it("still refuses an unknown job after a valid secret", async () => {
+    const response = await callRoute("cleanup-old", `Bearer ${SECRET}`)
+
+    expect(response.status).toBe(404)
+    expect(await response.json()).toEqual({ error: "not_found" })
+  })
+
+  it("does not watch cleanup for staleness, since it runs once a day", async () => {
+    adminState.rows = [
+      { job: "process-queue", last_run_at: new Date().toISOString() },
+      { job: "heartbeat-check", last_run_at: new Date().toISOString() },
+    ]
+
+    const response = await callRoute("heartbeat-check", `Bearer ${SECRET}`)
+
+    expect(await response.json()).toEqual({ ok: true, stale: [] })
+  })
+
+  it("requires the secret for the cleanup job too", async () => {
+    const response = await callRoute("cleanup")
+
+    expect(response.status).toBe(401)
+    expect(await response.json()).toEqual({ error: "unauthorized" })
   })
 
   it("exports POST and no GET", () => {

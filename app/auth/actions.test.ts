@@ -17,6 +17,45 @@ vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: vi.fn() })
 vi.mock("@/lib/identity/session", () => ({ getAuthUser: vi.fn() }))
 vi.mock("@/lib/identity/password", () => ({ isPasswordBreached: vi.fn() }))
 
+// The limiter is exercised in lib/rate-limit.test.ts; here it only has to be
+// countable. A test blocks one budget by naming a fragment of its key.
+const limitState = vi.hoisted(() => ({
+  blockedParts: [] as string[],
+  keys: [] as string[],
+  parts: [] as string[][],
+  calls: [] as { key: string; limit: number; windowSeconds: number; onError?: string }[],
+}))
+
+vi.mock("@/lib/rate-limit", () => ({
+  rateLimitKey: (parts: readonly string[]) => {
+    limitState.parts.push([...parts])
+
+    return `sha256:${parts.join(":")}`
+  },
+  rateLimit: async (options: {
+    key: string
+    limit: number
+    windowSeconds: number
+    onError?: "allow" | "deny"
+  }) => {
+    limitState.keys.push(options.key)
+    limitState.calls.push(options)
+
+    const blocked = limitState.blockedParts.some((part) => options.key.includes(part))
+
+    return {
+      allowed: !blocked,
+      remaining: blocked ? 0 : 1,
+      resetAt: new Date("2026-11-14T09:00:00.000Z"),
+    }
+  },
+  clientIpFromHeaders: () => "203.0.113.7",
+}))
+
+vi.mock("next/headers", () => ({
+  headers: async () => new Headers({ "x-forwarded-for": "203.0.113.7" }),
+}))
+
 // appUrl() inside the actions reads these through lib/env.ts. Values are read
 // lazily, so setting them here is enough.
 process.env.NEXT_PUBLIC_APP_ENV = "production"
@@ -80,6 +119,10 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(isPasswordBreached).mockResolvedValue(false)
   vi.mocked(getAuthUser).mockResolvedValue({ id: "user-1", email: "person@example.com" })
+  limitState.blockedParts = []
+  limitState.keys = []
+  limitState.parts = []
+  limitState.calls = []
 })
 
 describe("signUpAction", () => {
@@ -429,5 +472,133 @@ describe("updatePasswordAction", () => {
       ok: false,
       error: "Choose a password you have not used before.",
     })
+  })
+})
+
+describe("rate limits on the auth actions", () => {
+  const THROTTLED = "Too many attempts. Please wait a few minutes and try again."
+
+  it("counts a sign-in attempt against both the address and the email", async () => {
+    const signInWithPassword = vi.fn(async (_args: SignInArgs) => ok({ user: {}, session: {} }))
+    mockSupabase({ signInWithPassword })
+
+    await signInAction({ email: "Person@Example.com", password: "secret" })
+
+    const budgets = limitState.calls.map((call) => [call.limit, call.windowSeconds])
+
+    expect(budgets).toEqual([
+      [10, 600],
+      [5, 600],
+    ])
+    expect(limitState.parts).toEqual([
+      ["sign-in", "ip", "203.0.113.7"],
+      ["sign-in", "email", "person@example.com"],
+    ])
+    // Whatever reaches the limiter is the hash, never the raw value.
+    expect(limitState.keys.every((key) => key.startsWith("sha256:"))).toBe(true)
+    expect(limitState.calls.every((call) => call.onError === "allow")).toBe(true)
+  })
+
+  it("refuses a sign-in when the address has spent its budget", async () => {
+    limitState.blockedParts = ["sign-in:ip:"]
+    const signInWithPassword = vi.fn(async (_args: SignInArgs) => ok({ user: {}, session: {} }))
+    mockSupabase({ signInWithPassword })
+
+    const result = await signInAction({ email: "person@example.com", password: "secret" })
+
+    expect(result).toEqual({ ok: false, error: THROTTLED })
+    expect(createSupabaseServerClient).not.toHaveBeenCalled()
+    expect(signInWithPassword).not.toHaveBeenCalled()
+  })
+
+  it("refuses a sign-in when the email has spent its budget", async () => {
+    limitState.blockedParts = ["sign-in:email:"]
+    const signInWithPassword = vi.fn(async (_args: SignInArgs) => ok({ user: {}, session: {} }))
+    mockSupabase({ signInWithPassword })
+
+    const result = await signInAction({ email: "person@example.com", password: "secret" })
+
+    expect(result).toEqual({ ok: false, error: THROTTLED })
+    expect(signInWithPassword).not.toHaveBeenCalled()
+  })
+
+  it("counts a sign-up against the address, five per hour", async () => {
+    limitState.blockedParts = ["sign-up:ip:"]
+    const signUp = vi.fn(async (_args: SignUpArgs) => ok({ user: null, session: null }))
+    mockSupabase({ signUp })
+
+    const result = await signUpAction(VALID_SIGNUP)
+
+    expect(result).toEqual({ ok: false, error: THROTTLED })
+    expect(limitState.calls).toEqual([
+      expect.objectContaining({ limit: 5, windowSeconds: 3600, onError: "allow" }),
+    ])
+    expect(limitState.parts).toEqual([["sign-up", "ip", "203.0.113.7"]])
+    // Nothing expensive runs after a refusal: no breach lookup, no Supabase.
+    expect(isPasswordBreached).not.toHaveBeenCalled()
+    expect(createSupabaseServerClient).not.toHaveBeenCalled()
+    expect(signUp).not.toHaveBeenCalled()
+  })
+
+  it("counts a password reset against the address and the email", async () => {
+    const resetPasswordForEmail = vi.fn(async (_email: string, _args: ResetArgs) =>
+      ok({ data: {}, error: null }),
+    )
+    mockSupabase({ resetPasswordForEmail })
+
+    await requestPasswordResetAction({ email: "person@example.com" })
+
+    expect(limitState.calls.map((call) => [call.limit, call.windowSeconds])).toEqual([
+      [5, 3600],
+      [3, 3600],
+    ])
+    expect(limitState.parts).toEqual([
+      ["request-password-reset", "ip", "203.0.113.7"],
+      ["request-password-reset", "email", "person@example.com"],
+    ])
+  })
+
+  it("refuses a password reset when the email has spent its budget", async () => {
+    limitState.blockedParts = ["request-password-reset:email:"]
+    const resetPasswordForEmail = vi.fn(async (_email: string, _args: ResetArgs) =>
+      ok({ data: {}, error: null }),
+    )
+    mockSupabase({ resetPasswordForEmail })
+
+    const result = await requestPasswordResetAction({ email: "person@example.com" })
+
+    expect(result).toEqual({ ok: false, error: THROTTLED })
+    expect(createSupabaseServerClient).not.toHaveBeenCalled()
+    expect(resetPasswordForEmail).not.toHaveBeenCalled()
+  })
+
+  it("counts a password update against the user, ten per hour", async () => {
+    const updateUser = vi.fn(async (_args: UpdateArgs) => ok({ user: {} }))
+    mockSupabase({ updateUser })
+
+    await updatePasswordAction({ password: "a-new-password" })
+
+    expect(limitState.calls).toEqual([
+      expect.objectContaining({ limit: 10, windowSeconds: 3600, onError: "allow" }),
+    ])
+    expect(limitState.parts).toEqual([["update-password", "user", "user-1"]])
+  })
+
+  it("refuses a password update when the user has spent the budget", async () => {
+    limitState.blockedParts = ["update-password:user:"]
+    const updateUser = vi.fn(async (_args: UpdateArgs) => ok({ user: {} }))
+    mockSupabase({ updateUser })
+
+    const result = await updatePasswordAction({ password: "a-new-password" })
+
+    expect(result).toEqual({ ok: false, error: THROTTLED })
+    expect(isPasswordBreached).not.toHaveBeenCalled()
+    expect(updateUser).not.toHaveBeenCalled()
+  })
+
+  it("does not count an attempt that a schema rejected", async () => {
+    await signInAction({ email: "not-an-email", password: "secret" })
+
+    expect(limitState.calls).toHaveLength(0)
   })
 })

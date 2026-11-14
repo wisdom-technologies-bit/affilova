@@ -179,7 +179,59 @@ version of `handle_new_user()`, which leaves the three name columns empty for
 future signups. It does **not** clear names already copied into `profiles`, and it
 deletes no rows.
 
-## The fourth migration: rate limits (20261113000200_rate_limits)
+## The fourth migration: roles and onboarding (20261113000100)
+
+Run this one **after** the foundation has been applied and every check in its
+verify file is `t`. It does not depend on the job queue or on the profile names
+migration, but it does use the foundation's `profiles`, `user_roles`,
+`audit_log`, `set_updated_at()` and `is_staff()`, so the foundation has to be in
+place first.
+
+The steps are the same as above:
+
+1. **Step 1**: copy all of
+   `supabase/migrations/20261113000100_roles_onboarding.sql` into a new SQL
+   Editor query and click **Run**. It must succeed, and a second **Run** must
+   also succeed.
+2. **Step 2**: copy all of
+   `supabase/verify/20261113000100_roles_onboarding_verify.sql`, click **Run**,
+   and check that every `passed` is `t`. This one has 29 checks.
+3. **Step 3**: what it created:
+   - `vendor_profiles`: the storefront side of an account (business name, store
+     address, support email, phone, country, status).
+   - `affiliate_profiles`: the promotion side (username, promotion channels,
+     country, status).
+   - `policy_acceptances`: one row per person, policy and version, recording what
+     they accepted and a hash of their IP address. The raw address is never
+     stored.
+   - `is_reserved_handle(text)`: true for words that must not become a store
+     address or a username (`admin`, `login`, `terms`, `null`, and so on). The
+     list is a `CHECK` on both handles, so the database refuses them even if the
+     form is bypassed.
+   - `become_vendor(...)` and `become_affiliate(...)`: the only two ways a person
+     gets the vendor or affiliate role. Each one writes the profile row, the role,
+     the two policy acceptances and one `audit_log` entry in a single
+     transaction, and each is callable by the server's service role only.
+
+Nobody writes these tables from the app. A signed-in person can read their own
+rows, and can change `business_name`, `support_email` and `phone` on their own
+vendor row and `promotion_channels` on their own affiliate row. The store address
+and the username cannot be changed once they are set.
+
+The full rules, including the permission matrix, are in `docs/roles.md`.
+
+**Two things to know before running it:**
+
+- It is safe to run twice, like the others. The second run changes nothing.
+- Its rollback block drops the two profile tables, the policy acceptances and the
+  three functions. It drops the **tables before the functions**, because the
+  `CHECK` constraints call `is_reserved_handle()` and the function cannot be
+  dropped while a table that uses it exists. Keep that order if you edit it. It
+  does **not** remove roles already granted in `user_roles`: taking somebody's
+  vendor or affiliate role away is a separate decision, not a side effect of
+  rolling back a schema change.
+
+## The fifth migration: rate limits (20261113000200_rate_limits)
 
 Run this one **after** `20261112000100_foundation.sql` has been applied and every
 check in its verify file is `t`. It does not depend on the job queue or on the

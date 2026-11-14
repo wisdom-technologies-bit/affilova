@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger"
 import { clientIpFromHeaders, rateLimit, rateLimitKey } from "@/lib/rate-limit"
 
 // Receives Content-Security-Policy reports from the browser while the policy is
@@ -5,7 +6,7 @@ import { clientIpFromHeaders, rateLimit, rateLimitKey } from "@/lib/rate-limit"
 //
 // Rules this handler keeps:
 //   * POST only. There is no GET: a report cannot be read back, ever.
-//   * It stores nothing. No database, no file, no cache: one console line.
+//   * It stores nothing. No database, no file, no cache: one log line.
 //   * The body is capped at 8 KB and a larger one is refused with 413.
 //   * The log line carries two facts only: the violated directive and the
 //     origin of the blocked URI. No document URL, no full blocked URI, and no
@@ -259,9 +260,10 @@ export async function POST(request: Request): Promise<Response> {
 
   if (directive !== null && origin !== null) {
     // One line, two facts, nothing that identifies a page or a person.
-    console.warn(
-      `csp-report: violated-directive=${sanitise(directive, MAX_DIRECTIVE_LENGTH)} blocked-uri=${sanitise(origin, MAX_ORIGIN_LENGTH)}`,
-    )
+    logger.warn("csp_report_violation", {
+      directive: sanitise(directive, MAX_DIRECTIVE_LENGTH),
+      blocked_origin: sanitise(origin, MAX_ORIGIN_LENGTH),
+    })
   }
 
   return noContent()

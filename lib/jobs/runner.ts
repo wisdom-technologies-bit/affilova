@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger"
 import type { JobHandler } from "./handlers"
 import type { Job } from "./types"
 
@@ -132,6 +133,8 @@ export async function runProcessQueue(input: ProcessQueueInput): Promise<Process
     const handler = handlers.get(job.type)
 
     if (!handler) {
+      logger.error("job_failed", { type: job.type, reason: "unknown job type" })
+
       try {
         await queue.failJob(job.id, `Unknown job type: ${job.type}`)
       } catch {
@@ -145,6 +148,8 @@ export async function runProcessQueue(input: ProcessQueueInput): Promise<Process
     try {
       await runWithTimeout(() => handler(job), perJobTimeoutMs)
     } catch (error) {
+      logger.error("job_failed", { type: job.type, reason: shortMessage(error) })
+
       try {
         await queue.failJob(job.id, shortMessage(error))
       } catch {

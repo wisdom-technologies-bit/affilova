@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { getServerEnv } from "@/lib/env"
+import { logger } from "@/lib/logger"
 import { isValidCronSecret } from "@/lib/jobs/cron-auth"
 import { getHandler } from "@/lib/jobs/handlers"
 import {
@@ -156,6 +157,7 @@ export async function POST(request: Request, context: RouteContext): Promise<Nex
       return json({ ok: true, ...counts }, 200)
     } catch (error) {
       await recordHeartbeatSafely(PROCESS_QUEUE_JOB, "error", startedAt, shortMessage(error))
+      logger.error("cron_job_failed", { job: PROCESS_QUEUE_JOB, reason: shortMessage(error) })
 
       return json({ ok: false }, 500)
     }
@@ -170,6 +172,7 @@ export async function POST(request: Request, context: RouteContext): Promise<Nex
       return json({ ok: true, deleted }, 200)
     } catch (error) {
       await recordHeartbeatSafely(CLEANUP_JOB, "error", startedAt, shortMessage(error))
+      logger.error("cron_job_failed", { job: CLEANUP_JOB, reason: shortMessage(error) })
 
       return json({ ok: false }, 500)
     }
@@ -183,6 +186,7 @@ export async function POST(request: Request, context: RouteContext): Promise<Nex
     return json({ ok: true, stale }, 200)
   } catch (error) {
     await recordHeartbeatSafely(HEARTBEAT_CHECK_JOB, "error", startedAt, shortMessage(error))
+    logger.error("cron_job_failed", { job: HEARTBEAT_CHECK_JOB, reason: shortMessage(error) })
 
     return json({ ok: false }, 500)
   }

@@ -2,6 +2,7 @@ import "server-only"
 
 import { createHash } from "node:crypto"
 
+import { logger } from "@/lib/logger"
 import { getSupabaseAdminClient } from "@/lib/supabase/admin"
 
 // Postgres-backed fixed window rate limiting.
@@ -146,9 +147,10 @@ export async function rateLimit(options: RateLimitOptions): Promise<RateLimitRes
     })
 
     if (error) {
-      console.error(
-        `rate-limit: lookup failed, answering "${onError}": ${shortMessage(error)}`,
-      )
+      logger.error("rate_limit_lookup_failed", {
+        policy: onError,
+        reason: shortMessage(error),
+      })
 
       return fallback()
     }
@@ -156,7 +158,7 @@ export async function rateLimit(options: RateLimitOptions): Promise<RateLimitRes
     const row = firstRow(data)
 
     if (row === null) {
-      console.error(`rate-limit: unexpected answer, answering "${onError}"`)
+      logger.error("rate_limit_unexpected_answer", { policy: onError })
 
       return fallback()
     }
@@ -171,9 +173,10 @@ export async function rateLimit(options: RateLimitOptions): Promise<RateLimitRes
         : resetAt,
     }
   } catch (error) {
-    console.error(
-      `rate-limit: lookup failed, answering "${onError}": ${shortMessage(error)}`,
-    )
+    logger.error("rate_limit_lookup_failed", {
+      policy: onError,
+      reason: shortMessage(error),
+    })
 
     return fallback()
   }

@@ -1,5 +1,7 @@
 "use server"
 
+import { headers } from "next/headers"
+
 import { appUrl } from "@/lib/identity/app-urls"
 import { isPasswordBreached } from "@/lib/identity/password"
 import { safeNextPath } from "@/lib/identity/safe-next"
@@ -14,6 +16,7 @@ import {
   type UpdatePasswordInput,
 } from "@/lib/identity/schemas"
 import { getAuthUser } from "@/lib/identity/session"
+import { clientIpFromHeaders, rateLimit, rateLimitKey } from "@/lib/rate-limit"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 
 // Server actions for the Supabase auth flow.
@@ -38,7 +41,52 @@ const MESSAGES = {
   expiredLink: "That link has expired. Request a new one.",
   signUpClosed: "Sign-ups are closed right now.",
   invalidEmail: "Enter a valid email address.",
+  // Our own limiter, as opposed to the Supabase messages above.
+  throttled: "Too many attempts. Please wait a few minutes and try again.",
 } as const
+
+// Throttles, all keyed on a SHA-256 hash so no IP address and no email address
+// is ever stored. A window is fixed and rolls over on its own.
+const LIMITS = {
+  signInIp: { limit: 10, windowSeconds: 10 * 60 },
+  signInEmail: { limit: 5, windowSeconds: 10 * 60 },
+  signUpIp: { limit: 5, windowSeconds: 60 * 60 },
+  resetIp: { limit: 5, windowSeconds: 60 * 60 },
+  resetEmail: { limit: 3, windowSeconds: 60 * 60 },
+  updatePasswordUser: { limit: 10, windowSeconds: 60 * 60 },
+} as const
+
+// The caller's address. headers() is only readable inside a request, so a
+// failure here falls back to the shared "unknown" bucket rather than throwing
+// from an action that is expected to always answer.
+async function callerIp(): Promise<string> {
+  try {
+    return clientIpFromHeaders(await headers())
+  } catch {
+    return "unknown"
+  }
+}
+
+// True when this attempt must be refused. rateLimit never throws and is called
+// with onError "allow", so a database problem lets the attempt through: being
+// unable to count must not lock a person out of their own account.
+async function isThrottled(
+  parts: readonly string[],
+  budget: { limit: number; windowSeconds: number },
+): Promise<boolean> {
+  const result = await rateLimit({
+    key: rateLimitKey(parts),
+    limit: budget.limit,
+    windowSeconds: budget.windowSeconds,
+    onError: "allow",
+  })
+
+  return !result.allowed
+}
+
+function throttled(): { ok: false; error: string } {
+  return { ok: false, error: MESSAGES.throttled }
+}
 
 export type SignUpResult = { ok: true; message: string } | { ok: false; error: string }
 
@@ -100,6 +148,10 @@ export async function signUpAction(input: SignUpInput): Promise<SignUpResult> {
 
   const { email, password, firstName, lastName, captchaToken } = parsed.data
 
+  if (await isThrottled(["sign-up", "ip", await callerIp()], LIMITS.signUpIp)) {
+    return throttled()
+  }
+
   try {
     // Checked before Supabase is called at all, so a breached password costs
     // nothing and never reaches the auth server.
@@ -143,6 +195,19 @@ export async function signInAction(
 
   if (!parsed.success) {
     return { ok: false, error: firstIssue(parsed.error.issues) }
+  }
+
+  // Two budgets: a burst from one address, and repeated guesses at one account.
+  const ip = await callerIp()
+  const email = parsed.data.email.trim().toLowerCase()
+
+  const [ipThrottled, emailThrottled] = await Promise.all([
+    isThrottled(["sign-in", "ip", ip], LIMITS.signInIp),
+    isThrottled(["sign-in", "email", email], LIMITS.signInEmail),
+  ])
+
+  if (ipThrottled || emailThrottled) {
+    return throttled()
   }
 
   try {
@@ -216,6 +281,18 @@ export async function requestPasswordResetAction(
     return { ok: false, error: firstIssue(parsed.error.issues) }
   }
 
+  const ip = await callerIp()
+  const email = parsed.data.email.trim().toLowerCase()
+
+  const [ipThrottled, emailThrottled] = await Promise.all([
+    isThrottled(["request-password-reset", "ip", ip], LIMITS.resetIp),
+    isThrottled(["request-password-reset", "email", email], LIMITS.resetEmail),
+  ])
+
+  if (ipThrottled || emailThrottled) {
+    return throttled()
+  }
+
   try {
     const supabase = await createSupabaseServerClient()
 
@@ -245,6 +322,12 @@ export async function updatePasswordAction(
 
     if (!user) {
       return { ok: false, error: MESSAGES.signedOutOfDate }
+    }
+
+    // Keyed on the user, not the address: a signed-in person changing their
+    // password has an identity to count against.
+    if (await isThrottled(["update-password", "user", user.id], LIMITS.updatePasswordUser)) {
+      return throttled()
     }
 
     if (await isPasswordBreached(parsed.data.password)) {

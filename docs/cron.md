@@ -27,18 +27,33 @@ detail. `CRON_SECRET` must be at least 32 characters; see `.env.example`.
 
 ## Which jobs exist
 
-| Job name          | Schedule      | What it does                                                        |
-| ----------------- | ------------- | ------------------------------------------------------------------- |
-| `process-queue`   | every minute  | Claims a small batch of queued jobs, runs them, records a heartbeat. |
-| `heartbeat-check` | every 5 min   | Reports any schedule that has not checked in for over 5 minutes.     |
+| Job name          | Schedule      | What it does                                                          |
+| ----------------- | ------------- | --------------------------------------------------------------------- |
+| `process-queue`   | every minute  | Claims a small batch of queued jobs, runs them, records a heartbeat.   |
+| `heartbeat-check` | every 5 min   | Reports any schedule that has not checked in for over 5 minutes.       |
+| `cleanup`         | daily at 03:00 | Deletes rate-limit windows older than a day, records a heartbeat.     |
 
 Any other name is answered with `404 {"error":"not_found"}`.
 
+`cleanup` calls `public.cleanup_rate_limits()` and forgets every window that can
+no longer be counted against (the longest window the app uses is one hour, and
+the function keeps a full day of history). Its answer adds the number of deleted
+rows to the usual body:
+
+```json
+{"ok":true,"deleted":12}
+```
+
+`deleted` is `0` on a quiet day, which is normal. `cleanup` is **not** watched by
+`heartbeat-check`: a daily job would always look overdue under the five minute
+rule. Its heartbeat row is still written on every run, so a run that stopped
+happening is visible in `public.cron_heartbeats`.
+
 Planned for later, **not implemented yet**: `reconcile-pending` every 10 minutes,
 `expire-orders` hourly, `approve-commissions` hourly, `rollups` hourly,
-`reconcile-daily` at 02:00, `cleanup` at 03:00, `vat-reminders` on the 14th and
-19th at 09:00, `payout-run` weekly. Do not add these to the scheduler until the
-job exists: the endpoint answers 404 for an unknown name.
+`reconcile-daily` at 02:00, `vat-reminders` on the 14th and 19th at 09:00,
+`payout-run` weekly. Do not add these to the scheduler until the job exists: the
+endpoint answers 404 for an unknown name.
 
 ## cron-job.org settings
 
@@ -61,6 +76,7 @@ comfortably above the normal run.
 | --------------------------------- | ------ | ------------------------------------------------------- |
 | Queue processed                   | 200    | `{"ok":true,"claimed":n,"completed":n,"failed":n,"released":n}` |
 | Heartbeat report                  | 200    | `{"ok":true,"stale":["process-queue"]}`                  |
+| Cleanup finished                  | 200    | `{"ok":true,"deleted":n}`                                |
 | Missing or wrong secret           | 401    | `{"error":"unauthorized"}`                              |
 | Unknown job name                  | 404    | `{"error":"not_found"}`                                 |
 | Unexpected failure                | 500    | `{"ok":false}`                                          |

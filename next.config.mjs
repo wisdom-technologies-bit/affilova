@@ -1,3 +1,5 @@
+import { withSentryConfig } from "@sentry/nextjs/config"
+
 /** @type {import('next').NextConfig} */
 
 // Playbook for this file
@@ -141,4 +143,28 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+// Sentry wraps the config above and leaves it intact: headers(), images and
+// typescript are passed through untouched.
+//
+// Source maps are only uploaded when SENTRY_AUTH_TOKEN is present, and the
+// build is silent when it is not, so a local or CI build without Sentry
+// credentials behaves exactly as it did before.
+//
+// tunnelRoute sends browser events to /monitoring on this same origin, which
+// the Sentry rewrite proxies onward. Same origin means connect-src 'self'
+// already allows it, so the policy above needs no change, and ad blockers that
+// drop requests to sentry.io never see one.
+const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN
+const hasSentryUpload = typeof sentryAuthToken === "string" && sentryAuthToken !== ""
+
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: sentryAuthToken,
+  silent: !hasSentryUpload,
+  sourcemaps: {
+    // No token, no source maps, and nothing to warn about.
+    disable: !hasSentryUpload,
+  },
+  tunnelRoute: "/monitoring",
+})

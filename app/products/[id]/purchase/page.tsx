@@ -271,7 +271,7 @@ export default function ProductPurchasePage() {
                   <div className="bg-green-50 p-4 rounded-lg">
                     <h4 className="font-semibold text-green-800 mb-2">Ready to Pay</h4>
                     <p className="text-sm text-green-700">
-                      Click the button below to complete your payment securely with Squad.
+                      Click the button below to complete your payment with our payment partner.
                     </p>
                   </div>
 

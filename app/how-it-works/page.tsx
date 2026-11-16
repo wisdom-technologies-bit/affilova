@@ -1,15 +1,14 @@
 import type { Metadata } from "next"
+
 import HowItWorksClient from "./HowItWorksClient"
 
 export const metadata: Metadata = {
-  title: "How It Works - Complete Guide to Affilova | Affiliate Marketing Platform",
+  title: "How It Works | Affilova",
   description:
-    "Learn everything about Affilova - from signing up to earning your first commission. A comprehensive guide for vendors and affiliates on our affiliate marketing platform.",
-  keywords:
-    "affiliate marketing guide, how to sell digital products, affiliate program tutorial, earn commissions online, digital product marketplace",
+    "How Affilova works for vendors, affiliates and customers: what each role does, what the platform fee is, and who sets the commission on a product.",
   openGraph: {
-    title: "How Affilova Works - Complete Guide",
-    description: "Your comprehensive guide to succeeding on Affilova's affiliate marketplace",
+    title: "How Affilova works",
+    description: "What vendors, affiliates and customers do on Affilova, and what the platform fee is.",
     type: "article",
   },
 }

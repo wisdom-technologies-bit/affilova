@@ -279,7 +279,13 @@ export default function PurchaseSuccessPage() {
               </Link>
             </div>
 
-            <p className="text-sm text-gray-600">Need help? Contact us at support@affilova.com</p>
+            <p className="text-sm text-gray-600">
+              Need help?{" "}
+              <Link href="/contact" className="underline underline-offset-2">
+                Send us a message
+              </Link>
+              .
+            </p>
           </div>
         </div>
       </div>

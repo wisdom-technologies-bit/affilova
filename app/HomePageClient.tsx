@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import GlobalFooter from "@/components/global-footer" // Import GlobalFooter component
 import {
   Users,
@@ -14,10 +13,6 @@ import {
   ArrowRight,
   Menu,
   X,
-  Users2,
-  Banknote,
-  Clock,
-  Package,
 } from "lucide-react"
 import { Logo } from "@/components/brand/logo"
 
@@ -148,16 +143,13 @@ export default function HomePageClient() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="space-y-8 animate-in fade-in slide-in-from-left duration-700">
               <div>
-                <Badge className="mb-6 bg-green-100 text-green-800 hover:bg-green-100 animate-in fade-in duration-700 delay-100">
-                  Launch Special: Free for first 6 months
-                </Badge>
                 <h1 className="text-5xl md:text-6xl lg:text-7xl font-black text-gray-900 leading-tight mb-6 bg-gradient-to-r from-gray-900 via-green-700 to-gray-900 bg-clip-text text-transparent">
-                  Build Your Affiliate Empire
+                  Sell with affiliates
                 </h1>
               </div>
               <p className="text-lg md:text-xl text-gray-600 leading-relaxed">
-                Connect with top-performing affiliates, manage your digital products, and automate your sales funnel—all
-                in one powerful platform. Scale your business from day one.
+                List a product on Affilova, let affiliates apply to promote it, and follow every sale and commission
+                from one dashboard.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link href="/auth/register?role=vendor">
@@ -202,31 +194,6 @@ export default function HomePageClient() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="bg-gradient-to-r from-green-600 to-green-700 py-16 text-white">
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8">
-            {[
-              { number: "10K+", label: "Active Affiliates", icon: Users2 },
-              { number: "₦500M+", label: "Revenue Processed", icon: Banknote },
-              { number: "98%", label: "On-time Payouts", icon: Clock },
-              { number: "50+", label: "Product Categories", icon: Package },
-            ].map((stat, i) => {
-              const IconComponent = stat.icon
-              return (
-                <div key={i} className="text-center group">
-                  <div className="transform group-hover:scale-125 transition-transform mb-3">
-                    <IconComponent className="w-10 h-10 mx-auto" />
-                  </div>
-                  <div className="text-4xl font-bold mb-2">{stat.number}</div>
-                  <p className="text-green-100">{stat.label}</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
       {/* Features Section */}
       <section id="features" className="container mx-auto px-4 py-20 md:py-32">
         <div className="text-center mb-16 space-y-4 animate-in fade-in duration-700">
@@ -240,26 +207,27 @@ export default function HomePageClient() {
           {[
             {
               icon: Zap,
-              title: "Easy Product Setup",
+              title: "Product Setup",
               description:
-                "Upload digital products in minutes. Create sales pages with our drag and drop builder and set up thank you pages with instant delivery.",
+                "Add a product with a title, price, commission rate, its own sales page and the file your customer receives.",
             },
             {
               icon: Users,
               title: "Affiliate Marketplace",
               description:
-                "Browse and promote 500+ products from vetted vendors. Earn competitive commissions with real-time tracking.",
+                "Affiliates browse the marketplace and apply to promote the products they want. Vendors approve each application.",
             },
             {
               icon: TrendingUp,
-              title: "Advanced Analytics",
+              title: "Dashboards",
               description:
-                "Track clicks, conversions, and commissions in real-time. Get insights into your top performers.",
+                "Sales, commissions and product performance are listed in the vendor and affiliate dashboards.",
             },
             {
               icon: Shield,
-              title: "Secure Payments",
-              description: "Squad-powered payment processing. Automatic weekly payouts with full transaction history.",
+              title: "Payments",
+              description:
+                "Checkout runs through our payment partner. Earnings are withdrawn from your dashboard to your bank account.",
             },
           ].map((feature, i) => (
             <div
@@ -291,19 +259,19 @@ export default function HomePageClient() {
                 step: "01",
                 title: "Sign Up & Choose Role",
                 description:
-                  "Join as a vendor to sell or as an affiliate to earn commissions. Setup takes less than 5 minutes.",
+                  "Create an account as a vendor to sell, as an affiliate to promote, or set up both.",
               },
               {
                 step: "02",
-                title: "Upload & Promote",
+                title: "List & Apply",
                 description:
-                  "Vendors add products with custom sales pages. Affiliates pick products to promote and start earning.",
+                  "Vendors add products and submit them for review. Affiliates apply to the products they want to promote.",
               },
               {
                 step: "03",
-                title: "Earn & Scale",
+                title: "Sell & Get Paid",
                 description:
-                  "Track real-time performance and get paid every Thursday. Scale your business with powerful tools.",
+                  "Follow sales and commissions in your dashboard, then request a withdrawal to your bank account.",
               },
             ].map((item, i) => (
               <div
@@ -329,17 +297,17 @@ export default function HomePageClient() {
           <div className="space-y-6 animate-in fade-in slide-in-from-left duration-700">
             <h2 className="text-4xl font-bold text-gray-900">For Vendors</h2>
             <p className="text-xl text-gray-600">
-              Expand your reach and automate your sales with our complete platform
+              Put your products in front of affiliates who sell them for a commission
             </p>
 
             <div className="space-y-4">
               {[
-                "Multi-channel product distribution",
-                "Custom sales pages with drag and drop editor",
-                "Automatic digital product delivery",
-                "Flexible thank you pages & redirects",
-                "Real-time affiliate dashboard",
-                "Fraud protection & chargeback handling",
+                "A public store page with its own address",
+                "A sales page and thank-you page for each product",
+                "A commission rate you set per product",
+                "Approval of the affiliates who apply to promote",
+                "Products reviewed before they reach the marketplace",
+                "Sales and commissions listed in your dashboard",
               ].map((benefit, i) => (
                 <div key={i} className="flex items-center gap-3 group cursor-pointer">
                   <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 group-hover:scale-125 transition-transform" />
@@ -384,17 +352,17 @@ export default function HomePageClient() {
             <div className="space-y-6 animate-in fade-in slide-in-from-right duration-700">
               <h2 className="text-4xl font-bold text-gray-900">For Affiliates</h2>
               <p className="text-xl text-gray-600">
-                Earn competitive commissions with minimal effort and maximum transparency
+                Promote products you believe in and earn the commission each vendor sets
               </p>
 
               <div className="space-y-4">
                 {[
-                  "Browse 500+ products across categories",
-                  "Competitive commissions up to 50%",
-                  "Get paid every Thursday without delays",
-                  "Track every click, lead, and sale",
-                  "Access exclusive marketing materials",
-                  "Join a thriving community",
+                  "Browse the marketplace by category",
+                  "Apply to the products you want to promote",
+                  "Commissions set by each vendor, shown on the listing",
+                  "Your approved products in one place",
+                  "Sales and commissions listed in your dashboard",
+                  "Withdrawals requested from your dashboard",
                 ].map((benefit, i) => (
                   <div key={i} className="flex items-center gap-3 group cursor-pointer">
                     <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 group-hover:scale-125 transition-transform" />
@@ -416,7 +384,7 @@ export default function HomePageClient() {
           <div className="relative text-center max-w-3xl mx-auto space-y-8 animate-in fade-in duration-700">
             <h2 className="text-4xl md:text-5xl font-bold">Ready to Get Started?</h2>
             <p className="text-xl opacity-90">
-              Join thousands of successful vendors and affiliates already growing their business on Affilova.
+              Set up a store to sell, or apply to promote products that are already listed.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/auth/register?role=vendor">

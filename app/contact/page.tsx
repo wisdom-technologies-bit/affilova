@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AlertCircle, CheckCircle, Mail, Phone, MapPin, Clock, Loader2 } from "lucide-react"
+import { AlertCircle, CheckCircle, Mail, Clock, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Logo } from "@/components/brand/logo"
 
@@ -62,7 +62,7 @@ export default function ContactPage() {
 
       toast({
         title: "Ticket Submitted",
-        description: `Your support ticket #${data.ticketId} has been created. We'll respond within 24 hours.`,
+        description: `Your support ticket #${data.ticketId} has been created and reaches our support team.`,
       })
     } catch (error) {
       toast({
@@ -113,35 +113,15 @@ export default function ContactPage() {
                     <Mail className="w-5 h-5 text-green-600" />
                     Get in Touch
                   </CardTitle>
-                  <CardDescription>Multiple ways to reach our support team</CardDescription>
+                  <CardDescription>How to reach our support team</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="flex items-start gap-3">
                     <Mail className="w-5 h-5 text-gray-400 mt-1" />
                     <div>
-                      <p className="font-semibold">Email Support</p>
-                      <p className="text-gray-600 text-sm">support@affilova.com</p>
-                      <p className="text-gray-500 text-xs">Response within 24 hours</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <Phone className="w-5 h-5 text-gray-400 mt-1" />
-                    <div>
-                      <p className="font-semibold">Phone Support</p>
-                      <p className="text-gray-600 text-sm">+234 800 AFFILOVA</p>
-                      <p className="text-gray-500 text-xs">Mon-Fri, 9AM-6PM WAT</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <MapPin className="w-5 h-5 text-gray-400 mt-1" />
-                    <div>
-                      <p className="font-semibold">Office Address</p>
+                      <p className="font-semibold">Support tickets</p>
                       <p className="text-gray-600 text-sm">
-                        Lagos, Nigeria
-                        <br />
-                        West Africa
+                        Send the form on this page and your message is filed as a ticket for our support team.
                       </p>
                     </div>
                   </div>
@@ -149,13 +129,10 @@ export default function ContactPage() {
                   <div className="flex items-start gap-3">
                     <Clock className="w-5 h-5 text-gray-400 mt-1" />
                     <div>
-                      <p className="font-semibold">Business Hours</p>
+                      <p className="font-semibold">Before you write</p>
                       <p className="text-gray-600 text-sm">
-                        Monday - Friday: 9:00 AM - 6:00 PM
-                        <br />
-                        Saturday: 10:00 AM - 4:00 PM
-                        <br />
-                        Sunday: Closed
+                        The <Link href="/how-it-works" className="text-green-700 underline">How It Works</Link> page
+                        answers the common questions about fees, commissions and payouts.
                       </p>
                     </div>
                   </div>
@@ -166,19 +143,13 @@ export default function ContactPage() {
                 <CardContent className="p-6">
                   <h3 className="font-semibold text-green-800 mb-2">Quick Help</h3>
                   <p className="text-green-700 text-sm mb-4">
-                    Looking for immediate answers? Check out our FAQ section or browse our help documentation.
+                    How Affilova works for vendors, affiliates and customers is set out on one page.
                   </p>
-                  <div className="space-y-2">
+                  <Link href="/how-it-works">
                     <Button variant="outline" className="w-full justify-start" size="sm">
-                      📚 Help Documentation
+                      How Affilova works
                     </Button>
-                    <Button variant="outline" className="w-full justify-start" size="sm">
-                      ❓ Frequently Asked Questions
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start" size="sm">
-                      🎥 Video Tutorials
-                    </Button>
-                  </div>
+                  </Link>
                 </CardContent>
               </Card>
             </div>
@@ -202,7 +173,7 @@ export default function ContactPage() {
                       </div>
                       <h3 className="text-2xl font-bold text-gray-900 mb-4">Message Sent!</h3>
                       <p className="text-gray-600 mb-6">
-                        Thank you for contacting us. We've received your message and will respond within 24 hours.
+                        Thank you for contacting us. Your message has been filed as a support ticket.
                       </p>
                       <Button onClick={() => setSuccess(false)} variant="outline">
                         Send Another Message
@@ -298,10 +269,9 @@ export default function ContactPage() {
                         <div className="flex items-start gap-2">
                           <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                           <div>
-                            <p className="text-blue-800 font-semibold text-sm">Response Time</p>
+                            <p className="text-blue-800 font-semibold text-sm">Tickets</p>
                             <p className="text-blue-700 text-sm">
-                              We typically respond to all inquiries within 24 hours during business days. Urgent issues
-                              are prioritized and may receive faster responses.
+                              Each message becomes a support ticket that our team can reply to from the admin dashboard.
                             </p>
                           </div>
                         </div>
@@ -337,8 +307,8 @@ export default function ContactPage() {
                   <div>
                     <h4 className="font-semibold mb-2">When do I get paid?</h4>
                     <p className="text-gray-600 text-sm mb-4">
-                      All payments are processed every Thursday. You'll receive your earnings via bank transfer to your
-                      registered account.
+                      You request a withdrawal from your dashboard to a saved bank account. Each request is reviewed
+                      before it is paid out.
                     </p>
                   </div>
                   <div>
@@ -351,8 +321,8 @@ export default function ContactPage() {
                   <div>
                     <h4 className="font-semibold mb-2">What commission rates can I expect?</h4>
                     <p className="text-gray-600 text-sm mb-4">
-                      Commission rates vary by product and vendor, typically ranging from 20% to 50%. Each product
-                      listing shows the exact commission rate.
+                      Commission is set by each vendor per product, so it differs from one listing to the next. The rate
+                      is shown on the product's page.
                     </p>
                   </div>
                 </div>

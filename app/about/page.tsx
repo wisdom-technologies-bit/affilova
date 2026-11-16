@@ -30,8 +30,8 @@ export default function AboutPage() {
         <Badge className="mb-4 bg-green-100 text-green-800 hover:bg-green-100">🚀 Empowering Digital Commerce</Badge>
         <h1 className="text-5xl font-bold text-gray-900 mb-6">About Affilova</h1>
         <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-          We're building the future of affiliate marketing by connecting ambitious vendors with top-performing
-          affiliates through cutting-edge technology and seamless user experiences.
+          Affilova is a marketplace where vendors list their products, affiliates apply to promote them, and every
+          sale and commission is recorded in one place.
         </p>
       </section>
 
@@ -80,13 +80,14 @@ export default function AboutPage() {
                 complicated, or simply didn't provide the tools needed for success.
               </p>
               <p className="mb-6">
-                Founded by a team of experienced entrepreneurs and technologists, we set out to create a platform that
-                would level the playing field. Our goal was to build something that would be powerful enough for
-                enterprise vendors yet simple enough for individual affiliates just starting their journey.
+                So we set out to build one platform with two roles in mind: vendors who want their products in front of
+                more people, and affiliates who want to promote products they believe in. Everything a vendor lists is
+                reviewed before it reaches the marketplace, and every commission rate is set by the vendor on the
+                product itself.
               </p>
               <p>
-                Today, Affilova serves thousands of vendors and affiliates worldwide, processing millions in
-                transactions while maintaining our core values of transparency, fairness, and innovation.
+                Affilova is built by Wisdom Technologies. What is written on this site describes what the platform does
+                today, and nothing more.
               </p>
             </div>
           </div>
@@ -172,8 +173,7 @@ export default function AboutPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600 text-sm">
-                  Track performance, conversions, and commissions with real-time analytics, detailed reporting, and
-                  actionable insights.
+                  Sales, commissions and product performance are listed in the vendor and affiliate dashboards.
                 </p>
               </CardContent>
             </Card>
@@ -185,7 +185,8 @@ export default function AboutPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600 text-sm">
-                  Integrated with Squad by Monnify for secure, automated payment processing and reliable weekly payouts.
+                  Payments run through our payment partner, and earnings are withdrawn from the dashboard to a saved
+                  bank account.
                 </p>
               </CardContent>
             </Card>
@@ -193,12 +194,12 @@ export default function AboutPage() {
             <Card className="border-0 shadow-lg">
               <CardHeader>
                 <Zap className="w-10 h-10 text-orange-600 mb-2" />
-                <CardTitle>Marketing Tools</CardTitle>
+                <CardTitle>Sales Pages</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600 text-sm">
-                  Built-in landing page builder, resource sharing, email automation, and comprehensive marketing assets
-                  for maximum conversions.
+                  Each product can carry its own sales page and thank-you page, so an affiliate sends buyers to the
+                  vendor's own presentation of the product.
                 </p>
               </CardContent>
             </Card>
@@ -206,12 +207,11 @@ export default function AboutPage() {
             <Card className="border-0 shadow-lg">
               <CardHeader>
                 <Target className="w-10 h-10 text-red-600 mb-2" />
-                <CardTitle>Smart Matching</CardTitle>
+                <CardTitle>Store Pages</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600 text-sm">
-                  AI-powered affiliate-product matching based on performance history, audience alignment, and conversion
-                  potential.
+                  Every vendor gets a public store page at its own address, listing the products it sells on Affilova.
                 </p>
               </CardContent>
             </Card>
@@ -219,12 +219,12 @@ export default function AboutPage() {
             <Card className="border-0 shadow-lg">
               <CardHeader>
                 <Award className="w-10 h-10 text-indigo-600 mb-2" />
-                <CardTitle>Quality Assurance</CardTitle>
+                <CardTitle>Product Review</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600 text-sm">
-                  Rigorous product approval process and affiliate verification to maintain high standards and protect
-                  all parties.
+                  A vendor submits a product for review, and it only appears in the marketplace once it has been
+                  approved. Vendors can edit a product and resubmit it.
                 </p>
               </CardContent>
             </Card>
@@ -232,58 +232,10 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Team Section */}
-      <section className="container mx-auto px-4 py-16">
-        <h2 className="text-3xl font-bold text-center mb-12">Leadership Team</h2>
-        <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-          <Card className="text-center border-0 shadow-lg">
-            <CardContent className="p-6">
-              <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <span className="text-white font-bold text-xl">WM</span>
-              </div>
-              <h3 className="font-bold text-lg mb-2">Wisdom Meremeze</h3>
-              <p className="text-green-600 font-semibold mb-2">Founder & CEO</p>
-              <p className="text-gray-600 text-sm">
-                Visionary leader with 10+ years in digital marketing and e-commerce, passionate about empowering
-                entrepreneurs.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="text-center border-0 shadow-lg">
-            <CardContent className="p-6">
-              <div className="w-24 h-24 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <span className="text-white font-bold text-xl">AT</span>
-              </div>
-              <h3 className="font-bold text-lg mb-2">Alex Thompson</h3>
-              <p className="text-blue-600 font-semibold mb-2">CTO</p>
-              <p className="text-gray-600 text-sm">
-                Technology expert specializing in scalable platforms and secure payment systems for high-volume
-                transactions.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="text-center border-0 shadow-lg">
-            <CardContent className="p-6">
-              <div className="w-24 h-24 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <span className="text-white font-bold text-xl">SJ</span>
-              </div>
-              <h3 className="font-bold text-lg mb-2">Sarah Johnson</h3>
-              <p className="text-purple-600 font-semibold mb-2">Head of Operations</p>
-              <p className="text-gray-600 text-sm">
-                Operations specialist focused on user experience and building efficient processes for global
-                scalability.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
       {/* CTA Section */}
       <section className="bg-gradient-to-r from-green-600 to-green-700 py-16">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">Ready to Join Our Community?</h2>
+          <h2 className="text-3xl font-bold text-white mb-4">Ready to Get Started?</h2>
           <p className="text-green-100 text-lg mb-8 max-w-2xl mx-auto">
             Whether you're a vendor looking to scale your business or an affiliate ready to earn, Affilova provides the
             tools and support you need to succeed.
@@ -314,7 +266,7 @@ export default function AboutPage() {
             <div>
               <Logo variant="horizontal" className="h-8 w-auto mb-4" />
               <p className="text-gray-600 text-sm">
-                The premier affiliate marketplace connecting vendors with top-performing affiliates.
+                A marketplace where vendors list products and affiliates earn a commission on the sales they refer.
               </p>
             </div>
             <div>
@@ -346,13 +298,13 @@ export default function AboutPage() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="hover:text-gray-900">
-                    Find Affiliates
+                  <Link href="/how-it-works" className="hover:text-gray-900">
+                    How It Works
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="hover:text-gray-900">
-                    Analytics
+                  <Link href="/contact" className="hover:text-gray-900">
+                    Contact
                   </Link>
                 </li>
               </ul>
@@ -362,17 +314,17 @@ export default function AboutPage() {
               <ul className="space-y-2 text-sm text-gray-600">
                 <li>
                   <Link href="/auth/register?role=affiliate" className="hover:text-gray-900">
-                    Join Network
+                    Join as Affiliate
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="hover:text-gray-900">
-                    Browse Products
+                  <Link href="/how-it-works" className="hover:text-gray-900">
+                    How It Works
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="hover:text-gray-900">
-                    Earn Commissions
+                  <Link href="/contact" className="hover:text-gray-900">
+                    Contact
                   </Link>
                 </li>
               </ul>
@@ -380,7 +332,7 @@ export default function AboutPage() {
           </div>
           <div className="border-t mt-8 pt-8 text-center text-sm text-gray-600">
             <p>
-              © 2024 Affilova. All rights reserved. Powered by{" "}
+              {new Date().getFullYear()} Affilova. All rights reserved. Powered by{" "}
               <span className="font-semibold text-gray-900">Wisdom Technologies®</span>
             </p>
           </div>

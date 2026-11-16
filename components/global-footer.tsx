@@ -8,26 +8,20 @@ interface FooterProps {
 }
 
 export default function GlobalFooter({ className = "" }: FooterProps) {
+  // Every target here resolves to a page that exists. Add a link only when the
+  // page it points at has been built.
   const footerLinks = {
-    products: [
+    platform: [
       { name: "How It Works", href: "/how-it-works" },
-      { name: "Features", href: "/features" },
-      { name: "Pricing", href: "/pricing" },
-      { name: "Affiliates", href: "/affiliates" },
-      { name: "Sell Courses", href: "/sell-courses" },
-      { name: "Show Love", href: "/show-love" },
-      { name: "Tickets", href: "/tickets" },
-      { name: "Integrations", href: "/integrations" },
-      { name: "Affiliate Network", href: "/affiliate-network" },
-    ],
-    support: [
+      { name: "About", href: "/about" },
       { name: "Blog", href: "/blog" },
-      { name: "Help Center", href: "/help" },
-      { name: "Creator Academy", href: "/creator-academy" },
-      { name: "Free Canva Templates", href: "/templates" },
-      { name: "Press & Media", href: "/press" },
-      { name: "FAQs", href: "/faqs" },
-      { name: "Reach Us", href: "/contact" },
+      { name: "Contact", href: "/contact" },
+    ],
+    account: [
+      { name: "Sign In", href: "/auth/login" },
+      { name: "Create an Account", href: "/auth/register" },
+      { name: "Sell on Affilova", href: "/auth/register?role=vendor" },
+      { name: "Promote on Affilova", href: "/auth/register?role=affiliate" },
     ],
     legal: [
       { name: "Privacy Policy", href: "/privacy-policy" },
@@ -45,15 +39,15 @@ export default function GlobalFooter({ className = "" }: FooterProps) {
               <Logo variant="horizontal" className="h-8 w-auto" />
             </Link>
             <p className="text-sm text-gray-600 mb-4">
-              The premier affiliate marketplace connecting vendors and affiliates worldwide.
+              A marketplace where vendors sell products and affiliates earn a commission on the sales they refer.
             </p>
           </div>
 
-          {/* Products */}
+          {/* Platform */}
           <div>
-            <h3 className="font-semibold text-gray-900 mb-4 text-sm uppercase tracking-wider">Products</h3>
+            <h3 className="font-semibold text-gray-900 mb-4 text-sm uppercase tracking-wider">Platform</h3>
             <ul className="space-y-2">
-              {footerLinks.products.slice(0, 5).map((link) => (
+              {footerLinks.platform.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className="text-sm text-gray-600 hover:text-green-600 transition-colors">
                     {link.name}
@@ -63,11 +57,11 @@ export default function GlobalFooter({ className = "" }: FooterProps) {
             </ul>
           </div>
 
-          {/* More Products */}
+          {/* Account */}
           <div>
-            <h3 className="font-semibold text-gray-900 mb-4 text-sm uppercase tracking-wider">More</h3>
+            <h3 className="font-semibold text-gray-900 mb-4 text-sm uppercase tracking-wider">Account</h3>
             <ul className="space-y-2">
-              {footerLinks.products.slice(5).map((link) => (
+              {footerLinks.account.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className="text-sm text-gray-600 hover:text-green-600 transition-colors">
                     {link.name}
@@ -77,11 +71,11 @@ export default function GlobalFooter({ className = "" }: FooterProps) {
             </ul>
           </div>
 
-          {/* Support */}
+          {/* Legal */}
           <div>
-            <h3 className="font-semibold text-gray-900 mb-4 text-sm uppercase tracking-wider">Support & Resources</h3>
+            <h3 className="font-semibold text-gray-900 mb-4 text-sm uppercase tracking-wider">Legal</h3>
             <ul className="space-y-2">
-              {footerLinks.support.map((link) => (
+              {footerLinks.legal.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className="text-sm text-gray-600 hover:text-green-600 transition-colors">
                     {link.name}
@@ -92,19 +86,14 @@ export default function GlobalFooter({ className = "" }: FooterProps) {
           </div>
         </div>
 
-        {/* Legal Links & Copyright */}
+        {/* Copyright */}
         <div className="border-t pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex flex-wrap justify-center gap-4 text-sm">
-            {footerLinks.legal.map((link) => (
-              <Link key={link.href} href={link.href} className="text-gray-600 hover:text-green-600 transition-colors">
-                {link.name}
-              </Link>
-            ))}
+          <div className="text-center md:text-left text-sm text-gray-500">
+            <p>&copy; {new Date().getFullYear()} Affilova. All rights reserved.</p>
           </div>
           <div className="text-center md:text-right text-sm text-gray-500">
-            <p>&copy; {new Date().getFullYear()} Affilova. All rights reserved.</p>
-            <p className="text-xs mt-1">
-              Powered by <span className="font-semibold text-gray-700">Wisdom Technologies®</span>
+            <p className="text-xs">
+              Built by <span className="font-semibold text-gray-700">Wisdom Technologies&reg;</span>
             </p>
           </div>
         </div>

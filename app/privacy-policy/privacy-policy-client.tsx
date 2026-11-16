@@ -278,9 +278,15 @@ export default function PrivacyPolicyClientPage() {
                   If you have questions or concerns about this Privacy Policy or our privacy practices:
                 </p>
                 <div className="space-y-2">
-                  <p className="font-semibold">Email: privacy@affilova.com</p>
-                  <p className="font-semibold">Support Portal: support.affilova.com</p>
-                  <p className="text-sm opacity-90">Response time: Within 48 hours</p>
+                  <p className="font-semibold">
+                    Contact form:{" "}
+                    <Link href="/contact" className="underline underline-offset-2">
+                      affilova.com/contact
+                    </Link>
+                  </p>
+                  <p className="text-sm opacity-90">
+                    Messages sent through the contact form are filed as support tickets.
+                  </p>
                 </div>
               </section>
             </div>

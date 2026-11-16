@@ -542,13 +542,13 @@ export default function BlogPostClient({ post: initialPost, popularPosts }: Blog
           <div className="relative z-10">
             <h3 className="text-2xl md:text-3xl font-bold mb-4">Ready to start earning?</h3>
             <p className="text-green-100 mb-6 max-w-lg">
-              Join thousands of affiliates making money with Affilova. Sign up today and start promoting amazing
-              products.
+              Create an affiliate account, apply to the products you want to promote, and earn the commission each
+              vendor sets.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Link href="/auth/register">
                 <Button size="lg" className="w-full sm:w-auto bg-white text-green-600 hover:bg-gray-100 font-semibold">
-                  Get Started Free
+                  Get Started
                 </Button>
               </Link>
               <Link href="/blog">

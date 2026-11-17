@@ -70,6 +70,8 @@ const publicEnvSchema = z.object({
   // Optional for now; required once the feature that uses them ships.
   NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: optionalString,
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: optionalString,
+  // Optional: without it every Sentry call is a no-op and nothing is reported.
+  NEXT_PUBLIC_SENTRY_DSN: optionalString,
 })
 
 const serverEnvSchema = z.object({
@@ -163,6 +165,7 @@ export function getPublicEnv(): PublicEnv {
       NEXT_PUBLIC_COOKIE_DOMAIN: process.env.NEXT_PUBLIC_COOKIE_DOMAIN,
       NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+      NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     })
   }
 

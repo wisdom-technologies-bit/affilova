@@ -33,6 +33,15 @@ function answerWith(data: unknown, error: unknown = null) {
 
 let logged: string[] = []
 
+// The logger writes one JSON line per call; the tests read the fields back.
+function lastLog(): Record<string, unknown> {
+  const line = logged[0]
+
+  expect(line).toBeDefined()
+
+  return JSON.parse(String(line)) as Record<string, unknown>
+}
+
 beforeEach(() => {
   rpcState.calls.length = 0
   rpcState.throws = null
@@ -83,9 +92,13 @@ describe("rateLimit", () => {
     expect(result.remaining).toBe(5)
     expect(result.resetAt.getTime()).toBeGreaterThan(Date.now() - 1000)
     expect(logged).toHaveLength(1)
-    expect(logged[0]).toContain("rate-limit")
-    expect(logged[0]).toContain("allow")
-    expect(logged[0]).toContain("connection refused")
+
+    const line = lastLog()
+
+    expect(line.level).toBe("error")
+    expect(line.event).toBe("rate_limit_lookup_failed")
+    expect(line.policy).toBe("allow")
+    expect(line.reason).toBe("connection refused")
   })
 
   it("denies the request when onError is deny", async () => {
@@ -101,7 +114,7 @@ describe("rateLimit", () => {
     expect(result.allowed).toBe(false)
     expect(result.remaining).toBe(0)
     expect(logged).toHaveLength(1)
-    expect(logged[0]).toContain("deny")
+    expect(lastLog().policy).toBe("deny")
   })
 
   it("never throws when the client itself throws, and honours onError", async () => {
@@ -155,7 +168,11 @@ describe("rateLimit", () => {
     await rateLimit({ key: KEY, limit: 5, windowSeconds: 600 })
 
     expect(logged).toHaveLength(1)
-    expect(logged[0].length).toBeLessThan(300)
+
+    // The message is cut to 200 characters before it reaches the logger, so a
+    // database that answers with a novel cannot fill a log line.
+    expect(String(lastLog().reason)).toHaveLength(200)
+    expect(logged[0].length).toBeLessThan(400)
   })
 })
 

@@ -56,6 +56,15 @@ function postRequest(body: string, contentType = "application/csp-report"): Requ
 
 let warnings: string[] = []
 
+// The logger writes one JSON line per call.
+function lastWarning(): Record<string, unknown> {
+  const line = warnings[0]
+
+  expect(line).toBeDefined()
+
+  return JSON.parse(String(line)) as Record<string, unknown>
+}
+
 beforeEach(() => {
   rpcState.allowed = true
   rpcState.calls = 0
@@ -80,9 +89,14 @@ describe("POST /api/csp-report", () => {
 
     expect(warnings).toHaveLength(1)
 
-    const line = warnings[0] ?? ""
+    const parsed = lastWarning()
 
-    expect(line).toBe("csp-report: violated-directive=script-src-elem blocked-uri=https://evil.example")
+    expect(parsed.level).toBe("warn")
+    expect(parsed.event).toBe("csp_report_violation")
+    expect(parsed.directive).toBe("script-src-elem")
+    expect(parsed.blocked_origin).toBe("https://evil.example")
+
+    const line = warnings[0] ?? ""
 
     // No document path, no ids, no query string, no email address.
     expect(line).not.toContain("dashboard")
@@ -107,7 +121,10 @@ describe("POST /api/csp-report", () => {
       ),
     )
 
-    expect(warnings[0]).toBe("csp-report: violated-directive=img-src blocked-uri=https://cdn.example.net")
+    const parsed = lastWarning()
+
+    expect(parsed.directive).toBe("img-src")
+    expect(parsed.blocked_origin).toBe("https://cdn.example.net")
   })
 
   it("keeps a keyword blocked-uri as it is", async () => {
@@ -122,7 +139,10 @@ describe("POST /api/csp-report", () => {
       ),
     )
 
-    expect(warnings[0]).toBe("csp-report: violated-directive=script-src blocked-uri=inline")
+    const parsed = lastWarning()
+
+    expect(parsed.directive).toBe("script-src")
+    expect(parsed.blocked_origin).toBe("inline")
   })
 
   it("accepts the application/json reporting API shape", async () => {

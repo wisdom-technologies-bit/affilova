@@ -59,6 +59,21 @@ describe("parsePublicEnv", () => {
     expect(env.NEXT_PUBLIC_COOKIE_DOMAIN).toBeUndefined()
     expect(env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY).toBeUndefined()
     expect(env.NEXT_PUBLIC_TURNSTILE_SITE_KEY).toBeUndefined()
+    expect(env.NEXT_PUBLIC_SENTRY_DSN).toBeUndefined()
+  })
+
+  it("accepts an optional Sentry DSN and keeps it as given", () => {
+    const dsn = "https://examplePublicKey@o0.ingest.sentry.io/0"
+
+    expect(parsePublicEnv({ ...validPublicSource, NEXT_PUBLIC_SENTRY_DSN: dsn }).NEXT_PUBLIC_SENTRY_DSN).toBe(
+      dsn,
+    )
+  })
+
+  it("treats a blank Sentry DSN as absent", () => {
+    expect(
+      parsePublicEnv({ ...validPublicSource, NEXT_PUBLIC_SENTRY_DSN: "   " }).NEXT_PUBLIC_SENTRY_DSN,
+    ).toBeUndefined()
   })
 })
 

@@ -42,6 +42,15 @@ import { withSentryConfig } from "@sentry/nextjs/config"
 //                   wss://*.supabase.co              Supabase auth client.
 //                   lib/supabase/browser.ts
 //      connect-src  https://challenges.cloudflare.com Turnstile's own requests.
+//      connect-src  https://api.cloudinary.com        Product images are posted
+//                   from the browser to Cloudinary's upload endpoint with a
+//                   signature made on the server
+//                   (lib/catalog/actions/vendor.ts signImageUploadAction,
+//                   components/catalog/image-manager.tsx).
+//      connect-src  https://*.r2.cloudflarestorage.com Vendor product files are
+//                   PUT (single) or POSTed in parts (multipart) straight to a
+//                   signed R2 URL, and the ETag header is read back from the
+//                   response (lib/catalog/upload-client.ts).
 //      img-src      https://res.cloudinary.com        Uploaded product, blog and
 //                   avatar images. lib/cloudinary.ts returns Cloudinary
 //                   secure_url values, which are rendered in <img>.
@@ -93,7 +102,7 @@ const contentSecurityPolicyReportOnly = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com https://api.cloudinary.com https://*.r2.cloudflarestorage.com",
   "frame-src https://challenges.cloudflare.com https://popup.squadco.com",
   `report-uri ${CSP_REPORT_URI}`,
 ].join("; ")

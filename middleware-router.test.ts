@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { NextRequest } from "next/server"
 
-import { middleware } from "./middleware"
+import { middleware, PATH_HEADER } from "./middleware"
 import { APP_OVERRIDE_COOKIE } from "./lib/host-routing"
 import { APP_HEADER, type AppName } from "./lib/hosts"
 import { TEST_JWT_SECRET } from "./tests/helpers/legacy-jwt"
@@ -262,5 +262,74 @@ describe("middleware: a host that is not configured", () => {
     await expect(call({ host: "elsewhere.example.com", path: "/hosts/admin" })).resolves.toMatchObject({
       result: { kind: "not-found", status: 404 },
     })
+  })
+})
+
+describe("middleware: the path it forwards to the shell", () => {
+  // The layouts read this header (lib/current-app.ts getRequestPath) to send a
+  // signed-out visitor back to the page they asked for. It carries the visible
+  // path, because the rewrite below has already changed it for the server.
+  async function forwarded(options: {
+    host?: string
+    path?: string
+    spoof?: string
+  } = {}): Promise<{ value: string | null; location: string | null; rewrite: string | null }> {
+    const host = options.host ?? HOSTS.merchant
+    const path = options.path ?? "/"
+    const headers: Record<string, string> = { host }
+
+    if (options.spoof !== undefined) {
+      headers[PATH_HEADER] = options.spoof
+    }
+
+    const response = await middleware(new NextRequest(`https://${host}${path}`, { headers }))
+
+    return {
+      value: response.headers.get(`x-middleware-request-${PATH_HEADER}`),
+      location: response.headers.get("location"),
+      rewrite: response.headers.get("x-middleware-rewrite"),
+    }
+  }
+
+  it("forwards the path and its query string on an app host", async () => {
+    const result = await forwarded({ host: HOSTS.merchant, path: "/products?page=2" })
+
+    expect(result.value).toBe("/products?page=2")
+    expect(result.rewrite).not.toBeNull()
+    expect(new URL(result.rewrite as string).pathname).toBe("/hosts/merchant/products")
+  })
+
+  it("forwards the root of an app host as /", async () => {
+    await expect(forwarded({ host: HOSTS.admin, path: "/" })).resolves.toMatchObject({ value: "/" })
+  })
+
+  it("forwards the path on a shared path that is passed through, not rewritten", async () => {
+    const result = await forwarded({ host: HOSTS.merchant, path: "/sign-in?next=%2Fproducts" })
+
+    expect(result.value).toBe("/sign-in?next=%2Fproducts")
+    expect(result.rewrite).toBeNull()
+  })
+
+  it("forwards the path for every app host", async () => {
+    for (const app of ["affiliate", "merchant", "account", "admin"] as const) {
+      await expect(forwarded({ host: HOSTS[app], path: "/products" })).resolves.toMatchObject({
+        value: "/products",
+      })
+    }
+  })
+
+  it("replaces a value the client sent itself", async () => {
+    await expect(
+      forwarded({ host: HOSTS.merchant, path: "/products", spoof: "//evil.example.com" }),
+    ).resolves.toMatchObject({ value: "/products" })
+  })
+
+  it("sets nothing on the public host, and drops a value the client sent", async () => {
+    await expect(forwarded({ host: HOSTS.public, path: "/products" })).resolves.toMatchObject({
+      value: null,
+    })
+    await expect(
+      forwarded({ host: HOSTS.public, path: "/", spoof: "/products" }),
+    ).resolves.toMatchObject({ value: null })
   })
 })

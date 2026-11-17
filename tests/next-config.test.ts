@@ -95,6 +95,19 @@ describe("next.config.mjs security headers", () => {
     }
   })
 
+  it("lets the browser reach the two upload destinations from connect-src", async () => {
+    const headers = await headersForAllRoutes()
+    const [csp] = occurrences(headers, "Content-Security-Policy-Report-Only")
+    const directive = (csp?.value ?? "")
+      .split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith("connect-src"))
+
+    expect(directive).toBeDefined()
+    expect(directive).toContain("https://api.cloudinary.com")
+    expect(directive).toContain("https://*.r2.cloudflarestorage.com")
+  })
+
   it("allows only the external origins the code really uses", async () => {
     const headers = await headersForAllRoutes()
     const [csp] = occurrences(headers, "Content-Security-Policy-Report-Only")
@@ -108,6 +121,10 @@ describe("next.config.mjs security headers", () => {
       "wss://*.supabase.co",
       "https://res.cloudinary.com",
       "https://lh3.googleusercontent.com",
+      // Browser uploads: product images go to Cloudinary's upload endpoint, and
+      // vendor files to a signed R2 URL. Both are connect-src, not img-src.
+      "https://api.cloudinary.com",
+      "https://*.r2.cloudflarestorage.com",
     ]
 
     for (const origin of needed) {

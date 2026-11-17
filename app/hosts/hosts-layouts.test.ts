@@ -29,6 +29,27 @@ vi.mock("@/lib/identity/account-summary", () => ({
   getAccountSummary: directory.getAccountSummary,
 }))
 
+// The path the middleware forwarded. The layout hands it to the guard so that
+// signing in returns the visitor to the page they asked for.
+const currentApp = vi.hoisted(() => ({ getRequestPath: vi.fn() }))
+
+vi.mock("@/lib/current-app", () => ({ getRequestPath: currentApp.getRequestPath }))
+
+// The two product screens read their first page on the server. A render test
+// must not reach Supabase, so the actions answer with an empty page.
+const catalog = vi.hoisted(() => ({
+  listVendorProductsAction: vi.fn(),
+  listReviewQueueAction: vi.fn(),
+}))
+
+vi.mock("@/lib/catalog/actions/vendor", () => ({
+  listVendorProductsAction: catalog.listVendorProductsAction,
+}))
+
+vi.mock("@/lib/catalog/actions/admin", () => ({
+  listReviewQueueAction: catalog.listReviewQueueAction,
+}))
+
 vi.mock("@/app/auth/actions", () => ({
   signOutAction: vi.fn(async () => ({ ok: true })),
 }))
@@ -194,8 +215,16 @@ function navLabels(html: string, label: string): string[] {
 }
 
 function activeLabels(html: string): string[] {
-  return [...html.matchAll(/<a[^>]*aria-current="page"[^>]*>([^<]*)<\/a>/g)].map(
-    (match) => match[1] ?? "",
+  // Only the shell's own navigation. A page can mark its own current tab the
+  // same way (the products screen does), and that is a different list.
+  const navs = [
+    ...html.matchAll(/<nav aria-label="[^"]* sections"><ul[^>]*>([\s\S]*?)<\/ul><\/nav>/g),
+  ]
+
+  return navs.flatMap((nav) =>
+    [...(nav[1] ?? "").matchAll(/<a[^>]*aria-current="page"[^>]*>([^<]*)<\/a>/g)].map(
+      (match) => match[1] ?? "",
+    ),
   )
 }
 
@@ -232,6 +261,10 @@ beforeEach(() => {
   })
 
   vi.mocked(usePathname).mockReturnValue("/")
+
+  currentApp.getRequestPath.mockResolvedValue("/products?status=draft")
+  catalog.listVendorProductsAction.mockResolvedValue({ ok: true, items: [], nextCursor: null })
+  catalog.listReviewQueueAction.mockResolvedValue({ ok: true, items: [], nextCursor: null })
 })
 
 describe("every page renders exactly one h1", () => {
@@ -311,9 +344,16 @@ describe("the shell frame", () => {
   })
 
   it("renders an honest empty state for an unbuilt section", async () => {
-    const html = await renderPage(MerchantProductsPage)
+    const html = await renderPage(MerchantSalesPage)
 
     expect(html).toContain("This section is not available yet.")
+  })
+
+  it("renders the products screen rather than a placeholder", async () => {
+    const html = await renderPage(MerchantProductsPage)
+
+    expect(html).toContain("You have not created a product yet.")
+    expect(html).not.toContain("This section is not available yet.")
   })
 
   it("shows the greeting, email and roles on the first page", async () => {
@@ -349,10 +389,12 @@ describe("the layout guards", () => {
     await AccountLayout({ children: null })
     await AdminLayout({ children: null })
 
-    expect(guard.requirePermission).toHaveBeenCalledWith("area:merchant", "/", "start")
-    expect(guard.requirePermission).toHaveBeenCalledWith("area:affiliate", "/", "start")
-    expect(guard.requirePermission).toHaveBeenCalledWith("area:admin", "/", "not-found")
-    expect(guard.requireUser).toHaveBeenCalledWith("/")
+    // The forwarded path, not "/": a signed-out visitor is returned to the page
+    // they asked for after signing in.
+    expect(guard.requirePermission).toHaveBeenCalledWith("area:merchant", "/products?status=draft", "start")
+    expect(guard.requirePermission).toHaveBeenCalledWith("area:affiliate", "/products?status=draft", "start")
+    expect(guard.requirePermission).toHaveBeenCalledWith("area:admin", "/products?status=draft", "not-found")
+    expect(guard.requireUser).toHaveBeenCalledWith("/products?status=draft")
   })
 
   it("renders the shell only after the guard answers", async () => {

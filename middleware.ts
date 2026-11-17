@@ -9,6 +9,17 @@ import {
 } from "@/lib/host-routing"
 import { APP_HEADER, appForHost, hostMapFromEnv, type AppName } from "@/lib/hosts"
 
+/**
+ * The path a visitor asked for, carried to the server components.
+ *
+ * The app hosts rewrite "/products" to "/hosts/merchant/products", so the
+ * rewritten request no longer knows the address the browser shows. This header
+ * carries the original pathname and its query string, and lib/current-app.ts
+ * reads it. The name is repeated there, which is the only place the two must
+ * agree.
+ */
+export const PATH_HEADER = "x-affilova-path"
+
 export async function middleware(request: NextRequest) {
   // Resolve which app this request belongs to and pass it down as a request
   // header. Nothing below depends on it yet: every existing rule, redirect and
@@ -39,11 +50,24 @@ export async function middleware(request: NextRequest) {
     app = override.app
   }
 
+  const { pathname, search } = request.nextUrl
+
   // Rebuild the headers so a client cannot spoof the app by sending its own
   // x-affilova-app header.
   const headers = new Headers(request.headers)
   headers.delete(APP_HEADER)
   headers.set(APP_HEADER, app)
+
+  // The path the visitor asked for, before any rewrite. An app host serves
+  // /products out of /hosts/merchant/products, and the layout needs the visible
+  // path to send a signed-out visitor back to it. The incoming header is deleted
+  // on every host, and only an app host gets a value, so it cannot be spoofed on
+  // the public site either.
+  headers.delete(PATH_HEADER)
+
+  if (app !== "public") {
+    headers.set(PATH_HEADER, `${pathname}${search}`)
+  }
 
   // Every response below leaves through here, so the preview cookie is set on
   // a redirect and on a rewrite alike.
@@ -62,7 +86,6 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  const { pathname, search } = request.nextUrl
   const route = resolveRoute({ app, pathname, search })
 
   // /hosts/* is the internal tree: it is reached by rewrite, never by a URL.

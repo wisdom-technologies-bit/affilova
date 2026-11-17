@@ -1,0 +1,404 @@
+[
+  {
+    "screen": "list",
+    "viewport": "1440x900",
+    "file": "docs/design-review/catalog/list-1440x900.png",
+    "title": "Affilova",
+    "viewportWidth": 1440,
+    "scrollWidth": 1440,
+    "horizontalOverflow": false,
+    "contentHeight": 900,
+    "overflowing": [],
+    "smallTargets": [
+      {
+        "tag": "a",
+        "label": "Skip to content",
+        "height": 1
+      },
+      {
+        "tag": "a",
+        "label": "",
+        "height": 24
+      }
+    ],
+    "headings": [
+      "Products"
+    ],
+    "ariaLive": 0
+  },
+  {
+    "screen": "new-product",
+    "viewport": "1440x900",
+    "file": "docs/design-review/catalog/new-product-1440x900.png",
+    "title": "Affilova",
+    "viewportWidth": 1440,
+    "scrollWidth": 1440,
+    "horizontalOverflow": false,
+    "contentHeight": 905,
+    "overflowing": [],
+    "smallTargets": [
+      {
+        "tag": "a",
+        "label": "Skip to content",
+        "height": 1
+      },
+      {
+        "tag": "a",
+        "label": "",
+        "height": 24
+      }
+    ],
+    "headings": [
+      "New product"
+    ],
+    "ariaLive": 6
+  },
+  {
+    "screen": "edit-draft",
+    "viewport": "1440x900",
+    "file": "docs/design-review/catalog/edit-draft-1440x900.png",
+    "title": "Affilova",
+    "viewportWidth": 1440,
+    "scrollWidth": 1440,
+    "horizontalOverflow": false,
+    "contentHeight": 2983,
+    "overflowing": [],
+    "smallTargets": [
+      {
+        "tag": "a",
+        "label": "Skip to content",
+        "height": 1
+      },
+      {
+        "tag": "a",
+        "label": "",
+        "height": 24
+      },
+      {
+        "tag": "input",
+        "label": "Files to upload",
+        "height": 1
+      },
+      {
+        "tag": "input",
+        "label": "",
+        "height": 1
+      }
+    ],
+    "headings": [
+      "Sample product one",
+      "Status",
+      "Details",
+      "Pricing and affiliates",
+      "Files",
+      "Images",
+      "Actions"
+    ],
+    "ariaLive": 14
+  },
+  {
+    "screen": "edit-rejected",
+    "viewport": "1440x900",
+    "file": "docs/design-review/catalog/edit-rejected-1440x900.png",
+    "title": "Affilova",
+    "viewportWidth": 1440,
+    "scrollWidth": 1440,
+    "horizontalOverflow": false,
+    "contentHeight": 3117,
+    "overflowing": [],
+    "smallTargets": [
+      {
+        "tag": "a",
+        "label": "Skip to content",
+        "height": 1
+      },
+      {
+        "tag": "a",
+        "label": "",
+        "height": 24
+      },
+      {
+        "tag": "input",
+        "label": "Files to upload",
+        "height": 1
+      },
+      {
+        "tag": "input",
+        "label": "",
+        "height": 1
+      }
+    ],
+    "headings": [
+      "Sample product one",
+      "Status",
+      "Details",
+      "Pricing and affiliates",
+      "Files",
+      "Images",
+      "Actions"
+    ],
+    "ariaLive": 14
+  },
+  {
+    "screen": "upload-mid",
+    "viewport": "1440x900",
+    "file": "docs/design-review/catalog/upload-mid-1440x900.png",
+    "title": "Affilova",
+    "viewportWidth": 1440,
+    "scrollWidth": 1440,
+    "horizontalOverflow": false,
+    "contentHeight": 943,
+    "overflowing": [],
+    "smallTargets": [
+      {
+        "tag": "a",
+        "label": "Skip to content",
+        "height": 1
+      },
+      {
+        "tag": "a",
+        "label": "",
+        "height": 24
+      }
+    ],
+    "headings": [
+      "Sample product one",
+      "Files"
+    ],
+    "ariaLive": 2
+  },
+  {
+    "screen": "admin-review",
+    "viewport": "1440x900",
+    "file": "docs/design-review/catalog/admin-review-1440x900.png",
+    "title": "Affilova",
+    "viewportWidth": 1440,
+    "scrollWidth": 1440,
+    "horizontalOverflow": false,
+    "contentHeight": 1539,
+    "overflowing": [],
+    "smallTargets": [
+      {
+        "tag": "a",
+        "label": "Skip to content",
+        "height": 1
+      },
+      {
+        "tag": "a",
+        "label": "",
+        "height": 24
+      }
+    ],
+    "headings": [
+      "Sample product one",
+      "Status",
+      "Details",
+      "Pricing and commission",
+      "Images",
+      "Files",
+      "Decision"
+    ],
+    "ariaLive": 0
+  },
+  {
+    "screen": "list",
+    "viewport": "390x844",
+    "file": "docs/design-review/catalog/list-390x844.png",
+    "title": "Affilova",
+    "viewportWidth": 390,
+    "scrollWidth": 390,
+    "horizontalOverflow": false,
+    "contentHeight": 1066,
+    "overflowing": [],
+    "smallTargets": [
+      {
+        "tag": "a",
+        "label": "Skip to content",
+        "height": 1
+      },
+      {
+        "tag": "a",
+        "label": "",
+        "height": 24
+      }
+    ],
+    "headings": [
+      "Products"
+    ],
+    "ariaLive": 0
+  },
+  {
+    "screen": "new-product",
+    "viewport": "390x844",
+    "file": "docs/design-review/catalog/new-product-390x844.png",
+    "title": "Affilova",
+    "viewportWidth": 390,
+    "scrollWidth": 390,
+    "horizontalOverflow": false,
+    "contentHeight": 1063,
+    "overflowing": [],
+    "smallTargets": [
+      {
+        "tag": "a",
+        "label": "Skip to content",
+        "height": 1
+      },
+      {
+        "tag": "a",
+        "label": "",
+        "height": 24
+      }
+    ],
+    "headings": [
+      "New product"
+    ],
+    "ariaLive": 6
+  },
+  {
+    "screen": "edit-draft",
+    "viewport": "390x844",
+    "file": "docs/design-review/catalog/edit-draft-390x844.png",
+    "title": "Affilova",
+    "viewportWidth": 390,
+    "scrollWidth": 390,
+    "horizontalOverflow": false,
+    "contentHeight": 3577,
+    "overflowing": [],
+    "smallTargets": [
+      {
+        "tag": "a",
+        "label": "Skip to content",
+        "height": 1
+      },
+      {
+        "tag": "a",
+        "label": "",
+        "height": 24
+      },
+      {
+        "tag": "input",
+        "label": "Files to upload",
+        "height": 1
+      },
+      {
+        "tag": "input",
+        "label": "",
+        "height": 1
+      }
+    ],
+    "headings": [
+      "Sample product one",
+      "Status",
+      "Details",
+      "Pricing and affiliates",
+      "Files",
+      "Images",
+      "Actions"
+    ],
+    "ariaLive": 14
+  },
+  {
+    "screen": "edit-rejected",
+    "viewport": "390x844",
+    "file": "docs/design-review/catalog/edit-rejected-390x844.png",
+    "title": "Affilova",
+    "viewportWidth": 390,
+    "scrollWidth": 390,
+    "horizontalOverflow": false,
+    "contentHeight": 3807,
+    "overflowing": [],
+    "smallTargets": [
+      {
+        "tag": "a",
+        "label": "Skip to content",
+        "height": 1
+      },
+      {
+        "tag": "a",
+        "label": "",
+        "height": 24
+      },
+      {
+        "tag": "input",
+        "label": "Files to upload",
+        "height": 1
+      },
+      {
+        "tag": "input",
+        "label": "",
+        "height": 1
+      }
+    ],
+    "headings": [
+      "Sample product one",
+      "Status",
+      "Details",
+      "Pricing and affiliates",
+      "Files",
+      "Images",
+      "Actions"
+    ],
+    "ariaLive": 14
+  },
+  {
+    "screen": "upload-mid",
+    "viewport": "390x844",
+    "file": "docs/design-review/catalog/upload-mid-390x844.png",
+    "title": "Affilova",
+    "viewportWidth": 390,
+    "scrollWidth": 390,
+    "horizontalOverflow": false,
+    "contentHeight": 991,
+    "overflowing": [],
+    "smallTargets": [
+      {
+        "tag": "a",
+        "label": "Skip to content",
+        "height": 1
+      },
+      {
+        "tag": "a",
+        "label": "",
+        "height": 24
+      }
+    ],
+    "headings": [
+      "Sample product one",
+      "Files"
+    ],
+    "ariaLive": 2
+  },
+  {
+    "screen": "admin-review",
+    "viewport": "390x844",
+    "file": "docs/design-review/catalog/admin-review-390x844.png",
+    "title": "Affilova",
+    "viewportWidth": 390,
+    "scrollWidth": 390,
+    "horizontalOverflow": false,
+    "contentHeight": 1931,
+    "overflowing": [],
+    "smallTargets": [
+      {
+        "tag": "a",
+        "label": "Skip to content",
+        "height": 1
+      },
+      {
+        "tag": "a",
+        "label": "",
+        "height": 24
+      }
+    ],
+    "headings": [
+      "Sample product one",
+      "Status",
+      "Details",
+      "Pricing and commission",
+      "Images",
+      "Files",
+      "Decision"
+    ],
+    "ariaLive": 0
+  }
+]

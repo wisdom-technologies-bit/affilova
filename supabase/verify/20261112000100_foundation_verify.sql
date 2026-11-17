@@ -55,13 +55,23 @@ LEFT JOIN (
   GROUP BY tablename
 ) AS a ON a.tablename = e.tbl;
 
--- 4. No policy targets anon or the implicit PUBLIC role.
+-- 4. No policy on a table from this migration targets anon or the implicit
+--    PUBLIC role.
+--
+--    Scoped to the six tables above rather than to every table in public:
+--    public.product_categories (migration 20261114000100_catalog) is reference
+--    data that a signed-out visitor may read, and it says so with an explicit
+--    anon policy. That is the only such table, and it holds no personal data.
 SELECT
   'no_policies_grant_to_anon_or_public' AS check_name,
   NOT EXISTS (
     SELECT 1
     FROM pg_policies
     WHERE schemaname = 'public'
+      AND tablename IN (
+        'app_migrations', 'profiles', 'user_roles',
+        'settings', 'settings_history', 'audit_log'
+      )
       AND ('anon' = ANY (roles) OR 'public' = ANY (roles))
   ) AS passed;
 

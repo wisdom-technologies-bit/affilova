@@ -278,6 +278,61 @@ every line between `BEGIN;` and `COMMIT;` and run it. It drops the table and bot
 functions, so any rate limiting in progress is forgotten. Nothing else is
 touched.
 
+## The sixth migration: the catalog (20261114000100_catalog)
+
+Run this one **after** the foundation and `20261113000100_roles_onboarding.sql`
+have been applied and every check in their verify files is `t`. It uses the
+foundation's `settings`, `audit_log`, `is_staff()`, `set_updated_at()` and the
+`extensions` schema, and it points products at `vendor_profiles`.
+
+It adds the product catalog: what a vendor sells, the private file behind it, the
+images on the sales page, and every function that writes them.
+
+The steps are the same as above:
+
+1. **Step 1**: copy all of
+   `supabase/migrations/20261114000100_catalog.sql` into a new SQL Editor query
+   and click **Run**. It must succeed, and a second **Run** must also succeed.
+2. **Step 2**: copy all of `supabase/verify/20261114000100_catalog_verify.sql`,
+   click **Run**, and check that every `passed` is `t`. This one has 27 checks.
+3. **Step 3**: what it created:
+   - `product_categories`: the nine fixed categories. This is the only catalog
+     table a signed-out visitor may read, and it holds no personal data.
+   - `products`: title, address, descriptions, price in **kobo**, affiliate
+     commission in basis points, refund window, download allowance, status and
+     the review stamps. Search is a generated `tsvector` column with a GIN index,
+     plus a trigram index on the title.
+   - `product_files`: one row per private file, created **before** the upload and
+     confirmed afterwards. `scan_status` stays `not_scanned`: no malware scanner
+     is connected yet.
+   - `product_images`: Cloudinary public ids and their metadata, with a partial
+     unique index that allows exactly one cover per product.
+   - Seventeen server-only functions: `create_product_draft`, `update_product`,
+     `product_transition` (the state machine), `get_product_readiness`,
+     `register_product_file`, `confirm_product_file`, `delete_product_file`,
+     `add_product_image`, `remove_product_image`, `set_cover_image`,
+     `list_stale_pending_files`, `purge_pending_file`,
+     `log_product_file_admin_access`, and four small helpers.
+   - Three settings: `refund_window_min_hours` (24),
+     `product_commission_min_bps` (500) and `product_commission_max_bps` (8000).
+     The functions read them with a fallback to the same values, so a missing row
+     never blocks a vendor.
+4. **Step 4 (optional)**: the Cloudflare R2 bucket needs a CORS rule before the
+   browser can upload directly. See `docs/catalog.md`.
+
+Nobody writes these tables from the app. A vendor reads their own rows, staff
+read all of them, and everything else goes through a function called by the
+server with the service role. `anon` cannot read products, files or images at
+all, and no client role has `INSERT`, `UPDATE` or `DELETE` on any catalog table.
+
+The product rules, the state machine, the file and image limits and the storage
+key format are in `docs/catalog.md`.
+
+Its rollback block drops the four tables, the seventeen functions, the enum and
+the three settings rows. **Cloudinary assets and R2 objects are not deleted**: the
+rows that held their keys are gone, so they have to be cleared out of the bucket
+and the Cloudinary account by hand before or after running it.
+
 ## Creating the first admin
 
 Every new signup is created as a `customer`. The first admin has to be added by hand,

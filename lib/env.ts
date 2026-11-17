@@ -107,6 +107,26 @@ const serverEnvSchema = z.object({
 export type PublicEnv = z.infer<typeof publicEnvSchema>
 export type ServerEnv = z.infer<typeof serverEnvSchema>
 
+// The private file bucket. Read only by lib/storage/r2.ts, and only when a
+// signed URL is actually being made, so a deployment without R2 configured can
+// still build, run its tests and serve everything that does not upload a file.
+const r2EnvSchema = z.object({
+  R2_ACCOUNT_ID: requiredString,
+  R2_ACCESS_KEY_ID: requiredString,
+  R2_SECRET_ACCESS_KEY: requiredString,
+  R2_BUCKET_FILES: requiredString,
+})
+
+// The image account. Read only by lib/images/cloudinary.ts.
+const cloudinaryEnvSchema = z.object({
+  CLOUDINARY_CLOUD_NAME: requiredString,
+  CLOUDINARY_API_KEY: requiredString,
+  CLOUDINARY_API_SECRET: requiredString,
+})
+
+export type R2Env = z.infer<typeof r2EnvSchema>
+export type CloudinaryEnv = z.infer<typeof cloudinaryEnvSchema>
+
 function formatIssues(scope: string, error: z.ZodError): string {
   const details = error.issues.map((issue) => {
     const name = issue.path.length > 0 ? issue.path.join(".") : "(root)"
@@ -132,6 +152,26 @@ export function parseServerEnv(source: EnvSource): ServerEnv {
 
   if (!result.success) {
     throw new Error(formatIssues("server", result.error))
+  }
+
+  return result.data
+}
+
+export function parseR2Env(source: EnvSource): R2Env {
+  const result = r2EnvSchema.safeParse(source)
+
+  if (!result.success) {
+    throw new Error(formatIssues("R2", result.error))
+  }
+
+  return result.data
+}
+
+export function parseCloudinaryEnv(source: EnvSource): CloudinaryEnv {
+  const result = cloudinaryEnvSchema.safeParse(source)
+
+  if (!result.success) {
+    throw new Error(formatIssues("Cloudinary", result.error))
   }
 
   return result.data
@@ -170,4 +210,23 @@ export function getPublicEnv(): PublicEnv {
   }
 
   return publicEnvCache
+}
+
+// Deliberately uncached and unparsed until called: this is the only place that
+// learns whether the storage and image credentials exist.
+export function getR2Env(): R2Env {
+  return parseR2Env({
+    R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
+    R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
+    R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
+    R2_BUCKET_FILES: process.env.R2_BUCKET_FILES,
+  })
+}
+
+export function getCloudinaryEnv(): CloudinaryEnv {
+  return parseCloudinaryEnv({
+    CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+    CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+    CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
+  })
 }

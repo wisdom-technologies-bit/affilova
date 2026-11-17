@@ -1,3 +1,4 @@
+import { runStorageCleanupJob } from "./storage-cleanup"
 import type { Job } from "./types"
 
 /** A unit of work for one job type. Throwing means the job failed. */
@@ -26,3 +27,9 @@ const noopHandler: JobHandler = async () => {
 }
 
 registerHandler("noop", noopHandler)
+
+// Clear file reservations that never became uploads: abandoned multipart parts
+// in the bucket and the rows that hold them.
+registerHandler("storage_cleanup", async () => {
+  await runStorageCleanupJob()
+})

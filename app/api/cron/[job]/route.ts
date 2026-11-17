@@ -7,6 +7,7 @@ import { getHandler } from "@/lib/jobs/handlers"
 import {
   claimJobs,
   completeJob,
+  enqueueJob,
   failJob,
   recordHeartbeat,
   releaseJob,
@@ -25,6 +26,10 @@ const CLEANUP_JOB = "cleanup"
 
 // The endpoint only accepts these names.
 const ALLOWED_JOBS = [PROCESS_QUEUE_JOB, HEARTBEAT_CHECK_JOB, CLEANUP_JOB]
+
+// The daily job type enqueued by cleanup, and its de-duplication key: one run per
+// UTC day, however many times cleanup is called.
+const STORAGE_CLEANUP_TYPE = "storage_cleanup"
 
 // The schedules whose heartbeats are watched, with the five minute staleness
 // rule below. cleanup is deliberately not one of them: it runs once a day, so
@@ -119,6 +124,26 @@ async function cleanupRateLimits(): Promise<number> {
   return 0
 }
 
+// Queue today's storage sweep. The key carries the UTC date, so the database
+// refuses a second job for the same day and a retried cleanup cannot stack them.
+async function enqueueStorageCleanup(): Promise<boolean> {
+  const day = new Date().toISOString().slice(0, 10)
+
+  try {
+    await enqueueJob({
+      type: STORAGE_CLEANUP_TYPE,
+      payload: {},
+      dedupeKey: `${STORAGE_CLEANUP_TYPE}:${day}`,
+    })
+
+    return true
+  } catch {
+    // The rate limit table is already cleaned; a failed enqueue must not turn
+    // the whole run into an error, but the response says it did not happen.
+    return false
+  }
+}
+
 export async function POST(request: Request, context: RouteContext): Promise<NextResponse> {
   // 1. The secret is checked before anything else, and a failure says nothing
   //    beyond "unauthorized".
@@ -167,9 +192,13 @@ export async function POST(request: Request, context: RouteContext): Promise<Nex
     try {
       const deleted = await cleanupRateLimits()
 
+      // Storage cleanup runs once a day, driven from here rather than by its own
+      // schedule: one scheduler entry point is easier to reason about than two.
+      const storageCleanupQueued = await enqueueStorageCleanup()
+
       await recordHeartbeatSafely(CLEANUP_JOB, "ok", startedAt)
 
-      return json({ ok: true, deleted }, 200)
+      return json({ ok: true, deleted, storageCleanupQueued }, 200)
     } catch (error) {
       await recordHeartbeatSafely(CLEANUP_JOB, "error", startedAt, shortMessage(error))
       logger.error("cron_job_failed", { job: CLEANUP_JOB, reason: shortMessage(error) })

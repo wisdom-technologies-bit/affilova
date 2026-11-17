@@ -5,14 +5,16 @@ import { useState } from "react"
 
 import { ConfirmDialog } from "@/components/catalog/confirm-dialog"
 import { describedBy, FormField } from "@/components/forms/form-field"
-import { reviewProductAction, staffPauseProductAction } from "@/lib/catalog/actions/admin"
+import { reviewProductAction } from "@/lib/catalog/actions/admin"
 import type { ProductStatus } from "@/lib/catalog/action-types"
 
-// The decision on a product under review: approve, reject with a reason, or
-// pause something that is already live.
+// The decision on a product under review: approve, or reject with a reason.
 //
 // A rejection needs at least ten characters, because the reason is what the
-// vendor reads to know what to fix. Pausing needs a reason for the same reason.
+// vendor reads to know what to fix.
+//
+// There is no pause here: getProductForReviewAction only loads submitted
+// products, so a live product never reaches this screen.
 
 const MIN_REASON = 10
 const MAX_REASON = 1000
@@ -91,7 +93,6 @@ export function ReviewActions({ productId, status }: { productId: string; status
   const [error, setError] = useState<string | null>(null)
 
   const underReview = status === "submitted"
-  const canPause = status === "live"
 
   async function decide(decision: "approve" | "reject", reason: string | null): Promise<boolean> {
     const result = await reviewProductAction({
@@ -150,29 +151,6 @@ export function ReviewActions({ productId, status }: { productId: string; status
           </>
         ) : null}
 
-        {canPause ? (
-          <ReasonDialog
-            trigger={<span>Pause this product</span>}
-            triggerClassName={QUIET}
-            title="Pause this product?"
-            description="It stops being listed in the marketplace until an admin or the vendor resumes it. The vendor is not told why unless you write it here."
-            confirmLabel="Pause product"
-            onConfirm={async (reason) => {
-              const result = await staffPauseProductAction({ productId, reason })
-
-              if (!result.ok) {
-                setError(result.error)
-
-                return false
-              }
-
-              setError(null)
-              router.refresh()
-
-              return true
-            }}
-          />
-        ) : null}
       </div>
     </div>
   )

@@ -20,11 +20,22 @@ const adminState = vi.hoisted(() => ({
   cleanupData: 0 as unknown,
   cleanupError: null as { message: string } | null,
   keepOldRateLimits: 0,
+  enqueued: [] as { type: string; dedupeKey?: string }[],
+  enqueueError: null as Error | null,
 }))
 
 vi.mock("@/lib/jobs/queue", () => ({
   claimJobs: vi.fn(async () => []),
   completeJob: vi.fn(async () => undefined),
+  enqueueJob: vi.fn(async (input: { type: string; dedupeKey?: string }) => {
+    if (adminState.enqueueError) {
+      throw adminState.enqueueError
+    }
+
+    adminState.enqueued.push(input)
+
+    return "job-id"
+  }),
   failJob: vi.fn(async () => undefined),
   releaseJob: vi.fn(async () => undefined),
   recordHeartbeat: vi.fn(async () => undefined),
@@ -85,6 +96,8 @@ beforeEach(() => {
   adminState.error = null
   adminState.cleanupData = 0
   adminState.cleanupError = null
+  adminState.enqueued = []
+  adminState.enqueueError = null
 })
 
 describe("POST /api/cron/[job]", () => {
@@ -200,15 +213,39 @@ describe("POST /api/cron/[job]", () => {
     const response = await callRoute("cleanup", `Bearer ${SECRET}`)
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ ok: true, deleted: 7 })
+    expect(await response.json()).toEqual({ ok: true, deleted: 7, storageCleanupQueued: true })
     expect(queue.recordHeartbeat).toHaveBeenCalledWith(
       "cleanup",
       "ok",
       expect.any(Number),
       null,
     )
-    // The queue is not touched by cleanup.
+    // Only enqueuing touches the queue; nothing is claimed.
     expect(queue.claimJobs).not.toHaveBeenCalled()
+  })
+
+  it("queues the daily storage sweep once, keyed by the UTC date", async () => {
+    const response = await callRoute("cleanup", `Bearer ${SECRET}`)
+
+    expect(response.status).toBe(200)
+    expect(adminState.enqueued).toHaveLength(1)
+
+    const [enqueued] = adminState.enqueued
+
+    expect(enqueued?.type).toBe("storage_cleanup")
+    expect(enqueued?.dedupeKey).toBe(
+      `storage_cleanup:${new Date().toISOString().slice(0, 10)}`,
+    )
+  })
+
+  it("reports a failed enqueue without failing the run", async () => {
+    adminState.enqueueError = new Error("queue is down")
+
+    const response = await callRoute("cleanup", `Bearer ${SECRET}`)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ ok: true, deleted: 0, storageCleanupQueued: false })
+    expect(queue.recordHeartbeat).toHaveBeenCalledWith("cleanup", "ok", expect.any(Number), null)
   })
 
   it("accepts the RPC answer in an array shape too", async () => {
@@ -216,7 +253,7 @@ describe("POST /api/cron/[job]", () => {
 
     const response = await callRoute("cleanup", `Bearer ${SECRET}`)
 
-    expect(await response.json()).toEqual({ ok: true, deleted: 3 })
+    expect(await response.json()).toEqual({ ok: true, deleted: 3, storageCleanupQueued: true })
   })
 
   it("treats an unexpected cleanup answer as zero, not as a failure", async () => {
@@ -225,7 +262,7 @@ describe("POST /api/cron/[job]", () => {
     const response = await callRoute("cleanup", `Bearer ${SECRET}`)
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ ok: true, deleted: 0 })
+    expect(await response.json()).toEqual({ ok: true, deleted: 0, storageCleanupQueued: true })
   })
 
   it("records an error heartbeat and answers 500 when cleanup fails", async () => {

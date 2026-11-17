@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest"
 
-import { parsePublicEnv, parseServerEnv } from "./env"
+import {
+  getCloudinaryEnv,
+  getR2Env,
+  parseCloudinaryEnv,
+  parsePublicEnv,
+  parseR2Env,
+  parseServerEnv,
+} from "./env"
 
 const validPublicSource = {
   NEXT_PUBLIC_APP_ENV: "production",
@@ -107,5 +114,82 @@ describe("parseServerEnv", () => {
     expect(env.CLOUDINARY_API_KEY).toBeUndefined()
     expect(env.DATABASE_URL).toBeUndefined()
     expect(env.JWT_SECRET).toBeUndefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The storage and image credentials
+// ---------------------------------------------------------------------------
+
+const validR2Source = {
+  R2_ACCOUNT_ID: "account-id",
+  R2_ACCESS_KEY_ID: "access-key",
+  R2_SECRET_ACCESS_KEY: "secret-key",
+  R2_BUCKET_FILES: "affilova-files",
+}
+
+const validCloudinarySource = {
+  CLOUDINARY_CLOUD_NAME: "affilova",
+  CLOUDINARY_API_KEY: "api-key",
+  CLOUDINARY_API_SECRET: "api-secret",
+}
+
+describe("parseR2Env", () => {
+  it("reads the four values", () => {
+    expect(parseR2Env(validR2Source)).toEqual(validR2Source)
+  })
+
+  it("names the variable that is missing", () => {
+    for (const key of Object.keys(validR2Source)) {
+      expect(() => parseR2Env({ ...validR2Source, [key]: undefined })).toThrow(new RegExp(key))
+    }
+  })
+
+  it("names the variable that is blank", () => {
+    expect(() => parseR2Env({ ...validR2Source, R2_BUCKET_FILES: "   " })).toThrow(
+      /R2_BUCKET_FILES/,
+    )
+  })
+})
+
+describe("parseCloudinaryEnv", () => {
+  it("reads the three values", () => {
+    expect(parseCloudinaryEnv(validCloudinarySource)).toEqual(validCloudinarySource)
+  })
+
+  it("names the variable that is missing", () => {
+    for (const key of Object.keys(validCloudinarySource)) {
+      expect(() => parseCloudinaryEnv({ ...validCloudinarySource, [key]: undefined })).toThrow(
+        new RegExp(key),
+      )
+    }
+  })
+})
+
+describe("the lazy getters", () => {
+  it("do not validate anything at import, only when called", () => {
+    // Reaching this line at all with no R2 or Cloudinary variables set is the
+    // assertion: importing the module must not throw.
+    expect(typeof getR2Env).toBe("function")
+    expect(typeof getCloudinaryEnv).toBe("function")
+  })
+
+  it("read process.env when called", () => {
+    const before = { ...process.env }
+
+    try {
+      Object.assign(process.env, validR2Source, validCloudinarySource)
+
+      expect(getR2Env()).toEqual(validR2Source)
+      expect(getCloudinaryEnv()).toEqual(validCloudinarySource)
+
+      for (const key of Object.keys(validR2Source)) {
+        delete process.env[key]
+      }
+
+      expect(() => getR2Env()).toThrow(/R2_ACCOUNT_ID/)
+    } finally {
+      process.env = before
+    }
   })
 })

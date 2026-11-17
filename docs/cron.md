@@ -31,7 +31,7 @@ detail. `CRON_SECRET` must be at least 32 characters; see `.env.example`.
 | ----------------- | ------------- | --------------------------------------------------------------------- |
 | `process-queue`   | every minute  | Claims a small batch of queued jobs, runs them, records a heartbeat.   |
 | `heartbeat-check` | every 5 min   | Reports any schedule that has not checked in for over 5 minutes.       |
-| `cleanup`         | daily at 03:00 | Deletes rate-limit windows older than a day, records a heartbeat.     |
+| `cleanup`         | daily at 03:00 | Deletes old rate-limit windows, queues the storage sweep, records a heartbeat. |
 
 Any other name is answered with `404 {"error":"not_found"}`.
 
@@ -41,13 +41,37 @@ the function keeps a full day of history). Its answer adds the number of deleted
 rows to the usual body:
 
 ```json
-{"ok":true,"deleted":12}
+{"ok":true,"deleted":12,"storageCleanupQueued":true}
 ```
 
-`deleted` is `0` on a quiet day, which is normal. `cleanup` is **not** watched by
+`deleted` is `0` on a quiet day, which is normal.
+
+`cleanup` also queues the daily `storage_cleanup` job, with the UTC date in its
+de-duplication key (`storage_cleanup:2026-11-17`), so however many times the
+endpoint is called that day, exactly one sweep runs. `storageCleanupQueued` is
+`false` when that enqueue failed; the rate-limit cleanup still counts as done, so
+the run is not reported as an error. The next day's call fixes it.
+
+### The `storage_cleanup` job
+
+Queued by `cleanup`, run by `process-queue` like any other job. It lists the file
+reservations older than 24 hours that never became uploads, in batches of 50, and
+for each one aborts the multipart upload (when there was one), deletes the object
+from the private bucket and then deletes the row. The row only goes once the
+object is gone: a storage outage leaves it in place for the next sweep rather
+than orphaning an object nobody can find. Aborting an upload that already
+completed or expired is expected and not treated as a failure.
+
+Without this sweep, an abandoned upload would keep counting against the product's
+ten-file and 5 GiB budgets, and a large abandoned upload would leave charged parts
+in the bucket. See `docs/catalog.md` for the file rules. `cleanup` is **not** watched by
 `heartbeat-check`: a daily job would always look overdue under the five minute
 rule. Its heartbeat row is still written on every run, so a run that stopped
 happening is visible in `public.cron_heartbeats`.
+
+`storage_cleanup` is not a scheduled endpoint name: it is a job type inside the
+queue (`storage_cleanup`), and `POST /api/cron/storage_cleanup` answers 404 like
+any other unknown job name.
 
 Planned for later, **not implemented yet**: `reconcile-pending` every 10 minutes,
 `expire-orders` hourly, `approve-commissions` hourly, `rollups` hourly,
@@ -76,7 +100,7 @@ comfortably above the normal run.
 | --------------------------------- | ------ | ------------------------------------------------------- |
 | Queue processed                   | 200    | `{"ok":true,"claimed":n,"completed":n,"failed":n,"released":n}` |
 | Heartbeat report                  | 200    | `{"ok":true,"stale":["process-queue"]}`                  |
-| Cleanup finished                  | 200    | `{"ok":true,"deleted":n}`                                |
+| Cleanup finished                  | 200    | `{"ok":true,"deleted":n,"storageCleanupQueued":true}`    |
 | Missing or wrong secret           | 401    | `{"error":"unauthorized"}`                              |
 | Unknown job name                  | 404    | `{"error":"not_found"}`                                 |
 | Unexpected failure                | 500    | `{"ok":false}`                                          |

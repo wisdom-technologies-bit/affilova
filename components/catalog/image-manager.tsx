@@ -1,5 +1,6 @@
 "use client"
 
+import * as Sentry from "@sentry/nextjs"
 import { useRouter } from "next/navigation"
 import { useId, useState } from "react"
 
@@ -12,6 +13,12 @@ import {
   signImageUploadAction,
 } from "@/lib/catalog/actions/vendor"
 import type { ProductImage } from "@/lib/catalog/action-types"
+import {
+  describeImageFileProblem,
+  describeImagePixelProblem,
+  measureImageFile,
+} from "@/lib/catalog/image-checks"
+import { describeImageUploadFailure, type ImageUploadStage } from "@/lib/catalog/image-upload-errors"
 
 // Product images. The browser uploads straight to Cloudinary with a signature
 // the server made for this product, then tells the server which public id
@@ -20,6 +27,10 @@ import type { ProductImage } from "@/lib/catalog/action-types"
 //
 // Every image needs a description before it can be added: it is the alt text,
 // and an image without one is not finished.
+//
+// A failure says where it happened and carries a short reference, so a person
+// can quote one word to support instead of a sentence that could mean six
+// different things.
 
 const MAX_IMAGES = 6
 const MAX_ALT = 140
@@ -30,7 +41,59 @@ type Pending = {
   previewUrl: string
   alt: string
   saving: boolean
-  message: string | null
+  /** What the server said when the image was registered: shown on this row. */
+  rowError: string | null
+}
+
+/** The sentence on screen, and the word support can look up. */
+type UploadError = {
+  message: string
+  reference: string | null
+}
+
+const MAX_REMOTE_MESSAGE = 200
+
+/**
+ * Cloudinary's own message, cut down and used only to choose a sentence.
+ *
+ * It is read defensively: the answer is JSON from another site, so its shape
+ * is a claim, not a promise, and it is never put on the screen.
+ */
+function remoteMessage(json: unknown): string | undefined {
+  if (typeof json !== "object" || json === null) {
+    return undefined
+  }
+
+  const error = (json as { error?: unknown }).error
+
+  if (typeof error !== "object" || error === null) {
+    return undefined
+  }
+
+  const message = (error as { message?: unknown }).message
+
+  return typeof message === "string" ? message.slice(0, MAX_REMOTE_MESSAGE) : undefined
+}
+
+/**
+ * One failure, reported to Sentry without anything about the person or the
+ * file: a stage, a code and the status. Without a DSN the SDK has no client
+ * and every call here returns at once.
+ */
+function reportUploadFailure(input: { stage: ImageUploadStage; code: string; status?: number }): void {
+  try {
+    if (Sentry.getClient() === undefined) {
+      return
+    }
+
+    Sentry.captureMessage("catalog_image_upload_failed", {
+      level: "warning",
+      tags: { image_upload_stage: input.stage, image_upload_code: input.code },
+      ...(input.status === undefined ? {} : { extra: { httpStatus: input.status } }),
+    })
+  } catch {
+    // Reporting must never be the thing that breaks the screen.
+  }
 }
 
 function thumbnailUrl(cloudName: string, publicId: string): string {
@@ -53,7 +116,7 @@ export function ImageManager({
   const fileInputId = useId()
 
   const [pending, setPending] = useState<Pending[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<UploadError | null>(null)
   const [uploading, setUploading] = useState(false)
 
   const atLimit = images.length + pending.length >= MAX_IMAGES
@@ -70,7 +133,7 @@ export function ImageManager({
     const chosen = [...list].slice(0, Math.max(room, 0))
 
     if (chosen.length === 0) {
-      setError(`A product can have at most ${MAX_IMAGES} images.`)
+      setError({ message: `A product can have at most ${MAX_IMAGES} images.`, reference: null })
 
       return
     }
@@ -79,10 +142,29 @@ export function ImageManager({
 
     try {
       for (const file of chosen) {
+        // The rules a browser can check on its own, before anything is asked
+        // of the server or the network.
+        const fileProblem = describeImageFileProblem({ type: file.type, size: file.size })
+
+        if (fileProblem !== null) {
+          setError({ message: fileProblem.message, reference: null })
+
+          return
+        }
+
+        const size = await measureImageFile(file)
+        const pixelProblem = describeImagePixelProblem(size)
+
+        if (pixelProblem !== null) {
+          setError({ message: pixelProblem.message, reference: null })
+
+          return
+        }
+
         const signature = await signImageUploadAction({ productId })
 
         if (!signature.ok) {
-          setError(signature.error)
+          setError({ message: signature.error, reference: null })
 
           return
         }
@@ -95,26 +177,70 @@ export function ImageManager({
         body.set("folder", signature.folder)
         body.set("allowed_formats", signature.allowedFormats)
 
-        const response = await fetch(
-          `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
-          { method: "POST", body },
-        )
+        let response: Response
 
-        if (!response.ok) {
-          // The response comes from another site, so its text is not shown.
-          setError("The image could not be uploaded. Try again.")
+        try {
+          response = await fetch(`https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`, {
+            method: "POST",
+            body,
+          })
+        } catch {
+          // Thrown, so nothing came back at all: offline, a blocked request, or
+          // an origin this deployment's CSP does not allow.
+          const failure = describeImageUploadFailure({ stage: "network" })
+
+          reportUploadFailure({ stage: "network", code: failure.code })
+          setError({ message: failure.message, reference: failure.code })
 
           return
         }
 
-        const json: unknown = await response.json()
+        if (!response.ok) {
+          // Another site wrote this body, so only its message is read, only to
+          // choose a sentence, and only the first 200 characters of it.
+          let cloudinaryMessage: string | undefined
+
+          try {
+            cloudinaryMessage = remoteMessage(await response.json())
+          } catch {
+            cloudinaryMessage = undefined
+          }
+
+          const failure = describeImageUploadFailure({
+            stage: "http",
+            status: response.status,
+            cloudinaryMessage,
+          })
+
+          reportUploadFailure({ stage: "http", code: failure.code, status: response.status })
+          setError({ message: failure.message, reference: failure.code })
+
+          return
+        }
+
+        let json: unknown
+
+        try {
+          json = await response.json()
+        } catch {
+          const failure = describeImageUploadFailure({ stage: "response" })
+
+          reportUploadFailure({ stage: "response", code: failure.code, status: response.status })
+          setError({ message: failure.message, reference: failure.code })
+
+          return
+        }
+
         const publicId =
           typeof json === "object" && json !== null && typeof (json as { public_id?: unknown }).public_id === "string"
             ? (json as { public_id: string }).public_id
             : null
 
         if (publicId === null) {
-          setError("The image could not be uploaded. Try again.")
+          const failure = describeImageUploadFailure({ stage: "response" })
+
+          reportUploadFailure({ stage: "response", code: failure.code, status: response.status })
+          setError({ message: failure.message, reference: failure.code })
 
           return
         }
@@ -127,7 +253,7 @@ export function ImageManager({
             previewUrl: thumbnailUrl(signature.cloudName, publicId),
             alt: "",
             saving: false,
-            message: null,
+            rowError: null,
           },
         ])
       }
@@ -139,9 +265,12 @@ export function ImageManager({
   return (
     <div className="space-y-5">
       {error === null ? null : (
-        <p role="alert" className="rounded-md border border-destructive/40 px-3 py-2 text-sm text-destructive">
-          {error}
-        </p>
+        <div role="alert" className="rounded-md border border-destructive/40 px-3 py-2">
+          <p className="text-sm font-medium text-destructive">{error.message}</p>
+          {error.reference === null ? null : (
+            <p className="mt-1 text-xs text-muted-foreground">Reference: {error.reference}</p>
+          )}
+        </div>
       )}
 
       {readOnlyReason === undefined ? null : (
@@ -200,7 +329,6 @@ export function ImageManager({
                     id={`alt-${item.id}`}
                     label="Image description"
                     required
-                    error={item.message}
                     hint={`${item.alt.trim().length} of ${MAX_ALT} characters. Read out to people who cannot see the image.`}
                   >
                     <input
@@ -240,7 +368,7 @@ export function ImageManager({
                           if (!result.ok) {
                             setPending((current) =>
                               current.map((entry) =>
-                                entry.id === item.id ? { ...entry, saving: false, message: result.error } : entry,
+                                entry.id === item.id ? { ...entry, saving: false, rowError: result.error } : entry,
                               ),
                             )
 
@@ -264,6 +392,12 @@ export function ImageManager({
                       Discard
                     </button>
                   </div>
+
+                  {item.rowError === null ? null : (
+                    <p role="alert" className="mt-2 text-sm font-medium text-destructive">
+                      {item.rowError}
+                    </p>
+                  )}
 
                   <p className="mt-1 text-xs text-muted-foreground">
                     Not attached to the product until you add it.
@@ -313,7 +447,7 @@ export function ImageManager({
                         const result = await setCoverImageAction({ imageId: image.id })
 
                         if (!result.ok) {
-                          setError(result.error)
+                          setError({ message: result.error, reference: null })
 
                           return
                         }
@@ -340,7 +474,7 @@ export function ImageManager({
                     const result = await removeImageAction({ imageId: image.id })
 
                     if (!result.ok) {
-                      setError(result.error)
+                      setError({ message: result.error, reference: null })
 
                       return false
                     }

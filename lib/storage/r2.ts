@@ -3,6 +3,7 @@ import "server-only"
 import {
   AbortMultipartUploadCommand,
   CompleteMultipartUploadCommand,
+  CopyObjectCommand,
   CreateMultipartUploadCommand,
   DeleteObjectCommand,
   GetObjectCommand,
@@ -63,6 +64,8 @@ export interface R2Storage {
   abortMultipartUpload: (input: { key: string; uploadId: string }) => Promise<void>
   headObject: (key: string) => Promise<{ sizeBytes: number } | null>
   deleteObject: (key: string) => Promise<void>
+  /** Copy one object to another key in the same bucket. */
+  copyObject: (input: { fromKey: string; toKey: string }) => Promise<void>
   presignGetUrl: (input: {
     key: string
     filename: string
@@ -184,6 +187,19 @@ export function createR2Storage(deps: R2StorageDependencies): R2Storage {
       // S3 and R2 both treat a delete of a missing key as a success, which is
       // what a cleanup sweep wants.
       await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
+    },
+
+    copyObject: async ({ fromKey, toKey }) => {
+      // CopySource names the source object as bucket/key. The key is built from
+      // uuids and slashes only, so it needs no escaping; encoding it anyway
+      // would turn a genuine "+" in a name into a space.
+      await client.send(
+        new CopyObjectCommand({
+          Bucket: bucket,
+          CopySource: `${bucket}/${fromKey}`,
+          Key: toKey,
+        }),
+      )
     },
 
     presignGetUrl: ({ key, filename, expiresInSeconds = 300 }) =>

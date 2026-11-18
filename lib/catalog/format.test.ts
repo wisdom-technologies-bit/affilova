@@ -13,7 +13,9 @@ import {
   productStatusLabel,
   refundWindowLabel,
   REFUND_WINDOW_OPTIONS,
+  scanDetailLabel,
   scanStatusLabel,
+  isScanPending,
   statusTabFromParam,
   timeAgo,
 } from "./format"
@@ -118,11 +120,50 @@ describe("words for statuses", () => {
     expect(productStatusLabel("archived")).toBe("Archived")
   })
 
-  it("names every scan status", () => {
-    expect(scanStatusLabel("not_scanned")).toBe("Not scanned")
+  it("names every one of the eight scan statuses", () => {
+    expect(scanStatusLabel("not_scanned")).toBe("Not scanned yet")
+    expect(scanStatusLabel("queued")).toBe("Waiting for security scan")
+    expect(scanStatusLabel("scanning")).toBe("Scanning")
     expect(scanStatusLabel("clean")).toBe("Clean")
     expect(scanStatusLabel("infected")).toBe("Rejected: malware detected")
-    expect(scanStatusLabel("error")).toBe("Scan failed")
+    expect(scanStatusLabel("rejected")).toBe(
+      "Rejected: this file type or content is not allowed",
+    )
+    expect(scanStatusLabel("needs_review")).toBe("Under manual review")
+    expect(scanStatusLabel("error")).toBe("Scan failed, retrying")
+  })
+
+  it("turns a rejection code into a line a vendor can act on", () => {
+    expect(scanDetailLabel("type_mismatch")).toBe(
+      "The file's content does not match its extension.",
+    )
+    expect(scanDetailLabel("encrypted_archive")).toBe(
+      "Password-protected archives are not accepted.",
+    )
+    expect(scanDetailLabel("archive_limits")).toBe(
+      "The archive is too large or too deeply nested.",
+    )
+    expect(scanDetailLabel("path_traversal")).toBe("The archive contains unsafe paths.")
+    expect(scanDetailLabel("symlink")).toBe("The archive contains unsafe paths.")
+    expect(scanDetailLabel("executable_type")).toBe("Program files are not accepted.")
+    expect(scanDetailLabel("size_mismatch")).toBe("The upload was incomplete.")
+  })
+
+  it("shows nothing for a signature name or no detail at all", () => {
+    // A signature name is a fact for staff, not a sentence for a vendor.
+    expect(scanDetailLabel("Eicar-Test-Signature")).toBeNull()
+    expect(scanDetailLabel(null)).toBeNull()
+    expect(scanDetailLabel(undefined)).toBeNull()
+    expect(scanDetailLabel("")).toBeNull()
+  })
+
+  it("knows which scan states are still pending", () => {
+    expect(isScanPending("queued")).toBe(true)
+    expect(isScanPending("scanning")).toBe(true)
+
+    for (const settled of ["not_scanned", "clean", "infected", "rejected", "needs_review", "error"] as const) {
+      expect(isScanPending(settled)).toBe(false)
+    }
   })
 
   it("names the two upload states", () => {

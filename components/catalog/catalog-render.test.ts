@@ -14,6 +14,7 @@ vi.mock("@/lib/catalog/actions/vendor", () => ({
 
 import { ProductList } from "@/components/catalog/product-list"
 import { ReadinessChecklist } from "@/components/catalog/readiness-checklist"
+import { ScanStatusLine } from "@/components/catalog/upload-row"
 import { StatusBadge } from "@/components/catalog/status-badge"
 import { fileStatusLabel, formatBytes, scanStatusLabel } from "@/lib/catalog/format"
 import type { ProductReadiness, ProductStatus, ProductSummary } from "@/lib/catalog/action-types"
@@ -41,6 +42,7 @@ const READY: ProductReadiness = {
   price: true,
   commission: true,
   file: true,
+  filesScanned: true,
   cover: true,
   missing: [],
 }
@@ -195,10 +197,10 @@ describe("the product list", () => {
 
 describe("file status words", () => {
   it("never shows a raw database value", () => {
-    expect(scanStatusLabel("not_scanned")).toBe("Not scanned")
+    expect(scanStatusLabel("not_scanned")).toBe("Not scanned yet")
     expect(scanStatusLabel("clean")).toBe("Clean")
     expect(scanStatusLabel("infected")).toBe("Rejected: malware detected")
-    expect(scanStatusLabel("error")).toBe("Scan failed")
+    expect(scanStatusLabel("error")).toBe("Scan failed, retrying")
     expect(fileStatusLabel("pending")).toBe("Uploading")
     expect(fileStatusLabel("uploaded")).toBe("Uploaded")
   })
@@ -206,5 +208,58 @@ describe("file status words", () => {
   it("shows a size a person can read", () => {
     expect(formatBytes(0)).toBe("0 B")
     expect(formatBytes(64 * 1024 * 1024)).toBe("64 MB")
+  })
+})
+
+describe("the scan status line", () => {
+  it("puts every scan state into words, never a colour or a raw value", () => {
+    const expected: { status: Parameters<typeof scanStatusLabel>[0]; words: string }[] = [
+      { status: "not_scanned", words: "Not scanned yet" },
+      { status: "queued", words: "Waiting for security scan" },
+      { status: "scanning", words: "Scanning" },
+      { status: "clean", words: "Clean" },
+      { status: "infected", words: "Rejected: malware detected" },
+      { status: "rejected", words: "Rejected: this file type or content is not allowed" },
+      { status: "needs_review", words: "Under manual review" },
+      { status: "error", words: "Scan failed, retrying" },
+    ]
+
+    for (const { status, words } of expected) {
+      const html = renderToStaticMarkup(createElement(ScanStatusLine, { status, detail: null }))
+
+      expect(html).toContain(words)
+      expect(html).toContain('aria-live="polite"')
+    }
+  })
+
+  it("adds a plain-language reason for a rejection code", () => {
+    const html = renderToStaticMarkup(
+      createElement(ScanStatusLine, { status: "rejected", detail: "encrypted_archive" }),
+    )
+
+    expect(html).toContain("Password-protected archives are not accepted.")
+  })
+
+  it("shows no reason line for a signature name", () => {
+    const html = renderToStaticMarkup(
+      createElement(ScanStatusLine, { status: "infected", detail: "Eicar-Test-Signature" }),
+    )
+
+    expect(html).toContain("Rejected: malware detected")
+    expect(html).not.toContain("Eicar-Test-Signature")
+  })
+})
+
+describe("the readiness checklist and the scan gate", () => {
+  it("names the scan as the reason a product cannot be submitted", () => {
+    const html = renderToStaticMarkup(
+      createElement(ReadinessChecklist, {
+        readiness: { ...READY, filesScanned: false, missing: ["scan"] },
+      }),
+    )
+
+    expect(html).toContain("All files must pass the security scan")
+    expect(html).toContain('href="#files"')
+    expect(html).toContain("One thing is still missing")
   })
 })

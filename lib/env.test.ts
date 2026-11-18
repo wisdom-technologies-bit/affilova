@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest"
 import {
   getCloudinaryEnv,
   getR2Env,
+  getScannerEnv,
   parseCloudinaryEnv,
   parsePublicEnv,
   parseR2Env,
+  parseScannerEnv,
   parseServerEnv,
 } from "./env"
 
@@ -166,12 +168,60 @@ describe("parseCloudinaryEnv", () => {
   })
 })
 
+const validScannerSource = {
+  SCANNER_URL: "https://scanner.example.com",
+  SCANNER_SHARED_SECRET: "0123456789abcdef0123456789abcdef",
+  SCANNER_CALLBACK_SECRET: "fedcba9876543210fedcba9876543210",
+}
+
+describe("parseScannerEnv", () => {
+  it("reads the URL as a URL and the secrets as strings", () => {
+    const parsed = parseScannerEnv(validScannerSource)
+
+    expect(parsed.SCANNER_URL).toBeInstanceOf(URL)
+    expect(parsed.SCANNER_URL.toString()).toBe("https://scanner.example.com/")
+    expect(parsed.SCANNER_SHARED_SECRET).toBe(validScannerSource.SCANNER_SHARED_SECRET)
+    expect(parsed.SCANNER_CALLBACK_SECRET).toBe(validScannerSource.SCANNER_CALLBACK_SECRET)
+  })
+
+  it("names the variable that is missing", () => {
+    for (const key of Object.keys(validScannerSource)) {
+      expect(() => parseScannerEnv({ ...validScannerSource, [key]: undefined })).toThrow(
+        new RegExp(key),
+      )
+    }
+  })
+
+  it("refuses a URL that is not a URL", () => {
+    expect(() => parseScannerEnv({ ...validScannerSource, SCANNER_URL: "scanner" })).toThrow(
+      /SCANNER_URL/,
+    )
+  })
+
+  it("refuses a secret shorter than 32 characters", () => {
+    expect(() =>
+      parseScannerEnv({ ...validScannerSource, SCANNER_SHARED_SECRET: "a".repeat(31) }),
+    ).toThrow(/SCANNER_SHARED_SECRET/)
+
+    expect(() =>
+      parseScannerEnv({ ...validScannerSource, SCANNER_CALLBACK_SECRET: "a".repeat(31) }),
+    ).toThrow(/SCANNER_CALLBACK_SECRET/)
+  })
+
+  it("treats a blank secret as missing", () => {
+    expect(() =>
+      parseScannerEnv({ ...validScannerSource, SCANNER_SHARED_SECRET: "   " }),
+    ).toThrow(/min|at least|required/)
+  })
+})
+
 describe("the lazy getters", () => {
   it("do not validate anything at import, only when called", () => {
     // Reaching this line at all with no R2 or Cloudinary variables set is the
     // assertion: importing the module must not throw.
     expect(typeof getR2Env).toBe("function")
     expect(typeof getCloudinaryEnv).toBe("function")
+    expect(typeof getScannerEnv).toBe("function")
   })
 
   it("read process.env when called", () => {
@@ -188,6 +238,27 @@ describe("the lazy getters", () => {
       }
 
       expect(() => getR2Env()).toThrow(/R2_ACCOUNT_ID/)
+    } finally {
+      process.env = before
+    }
+  })
+})
+
+describe("getScannerEnv", () => {
+  it("reads the three scanner variables from process.env", () => {
+    const before = { ...process.env }
+
+    try {
+      Object.assign(process.env, validScannerSource)
+
+      const parsed = getScannerEnv()
+
+      expect(parsed.SCANNER_URL.toString()).toBe("https://scanner.example.com/")
+      expect(parsed.SCANNER_CALLBACK_SECRET).toBe(validScannerSource.SCANNER_CALLBACK_SECRET)
+
+      delete process.env.SCANNER_URL
+
+      expect(() => getScannerEnv()).toThrow(/SCANNER_URL/)
     } finally {
       process.env = before
     }

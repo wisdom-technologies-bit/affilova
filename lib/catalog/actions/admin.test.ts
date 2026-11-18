@@ -8,6 +8,7 @@ import {
   getProductForReviewAction,
   getReviewFileDownloadUrlAction,
   listReviewQueueAction,
+  reviewFileScanAction,
   reviewProductAction,
   staffPauseProductAction,
 } from "./admin"
@@ -401,5 +402,92 @@ describe("getReviewFileDownloadUrlAction", () => {
       ok: false,
       error: "That product could not be found.",
     })
+  })
+})
+
+describe("reviewFileScanAction", () => {
+  const REASON = "Checked by hand in a sterile sandbox."
+
+  it("passes the decision to the database as the acting member of staff", async () => {
+    const db = createSupabaseFake({
+      tables: { product_files: { data: null, error: null } },
+      rpc: () => ({ data: null, error: null }),
+    })
+
+    state.db = db.client
+
+    await expect(
+      reviewFileScanAction({ fileId: FILE, decision: "clean", reason: REASON }),
+    ).resolves.toEqual({ ok: true })
+
+    expect(db.rpcCalls[0]).toMatchObject({
+      name: "review_file_scan",
+      args: { p_actor: ADMIN, p_file: FILE, p_decision: "clean", p_reason: REASON },
+    })
+  })
+
+  it("accepts a rejection", async () => {
+    const db = createSupabaseFake({
+      tables: { product_files: { data: null, error: null } },
+      rpc: () => ({ data: null, error: null }),
+    })
+
+    state.db = db.client
+
+    await expect(
+      reviewFileScanAction({ fileId: FILE, decision: "reject", reason: REASON }),
+    ).resolves.toEqual({ ok: true })
+
+    expect(db.rpcCalls[0]?.args).toMatchObject({ p_decision: "reject" })
+  })
+
+  it("refuses a moderator with no review permission", async () => {
+    state.user = { id: MODERATOR, email: "moderator@example.com" }
+    state.roles = ["customer"]
+
+    await expect(
+      reviewFileScanAction({ fileId: FILE, decision: "clean", reason: REASON }),
+    ).resolves.toMatchObject({ ok: false })
+  })
+
+  it("refuses a vendor", async () => {
+    state.user = { id: VENDOR, email: "vendor@example.com" }
+    state.roles = ["customer", "vendor"]
+
+    await expect(
+      reviewFileScanAction({ fileId: FILE, decision: "clean", reason: REASON }),
+    ).resolves.toEqual({ ok: false, error: "You do not have access to that." })
+  })
+
+  it("refuses a decision other than clean or reject", async () => {
+    await expect(
+      reviewFileScanAction({ fileId: FILE, decision: "infected", reason: REASON }),
+    ).resolves.toMatchObject({ ok: false })
+  })
+
+  it("reports the database's refusal in plain language", async () => {
+    const db = createSupabaseFake({
+      tables: { product_files: { data: null, error: null } },
+      rpc: () => ({ data: null, error: { message: "reason_required" } }),
+    })
+
+    state.db = db.client
+
+    await expect(
+      reviewFileScanAction({ fileId: FILE, decision: "clean", reason: "too short" }),
+    ).resolves.toEqual({ ok: false, error: "Give a reason of at least 10 characters." })
+  })
+
+  it("never sends a decision on an infected file: the database refuses it", async () => {
+    const db = createSupabaseFake({
+      tables: { product_files: { data: null, error: null } },
+      rpc: () => ({ data: null, error: { message: "not_reviewable" } }),
+    })
+
+    state.db = db.client
+
+    await expect(
+      reviewFileScanAction({ fileId: FILE, decision: "clean", reason: REASON }),
+    ).resolves.toEqual({ ok: false, error: GENERIC_ERROR })
   })
 })

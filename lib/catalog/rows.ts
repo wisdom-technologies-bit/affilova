@@ -5,12 +5,14 @@
 // middle of building a response.
 
 import type {
+  FileScanStatus,
   ProductDetail,
   ProductFile,
   ProductImage,
   ProductReadiness,
   ProductStatus,
   ProductSummary,
+  ScanStatus,
 } from "./action-types"
 
 const STATUSES: readonly ProductStatus[] = [
@@ -24,10 +26,14 @@ const STATUSES: readonly ProductStatus[] = [
 
 const FILE_STATUSES: readonly ProductFile["status"][] = ["pending", "uploaded"]
 
-const SCAN_STATUSES: readonly ProductFile["scanStatus"][] = [
+const SCAN_STATUSES: readonly ScanStatus[] = [
   "not_scanned",
+  "queued",
+  "scanning",
   "clean",
   "infected",
+  "rejected",
+  "needs_review",
   "error",
 ]
 
@@ -145,7 +151,9 @@ export function toProductFile(row: Record<string, unknown>): ProductFile | null 
     contentType: readString(row, "content_type") ?? "",
     sizeBytes: readNumber(row, "size_bytes") ?? 0,
     status: status as ProductFile["status"],
-    scanStatus: scanStatus as ProductFile["scanStatus"],
+    scanStatus: scanStatus as ScanStatus,
+    scanDetail: readString(row, "scan_detail"),
+    scannedAt: readString(row, "scanned_at"),
     createdAt: readString(row, "created_at") ?? "",
   }
 }
@@ -202,7 +210,33 @@ export function toProductReadiness(value: unknown): ProductReadiness {
     price: flag("price"),
     commission: flag("commission"),
     file: flag("file"),
+    // The scan flag has its own name in the RPC (files_scanned), so it is not a
+    // READINESS_KEY: when there is no verdict at all the RPC's own "missing"
+    // array says so, rather than this reader guessing.
+    filesScanned: flag("files_scanned"),
     cover: flag("cover"),
     missing: missing.length > 0 ? missing : READINESS_KEYS.filter((key) => !flag(key)),
+  }
+}
+
+/** One row of get_file_scan_statuses, as a vendor's product screen reads it. */
+export function toFileScanStatus(row: Record<string, unknown>): FileScanStatus | null {
+  const id = readString(row, "id")
+  const scanStatus = readString(row, "scan_status")
+
+  if (id === null || scanStatus === null) {
+    return null
+  }
+
+  if (!(SCAN_STATUSES as readonly string[]).includes(scanStatus)) {
+    return null
+  }
+
+  return {
+    id,
+    originalName: readString(row, "original_name") ?? "",
+    scanStatus: scanStatus as ScanStatus,
+    scanDetail: readString(row, "scan_detail"),
+    scannedAt: readString(row, "scanned_at"),
   }
 }

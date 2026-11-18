@@ -1,14 +1,18 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { ConfirmDialog } from "@/components/catalog/confirm-dialog"
-import { abortFileUploadAction, deleteFileAction } from "@/lib/catalog/actions/vendor"
-import type { ProductFile } from "@/lib/catalog/action-types"
-import { fileStatusLabel, formatBytes, scanStatusLabel } from "@/lib/catalog/format"
+import {
+  abortFileUploadAction,
+  deleteFileAction,
+  getFileScanStatusesAction,
+} from "@/lib/catalog/actions/vendor"
+import type { FileScanStatus, ProductFile } from "@/lib/catalog/action-types"
+import { fileStatusLabel, formatBytes, isScanPending } from "@/lib/catalog/format"
 import { ALLOWED_FILE_TYPES, MAX_FILES_PER_PRODUCT } from "@/lib/catalog/files"
-import { UploadRow, type LocalUpload } from "@/components/catalog/upload-row"
+import { ScanStatusLine, UploadRow, type LocalUpload } from "@/components/catalog/upload-row"
 import { uploadFile } from "@/lib/catalog/upload-client"
 import { createUploadTransport } from "@/components/catalog/upload-transport"
 
@@ -20,6 +24,9 @@ import { createUploadTransport } from "@/components/catalog/upload-transport"
 // from.
 
 const ALLOWED_EXTENSIONS = Object.keys(ALLOWED_FILE_TYPES).join(", ")
+
+/** While a scan is running the screen asks the server this often. */
+const SCAN_POLL_MS = 5000
 
 export function FileManager({
   productId,
@@ -38,6 +45,67 @@ export function FileManager({
   const [uploads, setUploads] = useState<LocalUpload[]>([])
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  // Scan states the server has sent since the page was rendered. They win over
+  // the rows that came with the page, so a scan that finishes is shown without
+  // a full reload.
+  const [liveScan, setLiveScan] = useState<Record<string, FileScanStatus>>({})
+
+  const shown = files.map((file) => {
+    const live = liveScan[file.id]
+
+    if (live === undefined) {
+      return file
+    }
+
+    return {
+      ...file,
+      scanStatus: live.scanStatus,
+      scanDetail: live.scanDetail,
+      scannedAt: live.scannedAt,
+    }
+  })
+
+  const scanPending = shown.some((file) => isScanPending(file.scanStatus))
+
+  // Poll only while an answer is still owed, and stop on unmount. When the last
+  // file settles, the page is refreshed once so the readiness list and the
+  // submit button agree with the scan states.
+  useEffect(() => {
+    if (!scanPending) {
+      return
+    }
+
+    let cancelled = false
+
+    const timer = setInterval(() => {
+      void (async () => {
+        const result = await getFileScanStatusesAction({ productId })
+
+        if (cancelled || !result.ok) {
+          return
+        }
+
+        setLiveScan((current) => {
+          const next: Record<string, FileScanStatus> = { ...current }
+
+          for (const file of result.files) {
+            next[file.id] = file
+          }
+
+          return next
+        })
+
+        if (!result.files.some((file) => isScanPending(file.scanStatus))) {
+          router.refresh()
+        }
+      })()
+    }, SCAN_POLL_MS)
+
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [scanPending, productId, router])
 
   const atLimit = files.length >= MAX_FILES_PER_PRODUCT
   const disabled = readOnlyReason !== undefined || atLimit
@@ -211,7 +279,7 @@ export function FileManager({
           <p className="mt-2 text-sm text-muted-foreground">No files yet. A product needs at least one.</p>
         ) : (
           <ul className="mt-2 divide-y divide-border border-t border-border">
-            {files.map((file) => {
+            {shown.map((file) => {
               const pending = file.status === "pending"
 
               return (
@@ -221,7 +289,7 @@ export function FileManager({
                     <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       <span className="tabular-nums">{formatBytes(file.sizeBytes)}</span>
                       <span>{fileStatusLabel(file.status)}</span>
-                      <span>{scanStatusLabel(file.scanStatus)}</span>
+                      <ScanStatusLine status={file.scanStatus} detail={file.scanDetail} />
                     </p>
                   </div>
 

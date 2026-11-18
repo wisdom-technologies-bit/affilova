@@ -333,6 +333,54 @@ the three settings rows. **Cloudinary assets and R2 objects are not deleted**: t
 rows that held their keys are gone, so they have to be cleared out of the bucket
 and the Cloudinary account by hand before or after running it.
 
+## The seventh migration: malware scanning (20261115000100_malware_scanning)
+
+Run this one **after** the catalog migration and its verify file are clean. It
+reads `product_files` and the catalog functions, and replaces six of those
+functions with the same definitions plus one rule each, so nothing else about
+the catalog changes.
+
+The steps are the same as above:
+
+1. **Step 1**: copy all of
+   `supabase/migrations/20261115000100_malware_scanning.sql` into a new SQL
+   Editor query and click **Run**. It must succeed, and a second **Run** must
+   also succeed.
+2. **Step 2**: copy all of
+   `supabase/verify/20261115000100_malware_scanning_verify.sql`, click **Run**,
+   and check that every `passed` is `t`. This one has 23 checks.
+3. **Step 3**: what it created:
+   - `product_files.scan_status` now has eight values (`not_scanned`, `queued`,
+     `scanning`, `clean`, `infected`, `rejected`, `needs_review`, `error`), and
+     seven new columns record the verdict: `scan_detail`, `current_scan_id`,
+     `scan_requested_at`, `scanned_at`, `scan_attempts`, `sha256`,
+     `detected_mime`, `scan_engine` and `scan_signature_version`.
+   - `file_scan_events`: one row per scanner answer, with a unique `scan_id`.
+     This is what makes a repeated callback harmless.
+   - Seven server-only functions: `request_file_scan`, `mark_file_scanning`,
+     `record_scan_result`, `review_file_scan`, `list_files_due_for_scan`,
+     `get_file_scan_info` and `get_file_scan_statuses`.
+   - `get_product_readiness` and `product_transition` recreated with the scan
+     gate: a product cannot be submitted, and staff cannot approve it, until
+     every file is `clean`.
+   - `log_product_file_admin_access` recreated so an admin download of an
+     `infected` or `rejected` file raises `forbidden`.
+   - Four settings: `scan_required` (true), `scan_rescan_days` (7),
+     `scan_infection_suspend_threshold` (2) and `scan_stale_minutes` (30).
+4. **Step 4**: set `SCANNER_URL`, `SCANNER_SHARED_SECRET` and
+   `SCANNER_CALLBACK_SECRET` in the deployment. Until they are set, uploads are
+   accepted and stay `not_scanned`, so nothing can be submitted for review. The
+   scanner itself is deployed separately.
+
+The scan policy, the state machine, the infection runbook and the environment
+variables are in `docs/scanning.md`.
+
+Its rollback block drops `file_scan_events`, the seven scan functions and the
+scan columns, restores the four-value `scan_status` check and recreates the
+catalog functions **without** the scan gate. Existing verdicts
+are lost: run it only on a database you are willing to reset. Objects already
+copied into `quarantine/` stay in the bucket.
+
 ## Creating the first admin
 
 Every new signup is created as a `customer`. The first admin has to be added by hand,

@@ -147,17 +147,50 @@ export function statusTabFromParam(value: string | undefined): StatusTab {
   return PRODUCT_STATUS_TABS.find((tab) => tab.value === value)?.value ?? "all"
 }
 
+// Every state of a file's malware scan, in the words a vendor and a reviewer
+// both read. A status is never shown by colour alone: each of these is text.
 const SCAN_WORDS = {
-  not_scanned: "Not scanned",
+  not_scanned: "Not scanned yet",
+  queued: "Waiting for security scan",
+  scanning: "Scanning",
   clean: "Clean",
   infected: "Rejected: malware detected",
-  error: "Scan failed",
+  rejected: "Rejected: this file type or content is not allowed",
+  needs_review: "Under manual review",
+  error: "Scan failed, retrying",
 } as const
 
 export type KnownScanStatus = keyof typeof SCAN_WORDS
 
 export function scanStatusLabel(status: KnownScanStatus): string {
   return SCAN_WORDS[status]
+}
+
+// The scanner's rejection codes, in plain language. This is shown under the
+// label, so a vendor knows what to do differently rather than just that the file
+// was refused.
+const SCAN_DETAIL_WORDS: Readonly<Record<string, string>> = {
+  type_mismatch: "The file's content does not match its extension.",
+  encrypted_archive: "Password-protected archives are not accepted.",
+  archive_limits: "The archive is too large or too deeply nested.",
+  path_traversal: "The archive contains unsafe paths.",
+  symlink: "The archive contains unsafe paths.",
+  executable_type: "Program files are not accepted.",
+  size_mismatch: "The upload was incomplete.",
+}
+
+/** The plain-language line for a rejection code, or null when there is none. */
+export function scanDetailLabel(detail: string | null | undefined): string | null {
+  if (typeof detail !== "string" || detail === "") {
+    return null
+  }
+
+  return SCAN_DETAIL_WORDS[detail] ?? null
+}
+
+/** True while the answer is still coming: the screen polls for these. */
+export function isScanPending(status: KnownScanStatus): boolean {
+  return status === "queued" || status === "scanning"
 }
 
 const FILE_WORDS = {

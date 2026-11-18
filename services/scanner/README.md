@@ -157,6 +157,20 @@ The same image works unchanged.
 5. Set the health check path to `/healthz` (Settings → Deploy → Healthcheck Path).
 6. Deploy and confirm `/healthz` returns `200`.
 
+### First boot on a cold volume
+
+The server binds within a second, but it reports `503` on `/healthz` until clamd
+has answered `PING` and the signature database is younger than 72 hours. On a
+brand new volume that database has to come down first, which is a few hundred
+megabytes.
+
+A platform health check that insists on `200` will therefore kill the container
+part way through the download, and the next attempt starts the download again.
+On the very first deploy, either leave the health check path empty until
+`/healthz` answers `200` once, or give it a window long enough for the download.
+After that the volume holds the database, the service is ready in about ten
+seconds, and the health check can go back on permanently.
+
 ## Deploying on Fly.io
 
 ```sh

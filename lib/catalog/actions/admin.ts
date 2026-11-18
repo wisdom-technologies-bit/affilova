@@ -10,6 +10,7 @@ import type {
   ProductDetail,
   ProductFile,
   ProductImage,
+  ReviewFileScanResult,
   ReviewFileUrlResult,
   ReviewProductResult,
   ReviewQueueItem,
@@ -31,6 +32,7 @@ import {
   listReviewQueueSchema,
   productIdSchema,
   productStatusSchema,
+  reviewFileScanSchema,
   reviewProductSchema,
   staffPauseProductSchema,
 } from "@/lib/catalog/schemas"
@@ -46,7 +48,7 @@ import {
 const PRODUCT_COLUMNS =
   "id, title, slug, short_description, description, price_kobo, compare_at_price_kobo, currency, commission_bps, affiliate_approval, refund_window_hours, max_downloads, status, reject_reason, submitted_at, published_at, created_at, updated_at, category_id, vendor_id"
 const FILE_COLUMNS =
-  "id, original_name, content_type, size_bytes, status, scan_status, created_at"
+  "id, original_name, content_type, size_bytes, status, scan_status, scan_detail, scanned_at, created_at"
 const IMAGE_COLUMNS = "id, cloudinary_public_id, alt_text, width, height, sort, is_cover"
 
 function failed(error: unknown): { ok: false; error: string } {
@@ -382,6 +384,48 @@ export async function getReviewFileDownloadUrlAction(input: unknown): Promise<Re
     return { ok: true, url, expiresInSeconds: 300 }
   } catch (error) {
     logger.error("catalog_review_download_failed", { reason: error })
+
+    return { ok: false, error: GENERIC_ERROR }
+  }
+}
+
+/**
+ * Decide a file whose scan did not settle: one held for manual review, or one
+ * whose scan failed.
+ *
+ * The rules live in the database function, not here: staff only, only a file in
+ * needs_review or error, a reason of at least ten characters, and never an
+ * infected file. An infected verdict can only be overturned by rescanning a
+ * clean copy, because a person dismissing malware is how malware ships.
+ */
+export async function reviewFileScanAction(input: unknown): Promise<ReviewFileScanResult> {
+  const guard = await requireActor("products:review")
+
+  if (!guard.ok) {
+    return guard
+  }
+
+  const parsed = parseInput(reviewFileScanSchema, input)
+
+  if (!parsed.ok) {
+    return parsed
+  }
+
+  try {
+    const { error } = await getSupabaseAdminClient().rpc("review_file_scan", {
+      p_actor: guard.actor.userId,
+      p_file: parsed.data.fileId,
+      p_decision: parsed.data.decision,
+      p_reason: parsed.data.reason,
+    })
+
+    if (error) {
+      return failed(error)
+    }
+
+    return { ok: true }
+  } catch (error) {
+    logger.error("catalog_review_file_scan_failed", { reason: error })
 
     return { ok: false, error: GENERIC_ERROR }
   }

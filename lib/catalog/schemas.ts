@@ -137,3 +137,11 @@ export const reviewProductSchema = z
 export const staffPauseProductSchema = z
   .object({ productId: uuid, reason: z.string().max(1000) })
   .strict()
+
+export const reviewFileScanSchema = z
+  .object({
+    fileId: uuid,
+    decision: z.enum(["clean", "reject"]),
+    reason: z.string().max(1000),
+  })
+  .strict()

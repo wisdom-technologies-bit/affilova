@@ -23,6 +23,7 @@ const ITEMS: readonly ReadinessItem[] = [
   { key: "price", label: "A price of at least ₦100", section: "pricing" },
   { key: "commission", label: "A commission between 5% and 80%", section: "pricing" },
   { key: "file", label: "At least one uploaded file", section: "files" },
+  { key: "scan", label: "All files must pass the security scan", section: "files" },
   { key: "cover", label: "A cover image", section: "images" },
 ]
 

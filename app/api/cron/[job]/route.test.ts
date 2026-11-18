@@ -224,6 +224,36 @@ describe("POST /api/cron/[job]", () => {
     expect(queue.claimJobs).not.toHaveBeenCalled()
   })
 
+  it("queues one scan sweep per minute, keyed by the minute bucket", async () => {
+    const response = await callRoute("scan-sweep", `Bearer ${SECRET}`)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ ok: true, scanSweepQueued: true })
+    expect(adminState.enqueued).toHaveLength(1)
+
+    const [enqueued] = adminState.enqueued
+
+    expect(enqueued?.type).toBe("scan_sweep")
+    expect(enqueued?.dedupeKey).toBe(`scan_sweep:${new Date().toISOString().slice(0, 16)}`)
+    expect(queue.recordHeartbeat).toHaveBeenCalledWith(
+      "scan-sweep",
+      "ok",
+      expect.any(Number),
+      null,
+    )
+    // The sweep itself is a queued job: this endpoint never claims work.
+    expect(queue.claimJobs).not.toHaveBeenCalled()
+  })
+
+  it("reports an enqueue that failed without failing the run", async () => {
+    adminState.enqueueError = new Error("queue is down")
+
+    const response = await callRoute("scan-sweep", `Bearer ${SECRET}`)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ ok: true, scanSweepQueued: false })
+  })
+
   it("queues the daily storage sweep once, keyed by the UTC date", async () => {
     const response = await callRoute("cleanup", `Bearer ${SECRET}`)
 

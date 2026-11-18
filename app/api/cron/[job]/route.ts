@@ -23,13 +23,20 @@ export const maxDuration = 25
 const PROCESS_QUEUE_JOB = "process-queue"
 const HEARTBEAT_CHECK_JOB = "heartbeat-check"
 const CLEANUP_JOB = "cleanup"
+const SCAN_SWEEP_JOB = "scan-sweep"
 
 // The endpoint only accepts these names.
-const ALLOWED_JOBS = [PROCESS_QUEUE_JOB, HEARTBEAT_CHECK_JOB, CLEANUP_JOB]
+const ALLOWED_JOBS = [PROCESS_QUEUE_JOB, HEARTBEAT_CHECK_JOB, CLEANUP_JOB, SCAN_SWEEP_JOB]
 
 // The daily job type enqueued by cleanup, and its de-duplication key: one run per
 // UTC day, however many times cleanup is called.
 const STORAGE_CLEANUP_TYPE = "storage_cleanup"
+
+// The scanning sweep and its de-duplication key: one queued sweep per minute,
+// however many times the endpoint is called inside that minute. The sweep itself
+// is a normal queued job, run by process-queue, so this endpoint only ever
+// enqueues and returns: it stays far inside its time limit.
+const SCAN_SWEEP_TYPE = "scan_sweep"
 
 // The schedules whose heartbeats are watched, with the five minute staleness
 // rule below. cleanup is deliberately not one of them: it runs once a day, so
@@ -144,6 +151,25 @@ async function enqueueStorageCleanup(): Promise<boolean> {
   }
 }
 
+// Queue one scan sweep for this minute.
+async function enqueueScanSweep(): Promise<boolean> {
+  const minute = new Date().toISOString().slice(0, 16)
+
+  try {
+    await enqueueJob({
+      type: SCAN_SWEEP_TYPE,
+      payload: {},
+      dedupeKey: `${SCAN_SWEEP_TYPE}:${minute}`,
+    })
+
+    return true
+  } catch {
+    // A failed enqueue is reported honestly in the body and the sweep runs on
+    // the next tick, so this is not a failed run.
+    return false
+  }
+}
+
 export async function POST(request: Request, context: RouteContext): Promise<NextResponse> {
   // 1. The secret is checked before anything else, and a failure says nothing
   //    beyond "unauthorized".
@@ -202,6 +228,21 @@ export async function POST(request: Request, context: RouteContext): Promise<Nex
     } catch (error) {
       await recordHeartbeatSafely(CLEANUP_JOB, "error", startedAt, shortMessage(error))
       logger.error("cron_job_failed", { job: CLEANUP_JOB, reason: shortMessage(error) })
+
+      return json({ ok: false }, 500)
+    }
+  }
+
+  if (job === SCAN_SWEEP_JOB) {
+    try {
+      const scanSweepQueued = await enqueueScanSweep()
+
+      await recordHeartbeatSafely(SCAN_SWEEP_JOB, "ok", startedAt)
+
+      return json({ ok: true, scanSweepQueued }, 200)
+    } catch (error) {
+      await recordHeartbeatSafely(SCAN_SWEEP_JOB, "error", startedAt, shortMessage(error))
+      logger.error("cron_job_failed", { job: SCAN_SWEEP_JOB, reason: shortMessage(error) })
 
       return json({ ok: false }, 500)
     }

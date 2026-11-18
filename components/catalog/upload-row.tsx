@@ -1,12 +1,39 @@
 "use client"
 
-import { formatBytes } from "@/lib/catalog/format"
+import { formatBytes, scanDetailLabel, scanStatusLabel, type KnownScanStatus } from "@/lib/catalog/format"
 
 // One file in the upload queue: its name, its size, a progress bar while bytes
 // are moving, and either Cancel or Dismiss.
 //
 // The bar is a progressbar with a live aria-valuenow, so a screen reader hears
 // the number, and the percentage is also in the text beside it.
+
+/**
+ * A file's security-scan state, in words.
+ *
+ * The label is the whole message, so the state never depends on a colour; the
+ * plain-language line underneath only appears when the scanner gave a reason a
+ * vendor can act on. It is a live region because the state changes on its own
+ * while the screen polls, and a screen reader should hear the change.
+ */
+export function ScanStatusLine({
+  status,
+  detail,
+}: {
+  status: KnownScanStatus
+  detail?: string | null
+}) {
+  const reason = scanDetailLabel(detail)
+
+  return (
+    <span aria-live="polite" aria-atomic="true" className="inline-block">
+      <span>{scanStatusLabel(status)}</span>
+      {reason === null ? null : (
+        <span className="mt-1 block text-xs leading-5 text-muted-foreground">{reason}</span>
+      )}
+    </span>
+  )
+}
 
 export type LocalUpload = {
   id: string

@@ -124,8 +124,33 @@ const cloudinaryEnvSchema = z.object({
   CLOUDINARY_API_SECRET: requiredString,
 })
 
+// The separate scanner service. Read only by lib/scanning/client.ts and by the
+// signed callback route, and never at import time: a deployment without a
+// scanner configured can still build and run everything that does not scan.
+const scannerEnvSchema = z.object({
+  SCANNER_URL: requiredUrl,
+  SCANNER_SHARED_SECRET: z.preprocess(
+    present,
+    z
+      .string({ required_error: "is required" })
+      .min(32, "must be at least 32 characters long"),
+  ),
+  SCANNER_CALLBACK_SECRET: z.preprocess(
+    present,
+    z
+      .string({ required_error: "is required" })
+      .min(32, "must be at least 32 characters long"),
+  ),
+})
+
 export type R2Env = z.infer<typeof r2EnvSchema>
 export type CloudinaryEnv = z.infer<typeof cloudinaryEnvSchema>
+export type ScannerEnv = {
+  /** Parsed, because it is joined with a path before every request. */
+  SCANNER_URL: URL
+  SCANNER_SHARED_SECRET: string
+  SCANNER_CALLBACK_SECRET: string
+}
 
 function formatIssues(scope: string, error: z.ZodError): string {
   const details = error.issues.map((issue) => {
@@ -177,6 +202,20 @@ export function parseCloudinaryEnv(source: EnvSource): CloudinaryEnv {
   return result.data
 }
 
+export function parseScannerEnv(source: EnvSource): ScannerEnv {
+  const result = scannerEnvSchema.safeParse(source)
+
+  if (!result.success) {
+    throw new Error(formatIssues("scanner", result.error))
+  }
+
+  return {
+    SCANNER_URL: new URL(result.data.SCANNER_URL),
+    SCANNER_SHARED_SECRET: result.data.SCANNER_SHARED_SECRET,
+    SCANNER_CALLBACK_SECRET: result.data.SCANNER_CALLBACK_SECRET,
+  }
+}
+
 let serverEnvCache: ServerEnv | undefined
 let publicEnvCache: PublicEnv | undefined
 
@@ -220,6 +259,16 @@ export function getR2Env(): R2Env {
     R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
     R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
     R2_BUCKET_FILES: process.env.R2_BUCKET_FILES,
+  })
+}
+
+// Deliberately uncached, like the storage credentials: the scanner is optional
+// for every code path that does not scan a file.
+export function getScannerEnv(): ScannerEnv {
+  return parseScannerEnv({
+    SCANNER_URL: process.env.SCANNER_URL,
+    SCANNER_SHARED_SECRET: process.env.SCANNER_SHARED_SECRET,
+    SCANNER_CALLBACK_SECRET: process.env.SCANNER_CALLBACK_SECRET,
   })
 }
 

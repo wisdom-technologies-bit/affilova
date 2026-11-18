@@ -40,6 +40,10 @@ const MESSAGES: Readonly<Record<string, string>> = {
   reason_required: "Give a reason of at least 10 characters.",
   self_review: "You cannot review your own product.",
 
+  // Scanning
+  bad_verdict: "The scanner sent a result that could not be read.",
+  scan_not_reviewable: "Only a file under manual review, or one whose scan failed, can be decided here.",
+
   // Files
   file_limit: "A product can have at most 10 files.",
   size_limit: "That file would take the product over its size limit.",

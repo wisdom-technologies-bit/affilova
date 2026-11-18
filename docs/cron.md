@@ -32,6 +32,7 @@ detail. `CRON_SECRET` must be at least 32 characters; see `.env.example`.
 | `process-queue`   | every minute  | Claims a small batch of queued jobs, runs them, records a heartbeat.   |
 | `heartbeat-check` | every 5 min   | Reports any schedule that has not checked in for over 5 minutes.       |
 | `cleanup`         | daily at 03:00 | Deletes old rate-limit windows, queues the storage sweep, records a heartbeat. |
+| `scan-sweep`      | every 5 min   | Queues one scan sweep for the current minute, so new, failed and stale files are scanned. |
 
 Any other name is answered with `404 {"error":"not_found"}`.
 
@@ -109,6 +110,29 @@ A single job failing is **not** a failed run: the job is marked failed (or
 rescheduled) in the database and the request still answers 200 with the counts.
 Only an unexpected exception returns 500. No response ever contains a secret or
 error text.
+
+## The scan sweep
+
+`scan-sweep` is the safety net under the malware scanner. Uploads queue their own
+scan as soon as they are confirmed; this endpoint catches everything else.
+
+It does not do the work itself. Each call queues exactly one `scan_sweep` job
+under a dedupe key of the current UTC minute (`scan_sweep:2026-11-18T09:33`), so
+a scheduler that fires twice in the same minute still queues one sweep, and the
+answer is `{"ok":true,"scanSweepQueued":true}`. A queue that refuses the job is
+reported as `{"ok":true,"scanSweepQueued":false}` rather than failing the run.
+
+The queued job then asks the database for up to 50 files that are due:
+never-scanned uploads, files whose scan failed, files stuck in `queued` or
+`scanning` past `scan_stale_minutes`, and clean files older than
+`scan_rescan_days` on a live, paused or submitted product. One `scan_file` job is
+queued per file, keyed by file and attempt count so a file is not scanned twice
+for the same attempt.
+
+Call it every five minutes. A file is therefore scanned within a few minutes of
+its upload even if the immediate job was lost, and the weekly rescan runs on the
+same path. If the scanner is down the files stay `queued`: nothing is lost, and
+the next sweep retries them. The policy is in `docs/scanning.md`.
 
 ## How a run stays inside its time limit
 

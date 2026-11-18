@@ -2,6 +2,7 @@
 
 import { randomUUID } from "node:crypto"
 
+import { enqueueJob } from "@/lib/jobs/queue"
 import { logger } from "@/lib/logger"
 import { getSupabaseAdminClient } from "@/lib/supabase/admin"
 import { getCloudinaryImages, ImageRejectedError } from "@/lib/images/cloudinary"
@@ -12,6 +13,8 @@ import type {
   ConfirmFileUploadResult,
   CreateProductDraftResult,
   DeleteFileResult,
+  FileScanStatus,
+  GetFileScanStatusesResult,
   GetProductForEditResult,
   ImageSignatureResult,
   ListVendorProductsResult,
@@ -45,6 +48,7 @@ import {
 import {
   asRecord,
   readString,
+  toFileScanStatus,
   toProductDetail,
   toProductFile,
   toProductImage,
@@ -79,7 +83,7 @@ import {
 // { ok: false, error } with a sentence that never carries database text.
 
 const FILE_COLUMNS =
-  "id, original_name, content_type, size_bytes, status, scan_status, created_at, storage_key, multipart_upload_id"
+  "id, original_name, content_type, size_bytes, status, scan_status, scan_detail, scanned_at, created_at, storage_key, multipart_upload_id"
 const IMAGE_COLUMNS = "id, cloudinary_public_id, alt_text, width, height, sort, is_cover"
 const PRODUCT_COLUMNS =
   "id, title, slug, short_description, description, price_kobo, compare_at_price_kobo, currency, commission_bps, affiliate_approval, refund_window_hours, max_downloads, status, reject_reason, submitted_at, published_at, updated_at, category_id"
@@ -244,6 +248,20 @@ async function confirmUploadedObject(
 
   if (error) {
     return failed(error)
+  }
+
+  // The scan is queued from here, after the database has accepted the upload and
+  // never before. A file that could not be queued is still uploaded: the sweep
+  // picks up anything left in 'not_scanned', so a queue problem delays the scan
+  // instead of failing the upload.
+  try {
+    await enqueueJob({
+      type: "scan_file",
+      payload: { fileId: file.id },
+      dedupeKey: `scan_file:${file.id}:0`,
+    })
+  } catch {
+    logger.error("catalog_upload_scan_enqueue_failed", { fileId: file.id })
   }
 
   return { ok: true, fileId: file.id }
@@ -762,6 +780,57 @@ export async function confirmFileUploadAction(input: unknown): Promise<ConfirmFi
   }
 
   return confirmUploadedObject(loaded.file, guard.actor)
+}
+
+/**
+ * The scan state of every file on one of this vendor's products.
+ *
+ * The product screen polls this while a file is queued or scanning. Ownership is
+ * checked in the database against p_actor, so another vendor's product answers
+ * "forbidden" rather than its files.
+ */
+export async function getFileScanStatusesAction(
+  input: unknown,
+): Promise<GetFileScanStatusesResult> {
+  const guard = await requireActor("area:merchant")
+
+  if (!guard.ok) {
+    return guard
+  }
+
+  const parsed = parseInput(productIdSchema, input)
+
+  if (!parsed.ok) {
+    return parsed
+  }
+
+  try {
+    const { data, error } = await getSupabaseAdminClient().rpc("get_file_scan_statuses", {
+      p_actor: guard.actor.userId,
+      p_product: parsed.data.productId,
+    })
+
+    if (error) {
+      return failed(error)
+    }
+
+    const files: FileScanStatus[] = []
+
+    for (const row of Array.isArray(data) ? data : []) {
+      const record = asRecord(row)
+      const file = record === null ? null : toFileScanStatus(record)
+
+      if (file !== null) {
+        files.push(file)
+      }
+    }
+
+    return { ok: true, files }
+  } catch (error) {
+    logger.error("catalog_file_scan_statuses_failed", { reason: error })
+
+    return { ok: false, error: GENERIC_ERROR }
+  }
 }
 
 export async function abortFileUploadAction(input: unknown): Promise<AbortFileUploadResult> {

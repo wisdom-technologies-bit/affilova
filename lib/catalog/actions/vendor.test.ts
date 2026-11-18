@@ -12,6 +12,7 @@ import {
   confirmFileUploadAction,
   createProductDraftAction,
   deleteFileAction,
+  getFileScanStatusesAction,
   getPartUrlsAction,
   getProductForEditAction,
   listVendorProductsAction,
@@ -39,6 +40,8 @@ const state = vi.hoisted(() => ({
   images: null as unknown,
   rateLimitCalls: [] as Record<string, unknown>[],
   storageCalls: [] as { method: string; args: unknown }[],
+  enqueued: [] as { type: string; dedupeKey?: string; payload?: unknown }[],
+  enqueueError: null as Error | null,
 }))
 
 vi.mock("@/lib/identity/session", () => ({
@@ -61,6 +64,18 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 vi.mock("@/lib/storage/r2", () => ({
   getR2Storage: () => state.storage,
+}))
+
+vi.mock("@/lib/jobs/queue", () => ({
+  enqueueJob: async (input: { type: string; dedupeKey?: string; payload?: unknown }) => {
+    if (state.enqueueError !== null) {
+      throw state.enqueueError
+    }
+
+    state.enqueued.push(input)
+
+    return "job-id"
+  },
 }))
 
 vi.mock("@/lib/images/cloudinary", async () => {
@@ -149,6 +164,8 @@ beforeEach(() => {
   state.allowed = true
   state.rateLimitCalls = []
   state.storageCalls = []
+  state.enqueued = []
+  state.enqueueError = null
   state.db = null
   setStorage()
   setImages()
@@ -935,6 +952,42 @@ describe("confirmFileUploadAction", () => {
     })
   })
 
+  it("queues the security scan once the upload is confirmed", async () => {
+    useDb(
+      createSupabaseFake({
+        tables: { product_files: fileRow(), products: ownedProduct() },
+        rpc: () => ({ data: null, error: null }),
+      }),
+    )
+
+    await expect(confirmFileUploadAction({ fileId: FILE })).resolves.toEqual({
+      ok: true,
+      fileId: FILE,
+    })
+
+    expect(state.enqueued).toEqual([
+      { type: "scan_file", payload: { fileId: FILE }, dedupeKey: `scan_file:${FILE}:0` },
+    ])
+  })
+
+  it("still reports a confirmed upload when the scan cannot be queued", async () => {
+    useDb(
+      createSupabaseFake({
+        tables: { product_files: fileRow(), products: ownedProduct() },
+        rpc: () => ({ data: null, error: null }),
+      }),
+    )
+
+    state.enqueueError = new Error("queue is down")
+
+    // The row is confirmed; the sweeper picks up anything left unscanned, so a
+    // queue problem delays the scan instead of failing the vendor's upload.
+    await expect(confirmFileUploadAction({ fileId: FILE })).resolves.toEqual({
+      ok: true,
+      fileId: FILE,
+    })
+  })
+
   it("deletes the object and the row when the size does not match", async () => {
     const db = useDb(
       createSupabaseFake({
@@ -1281,6 +1334,101 @@ describe("removeImageAction and setCoverImageAction", () => {
     expect(db.rpcCalls[0]).toMatchObject({
       name: "set_cover_image",
       args: { p_actor: VENDOR, p_image: IMAGE },
+    })
+  })
+})
+
+describe("getFileScanStatusesAction", () => {
+  function scanRow(overrides: Record<string, unknown> = {}) {
+    return {
+      id: FILE,
+      original_name: "guide.pdf",
+      scan_status: "queued",
+      scan_detail: null,
+      scanned_at: null,
+      ...overrides,
+    }
+  }
+
+  it("returns the scan fields of the vendor's own files", async () => {
+    const db = useDb(
+      createSupabaseFake({
+        tables: { products: ownedProduct() },
+        rpc: () => ({
+          data: [
+            scanRow(),
+            scanRow({
+              id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbc1",
+              scan_status: "infected",
+              scan_detail: "Eicar-Test-Signature",
+              scanned_at: "2026-11-17T10:00:00.000Z",
+            }),
+          ],
+          error: null,
+        }),
+      }),
+    )
+
+    await expect(getFileScanStatusesAction({ productId: PRODUCT })).resolves.toEqual({
+      ok: true,
+      files: [
+        {
+          id: FILE,
+          originalName: "guide.pdf",
+          scanStatus: "queued",
+          scanDetail: null,
+          scannedAt: null,
+        },
+        {
+          id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbc1",
+          originalName: "guide.pdf",
+          scanStatus: "infected",
+          scanDetail: "Eicar-Test-Signature",
+          scannedAt: "2026-11-17T10:00:00.000Z",
+        },
+      ],
+    })
+
+    expect(db.rpcCalls[0]).toMatchObject({
+      name: "get_file_scan_statuses",
+      args: { p_actor: VENDOR, p_product: PRODUCT },
+    })
+  })
+
+  it("drops a row whose status it cannot read rather than showing it", async () => {
+    useDb(
+      createSupabaseFake({
+        tables: { products: ownedProduct() },
+        rpc: () => ({ data: [scanRow({ scan_status: "made_up" })], error: null }),
+      }),
+    )
+
+    await expect(getFileScanStatusesAction({ productId: PRODUCT })).resolves.toEqual({
+      ok: true,
+      files: [],
+    })
+  })
+
+  it("refuses another vendor's product", async () => {
+    useDb(
+      createSupabaseFake({
+        tables: { products: ownedProduct("draft", OTHER_VENDOR) },
+        rpc: () => ({ data: [], error: { message: "forbidden" } }),
+      }),
+    )
+
+    await expect(getFileScanStatusesAction({ productId: PRODUCT })).resolves.toEqual({
+      ok: false,
+      error: "You do not have access to that.",
+    })
+  })
+
+  it("refuses a signed-out caller", async () => {
+    state.user = null
+
+    await expect(getFileScanStatusesAction({ productId: PRODUCT })).resolves.toEqual({
+      ok: false,
+      error: "Sign in to continue.",
     })
   })
 })

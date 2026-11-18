@@ -1,6 +1,7 @@
 import {
   AbortMultipartUploadCommand,
   CompleteMultipartUploadCommand,
+  CopyObjectCommand,
   CreateMultipartUploadCommand,
   DeleteObjectCommand,
   GetObjectCommand,
@@ -205,6 +206,24 @@ describe("deleteObject", () => {
     expect(sent[0]?.input).toMatchObject({
       Bucket: BUCKET,
       Key: "products/p/f/guide.pdf",
+    })
+  })
+})
+
+describe("copyObject", () => {
+  it("copies from one key to another in the same bucket", async () => {
+    const { storage, sent } = fakeStorage()
+
+    await storage.copyObject({
+      fromKey: "products/p/f/guide.pdf",
+      toKey: "quarantine/products/p/f/guide.pdf",
+    })
+
+    expect(sent[0]?.constructor.name).toBe(CopyObjectCommand.name)
+    expect(sent[0]?.input).toMatchObject({
+      Bucket: BUCKET,
+      CopySource: `${BUCKET}/products/p/f/guide.pdf`,
+      Key: "quarantine/products/p/f/guide.pdf",
     })
   })
 })

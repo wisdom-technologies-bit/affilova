@@ -1,3 +1,9 @@
+import {
+  runQuarantineFileJob,
+  runScanFileJob,
+  runScanSweepJob,
+} from "@/lib/scanning/jobs"
+
 import { runStorageCleanupJob } from "./storage-cleanup"
 import type { Job } from "./types"
 
@@ -32,4 +38,20 @@ registerHandler("noop", noopHandler)
 // in the bucket and the rows that hold them.
 registerHandler("storage_cleanup", async () => {
   await runStorageCleanupJob()
+})
+
+// Ask the scanner about one file, and record that the request was accepted.
+registerHandler("scan_file", async (job) => {
+  await runScanFileJob(job.payload)
+})
+
+// Queue a scan for every file that is due: never scanned, failed, stuck in
+// 'queued' for too long, or clean but old enough for the weekly rescan.
+registerHandler("scan_sweep", async () => {
+  await runScanSweepJob()
+})
+
+// Copy an infected object into quarantine, then delete the original.
+registerHandler("quarantine_file", async (job) => {
+  await runQuarantineFileJob(job.payload)
 })

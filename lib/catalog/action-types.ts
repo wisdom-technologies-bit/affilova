@@ -36,13 +36,28 @@ export type ProductDetail = ProductSummary & {
   maxDownloads: number
 }
 
+/** The eight states a file's malware scan can be in. */
+export type ScanStatus =
+  | "not_scanned"
+  | "queued"
+  | "scanning"
+  | "clean"
+  | "infected"
+  | "rejected"
+  | "needs_review"
+  | "error"
+
 export type ProductFile = {
   id: string
   originalName: string
   contentType: string
   sizeBytes: number
   status: "pending" | "uploaded"
-  scanStatus: "not_scanned" | "clean" | "infected" | "error"
+  scanStatus: ScanStatus
+  /** The scanner's detail code, or a short reason. At most 300 characters. */
+  scanDetail: string | null
+  /** When the last scan finished, or null. */
+  scannedAt: string | null
   createdAt: string
 }
 
@@ -64,8 +79,19 @@ export type ProductReadiness = {
   price: boolean
   commission: boolean
   file: boolean
+  /** True when every uploaded file has a clean scan verdict. */
+  filesScanned: boolean
   cover: boolean
   missing: string[]
+}
+
+/** One file's scan state, as the vendor's product screen polls it. */
+export type FileScanStatus = {
+  id: string
+  originalName: string
+  scanStatus: ScanStatus
+  scanDetail: string | null
+  scannedAt: string | null
 }
 
 export type CreateProductDraftResult = { ok: true; productId: string } | CatalogFailure
@@ -116,6 +142,12 @@ export type StartFileUploadResult =
 export type PartUrlsResult =
   | { ok: true; parts: { partNumber: number; url: string }[] }
   | CatalogFailure
+
+export type GetFileScanStatusesResult =
+  | { ok: true; files: FileScanStatus[] }
+  | CatalogFailure
+
+export type ReviewFileScanResult = { ok: true } | CatalogFailure
 
 export type ConfirmFileUploadResult = { ok: true; fileId: string } | CatalogFailure
 

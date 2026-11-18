@@ -3,9 +3,8 @@ import { describe, expect, it } from "vitest"
 import { signCallbackBody, verifyCallbackSignature } from "#signature"
 
 /**
- * Shared test vector. The app side of the integration uses the same secret,
- * timestamp, body and expected signature, so a change on either side shows up as
- * a failing test rather than as silent 401s in production.
+ * This service's own vector, pinned so a change to the signed string (an extra
+ * separator, a different encoding) fails here rather than in production.
  */
 export const CALLBACK_VECTOR_SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
@@ -21,6 +20,16 @@ describe("signCallbackBody", () => {
   it("matches the shared test vector", () => {
     expect(signCallbackBody(CALLBACK_VECTOR_SECRET, CALLBACK_VECTOR_TIMESTAMP, CALLBACK_VECTOR_BODY)).toBe(
       CALLBACK_VECTOR_SIGNATURE,
+    )
+  })
+
+  // The vector the app verifies with, taken from lib/scanning/signature.ts. If
+  // either side ever changes what it signs, this test and the app's own test
+  // vector disagree, which is exactly the failure we want to catch here instead
+  // of as silent 401s on every callback.
+  it("reproduces the vector the app verifies with", () => {
+    expect(signCallbackBody("test-secret-for-callbacks-000000", 1700000000, '{"a":1}')).toBe(
+      "f8446e06993cf830411284cf17c710a29131a488602af8ea6a991e11540c8e1d",
     )
   })
 

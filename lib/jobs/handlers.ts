@@ -1,4 +1,13 @@
 import {
+  markRefundFailed,
+  markRefundSubmitted,
+  readOrderForRefund,
+  readRefundRequest,
+} from "@/lib/commerce/db"
+import { REFUND_SUBMIT_JOB, runRefundSubmitJob } from "@/lib/commerce/refund-submit"
+import { logger } from "@/lib/logger"
+import { createRefund } from "@/lib/paystack/client"
+import {
   runQuarantineFileJob,
   runScanFileJob,
   runScanSweepJob,
@@ -54,4 +63,18 @@ registerHandler("scan_sweep", async () => {
 // Copy an infected object into quarantine, then delete the original.
 registerHandler("quarantine_file", async (job) => {
   await runQuarantineFileJob(job.payload)
+})
+
+// Submit an approved refund to Paystack. The ledger is not touched here: the
+// reversal is posted by the refund.processed webhook. A retryable failure throws
+// so the queue tries again; a terminal one is recorded on the request.
+registerHandler(REFUND_SUBMIT_JOB, async (job) => {
+  await runRefundSubmitJob(job.payload, {
+    readRequest: readRefundRequest,
+    readOrder: readOrderForRefund,
+    createRefund,
+    markSubmitted: markRefundSubmitted,
+    markFailed: markRefundFailed,
+    logWarn: (event, fields) => logger.warn(event, fields),
+  })
 })

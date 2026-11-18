@@ -143,6 +143,37 @@ const scannerEnvSchema = z.object({
   ),
 })
 
+// Paystack. Read only by lib/paystack/client.ts and by the webhook route, and
+// only when a payment is actually being made or a webhook is being checked: a
+// deployment with no Paystack key still builds and still serves every page that
+// does not take money.
+//
+// The mode is derived from the secret key prefix, never configured: a live key
+// in a test deployment is a real charge, and a test key in production takes no
+// money at all. Both are worth seeing on the page rather than guessing.
+const paystackEnvSchema = z.object({
+  PAYSTACK_SECRET_KEY: requiredString,
+  NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: optionalString,
+  // The signing secret for the newer Paystack-Signature header (whsec_...).
+  // Optional: without it only the legacy x-paystack-signature header is checked.
+  PAYSTACK_WEBHOOK_SECRET: optionalString,
+  // "true" turns the source IP allowlist on. Anything else, or nothing, leaves
+  // it off and only logs a warning for an unexpected address.
+  PAYSTACK_WEBHOOK_ENFORCE_IPS: optionalString,
+})
+
+export type PaystackMode = "test" | "live" | "invalid"
+
+export interface PaystackEnv {
+  PAYSTACK_SECRET_KEY: string
+  NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY?: string
+  PAYSTACK_WEBHOOK_SECRET?: string
+  /** test for sk_test_, live for sk_live_, invalid for anything else. */
+  mode: PaystackMode
+  /** Whether the webhook route refuses addresses outside Paystack's list. */
+  enforceWebhookIps: boolean
+}
+
 export type R2Env = z.infer<typeof r2EnvSchema>
 export type CloudinaryEnv = z.infer<typeof cloudinaryEnvSchema>
 export type ScannerEnv = {
@@ -216,6 +247,40 @@ export function parseScannerEnv(source: EnvSource): ScannerEnv {
   }
 }
 
+export function paystackMode(secretKey: string): PaystackMode {
+  if (secretKey.startsWith("sk_test_")) {
+    return "test"
+  }
+
+  if (secretKey.startsWith("sk_live_")) {
+    return "live"
+  }
+
+  return "invalid"
+}
+
+export function parsePaystackEnv(source: EnvSource): PaystackEnv {
+  const result = paystackEnvSchema.safeParse(source)
+
+  if (!result.success) {
+    throw new Error(formatIssues("Paystack", result.error))
+  }
+
+  const enforce = (result.data.PAYSTACK_WEBHOOK_ENFORCE_IPS ?? "").toLowerCase()
+
+  return {
+    PAYSTACK_SECRET_KEY: result.data.PAYSTACK_SECRET_KEY,
+    ...(result.data.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY === undefined
+      ? {}
+      : { NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: result.data.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY }),
+    ...(result.data.PAYSTACK_WEBHOOK_SECRET === undefined
+      ? {}
+      : { PAYSTACK_WEBHOOK_SECRET: result.data.PAYSTACK_WEBHOOK_SECRET }),
+    mode: paystackMode(result.data.PAYSTACK_SECRET_KEY),
+    enforceWebhookIps: enforce === "true" || enforce === "1" || enforce === "yes",
+  }
+}
+
 let serverEnvCache: ServerEnv | undefined
 let publicEnvCache: PublicEnv | undefined
 
@@ -277,5 +342,16 @@ export function getCloudinaryEnv(): CloudinaryEnv {
     CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
     CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
     CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
+  })
+}
+
+// Deliberately uncached, like the storage credentials: only a payment path or a
+// webhook needs it, and a missing key must not break a build.
+export function getPaystackEnv(): PaystackEnv {
+  return parsePaystackEnv({
+    PAYSTACK_SECRET_KEY: process.env.PAYSTACK_SECRET_KEY,
+    NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
+    PAYSTACK_WEBHOOK_SECRET: process.env.PAYSTACK_WEBHOOK_SECRET,
+    PAYSTACK_WEBHOOK_ENFORCE_IPS: process.env.PAYSTACK_WEBHOOK_ENFORCE_IPS,
   })
 }

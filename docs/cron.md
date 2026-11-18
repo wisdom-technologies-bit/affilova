@@ -33,6 +33,8 @@ detail. `CRON_SECRET` must be at least 32 characters; see `.env.example`.
 | `heartbeat-check` | every 5 min   | Reports any schedule that has not checked in for over 5 minutes.       |
 | `cleanup`         | daily at 03:00 | Deletes old rate-limit windows, queues the storage sweep, records a heartbeat. |
 | `scan-sweep`      | every 5 min   | Queues one scan sweep for the current minute, so new, failed and stale files are scanned. |
+| `reconcile-pending` | every 10 min | Asks Paystack about pending orders and posts the ones that were paid. |
+| `expire-orders`   | hourly        | Expires unpaid orders whose 24-hour window has passed.                  |
 
 Any other name is answered with `404 {"error":"not_found"}`.
 
@@ -42,10 +44,16 @@ the function keeps a full day of history). Its answer adds the number of deleted
 rows to the usual body:
 
 ```json
-{"ok":true,"deleted":12,"storageCleanupQueued":true}
+{"ok":true,"deleted":12,"storageCleanupQueued":true,"webhookEventsPurged":4}
 ```
 
 `deleted` is `0` on a quiet day, which is normal.
+
+`webhookEventsPurged` is the number of webhook deliveries older than 30 days that
+were forgotten. The log is only needed for as long as a Paystack retry can
+arrive (72 hours in live mode), so 30 days is generous; deleting the rows is what
+keeps the duplicate check cheap. `public.purge_old_webhook_events(30)` clamps the
+window to 1..365 days.
 
 `cleanup` also queues the daily `storage_cleanup` job, with the UTC date in its
 de-duplication key (`storage_cleanup:2026-11-17`), so however many times the
@@ -74,11 +82,46 @@ happening is visible in `public.cron_heartbeats`.
 queue (`storage_cleanup`), and `POST /api/cron/storage_cleanup` answers 404 like
 any other unknown job name.
 
-Planned for later, **not implemented yet**: `reconcile-pending` every 10 minutes,
-`expire-orders` hourly, `approve-commissions` hourly, `rollups` hourly,
-`reconcile-daily` at 02:00, `vat-reminders` on the 14th and 19th at 09:00,
-`payout-run` weekly. Do not add these to the scheduler until the job exists: the
-endpoint answers 404 for an unknown name.
+### The `reconcile-pending` job
+
+Paystack only sends webhooks for successful charges, so an order paid while the
+webhook was lost stays `pending` until someone asks. This job asks:
+
+1. `public.list_orders_needing_verification(50)` returns the pending orders
+   created more than 10 minutes and less than 24 hours ago, oldest first.
+2. Each one is verified with `GET /transaction/verify/:reference`, one at a time.
+3. When the verified status is `success`, `process_paid_order` is called with the
+   verified amounts, fees, channel, transaction id and `paid_at`.
+4. Anything else (`abandoned`, `failed`, `ongoing`, `pending`) is left alone: the
+   expiry job owns those.
+
+It stops starting new checks after 18 seconds, so the endpoint always answers
+inside its 30-second limit. Its answer:
+
+```json
+{"ok":true,"checked":12,"paid":1,"skipped":11,"failed":0,"stoppedEarly":false}
+```
+
+`paid` counts orders that became paid (including one that was already paid),
+`skipped` counts orders Paystack says were not paid, and `failed` counts
+verifications or posts that errored. `stoppedEarly` is `true` when the time
+budget ran out with orders left in the batch; the next tick picks them up.
+
+### The `expire-orders` job
+
+Calls `public.expire_pending_orders(500)`, which moves up to 500 pending orders
+whose `expires_at` has passed to `expired`, and answers
+`{"ok":true,"expired":7}`. The batch is bounded so one call never holds a long
+lock. An expired order can still be paid: `process_paid_order` accepts an
+`expired` order and moves it to `paid`, which is what happens when a buyer pays
+just before the window closes and the webhook arrives late.
+
+### Not implemented yet
+
+`approve-commissions` hourly, `rollups` hourly, `reconcile-daily` at 02:00,
+`vat-reminders` on the 14th and 19th at 09:00, `payout-run` weekly. Do not add
+these to the scheduler until the job exists: the endpoint answers 404 for an
+unknown name.
 
 ## cron-job.org settings
 
@@ -87,7 +130,7 @@ Create one cron job per row in the table above, with these settings:
 - **URL**: `https://<app host>/api/cron/process-queue` (or the job name)
 - **Method**: `POST`
 - **Headers**: `Authorization` = `Bearer <CRON_SECRET>`
-- **Schedule**: every minute / every 5 minutes
+- **Schedule**: as in the table above (every minute, every 5 or 10 minutes, hourly, daily)
 - **Timezone**: `Africa/Lagos`
 - **Timeout**: 30 seconds
 - **Failure notifications**: **on** (email when a run fails)
@@ -101,7 +144,9 @@ comfortably above the normal run.
 | --------------------------------- | ------ | ------------------------------------------------------- |
 | Queue processed                   | 200    | `{"ok":true,"claimed":n,"completed":n,"failed":n,"released":n}` |
 | Heartbeat report                  | 200    | `{"ok":true,"stale":["process-queue"]}`                  |
-| Cleanup finished                  | 200    | `{"ok":true,"deleted":n,"storageCleanupQueued":true}`    |
+| Cleanup finished                  | 200    | `{"ok":true,"deleted":n,"storageCleanupQueued":true,"webhookEventsPurged":n}` |
+| Reconciliation finished           | 200    | `{"ok":true,"checked":n,"paid":n,"skipped":n,"failed":n,"stoppedEarly":false}` |
+| Expiry finished                   | 200    | `{"ok":true,"expired":n}`                               |
 | Missing or wrong secret           | 401    | `{"error":"unauthorized"}`                              |
 | Unknown job name                  | 404    | `{"error":"not_found"}`                                 |
 | Unexpected failure                | 500    | `{"ok":false}`                                          |

@@ -19,6 +19,9 @@ const adminState = vi.hoisted(() => ({
   // cleanup_rate_limits(): the RPC answer, or an error to throw on.
   cleanupData: 0 as unknown,
   cleanupError: null as { message: string } | null,
+  // purge_old_webhook_events(): the RPC answer, or an error to throw on.
+  purgeData: 0 as unknown,
+  purgeError: null as { message: string } | null,
   keepOldRateLimits: 0,
   enqueued: [] as { type: string; dedupeKey?: string }[],
   enqueueError: null as Error | null,
@@ -47,11 +50,15 @@ vi.mock("@/lib/supabase/admin", () => ({
       select: async () => ({ data: adminState.rows, error: adminState.error }),
     }),
     rpc: async (name: string) => {
-      if (name !== "cleanup_rate_limits") {
-        return { data: null, error: { message: `unexpected rpc ${name}` } }
+      if (name === "cleanup_rate_limits") {
+        return { data: adminState.cleanupData, error: adminState.cleanupError }
       }
 
-      return { data: adminState.cleanupData, error: adminState.cleanupError }
+      if (name === "purge_old_webhook_events") {
+        return { data: adminState.purgeData, error: adminState.purgeError }
+      }
+
+      return { data: null, error: { message: `unexpected rpc ${name}` } }
     },
   }),
 }))
@@ -96,6 +103,8 @@ beforeEach(() => {
   adminState.error = null
   adminState.cleanupData = 0
   adminState.cleanupError = null
+  adminState.purgeData = 0
+  adminState.purgeError = null
   adminState.enqueued = []
   adminState.enqueueError = null
 })
@@ -213,7 +222,12 @@ describe("POST /api/cron/[job]", () => {
     const response = await callRoute("cleanup", `Bearer ${SECRET}`)
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ ok: true, deleted: 7, storageCleanupQueued: true })
+    expect(await response.json()).toEqual({
+      ok: true,
+      deleted: 7,
+      storageCleanupQueued: true,
+      webhookEventsPurged: 0,
+    })
     expect(queue.recordHeartbeat).toHaveBeenCalledWith(
       "cleanup",
       "ok",
@@ -274,7 +288,12 @@ describe("POST /api/cron/[job]", () => {
     const response = await callRoute("cleanup", `Bearer ${SECRET}`)
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ ok: true, deleted: 0, storageCleanupQueued: false })
+    expect(await response.json()).toEqual({
+      ok: true,
+      deleted: 0,
+      storageCleanupQueued: false,
+      webhookEventsPurged: 0,
+    })
     expect(queue.recordHeartbeat).toHaveBeenCalledWith("cleanup", "ok", expect.any(Number), null)
   })
 
@@ -283,7 +302,12 @@ describe("POST /api/cron/[job]", () => {
 
     const response = await callRoute("cleanup", `Bearer ${SECRET}`)
 
-    expect(await response.json()).toEqual({ ok: true, deleted: 3, storageCleanupQueued: true })
+    expect(await response.json()).toEqual({
+      ok: true,
+      deleted: 3,
+      storageCleanupQueued: true,
+      webhookEventsPurged: 0,
+    })
   })
 
   it("treats an unexpected cleanup answer as zero, not as a failure", async () => {
@@ -292,7 +316,12 @@ describe("POST /api/cron/[job]", () => {
     const response = await callRoute("cleanup", `Bearer ${SECRET}`)
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ ok: true, deleted: 0, storageCleanupQueued: true })
+    expect(await response.json()).toEqual({
+      ok: true,
+      deleted: 0,
+      storageCleanupQueued: true,
+      webhookEventsPurged: 0,
+    })
   })
 
   it("records an error heartbeat and answers 500 when cleanup fails", async () => {
@@ -341,5 +370,39 @@ describe("POST /api/cron/[job]", () => {
   it("exports POST and no GET", () => {
     expect(typeof routeModule.POST).toBe("function")
     expect("GET" in routeModule).toBe(false)
+  })
+})
+
+describe("cleanup and the webhook log", () => {
+  it("reports how many old webhook deliveries were forgotten", async () => {
+    adminState.purgeData = 4
+
+    const response = await callRoute("cleanup", `Bearer ${SECRET}`)
+
+    expect(await response.json()).toEqual({
+      ok: true,
+      deleted: 0,
+      storageCleanupQueued: true,
+      webhookEventsPurged: 4,
+    })
+  })
+
+  it("accepts the purge answer in an array shape too", async () => {
+    adminState.purgeData = [2]
+
+    const response = await callRoute("cleanup", `Bearer ${SECRET}`)
+
+    expect(await response.json()).toMatchObject({ ok: true, webhookEventsPurged: 2 })
+  })
+
+  it("answers 500 when the purge fails, since the sweep did not finish", async () => {
+    adminState.purgeError = { message: "relation webhook_events does not exist" }
+
+    const response = await callRoute("cleanup", `Bearer ${SECRET}`)
+    const body = (await response.json()) as Record<string, unknown>
+
+    expect(response.status).toBe(500)
+    expect(body).toEqual({ ok: false })
+    expect(JSON.stringify(body)).not.toContain("webhook_events")
   })
 })

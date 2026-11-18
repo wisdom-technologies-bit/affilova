@@ -18,6 +18,9 @@ const state = vi.hoisted(() => ({
   health: null as unknown,
   selfTest: null as unknown,
   allowed: true,
+  paystackMode: "test" as "test" | "live" | "invalid",
+  paystackEnvFails: false,
+  webhookCounts: { received: 1, processed: 12, ignored: 3, failed: 1 } as Record<string, number>,
 }))
 
 vi.mock("@/lib/identity/session", () => ({
@@ -57,6 +60,22 @@ vi.mock("@/lib/rate-limit", () => ({
 
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
+
+// The payments half of the page: the Paystack mode and the webhook counts of the
+// last day. Both are read through their own modules so the test can drive them.
+vi.mock("@/lib/env", () => ({
+  getPaystackEnv: () => {
+    if (state.paystackEnvFails) {
+      throw new Error("Invalid Paystack environment variables")
+    }
+
+    return { mode: state.paystackMode, enforceWebhookIps: false }
+  },
+}))
+
+vi.mock("@/lib/commerce/db", () => ({
+  webhookEventCounts: async () => state.webhookCounts,
 }))
 
 import { logger } from "@/lib/logger"
@@ -147,6 +166,9 @@ beforeEach(() => {
   state.health = HEALTH
   state.selfTest = SELF_TEST_RESULT
   state.allowed = true
+  state.paystackMode = "test"
+  state.paystackEnvFails = false
+  state.webhookCounts = { received: 1, processed: 12, ignored: 3, failed: 1 }
   rateLimitCalls.length = 0
   vi.mocked(logger.error).mockClear()
   state.db = createDb({
@@ -434,5 +456,59 @@ describe("runScannerSelfTestAction", () => {
 
     expect(result).toEqual({ ok: false, error: GENERIC_ERROR })
     expect(logger.error).toHaveBeenCalledWith("ops_selftest_failed", { reason: "TypeError" })
+  })
+})
+
+describe("getSecurityOverviewAction, payments", () => {
+  it("reports the Paystack mode and the webhook counts of the last day", async () => {
+    const result = await getSecurityOverviewAction()
+
+    expect(result.ok).toBe(true)
+
+    if (result.ok) {
+      expect(result.overview.payments.mode).toBe("test")
+      expect(result.overview.payments.windowHours).toBe(24)
+      expect(result.overview.payments.webhookEvents).toEqual({
+        received: 1,
+        processed: 12,
+        ignored: 3,
+        failed: 1,
+      })
+    }
+  })
+
+  it("reports live mode when the key is a live key", async () => {
+    state.paystackMode = "live"
+
+    const result = await getSecurityOverviewAction()
+
+    expect(result.ok && result.overview.payments.mode).toBe("live")
+  })
+
+  it("says unconfigured rather than failing when no key is set", async () => {
+    state.paystackEnvFails = true
+
+    const result = await getSecurityOverviewAction()
+
+    expect(result.ok).toBe(true)
+
+    if (result.ok) {
+      expect(result.overview.payments.mode).toBe("unconfigured")
+    }
+  })
+
+  it("fills every status with a zero when one is missing", async () => {
+    state.webhookCounts = { processed: 2 }
+
+    const result = await getSecurityOverviewAction()
+
+    if (result.ok) {
+      expect(result.overview.payments.webhookEvents).toEqual({
+        received: 0,
+        processed: 2,
+        ignored: 0,
+        failed: 0,
+      })
+    }
   })
 })

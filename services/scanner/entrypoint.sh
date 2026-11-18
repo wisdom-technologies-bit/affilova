@@ -68,14 +68,23 @@ until clamdscan --config-file="$CONF_DIR/clamd.conf" --ping 1 >/dev/null 2>&1; d
   ATTEMPT=$((ATTEMPT + 1))
 
   if [ "$ATTEMPT" -ge 90 ]; then
+    # Never exit here. A dead clamd must still leave a reachable service: the
+    # server answers /healthz with 503 and a reason, which a platform health
+    # check can report, instead of a restart loop that reports nothing.
     log error entrypoint.clamd.unreachable
-    exit 1
+    break
+  fi
+
+  if [ $((ATTEMPT % 15)) -eq 0 ]; then
+    log info entrypoint.clamd.waiting
   fi
 
   sleep 2
 done
 
-log info entrypoint.clamd.ready
+if [ "$ATTEMPT" -lt 90 ]; then
+  log info entrypoint.clamd.ready
+fi
 
 # 4. keep the signatures current --------------------------------------------
 freshclam --daemon --config-file="$CONF_DIR/freshclam.conf" || log warn entrypoint.freshclam.daemon_failed

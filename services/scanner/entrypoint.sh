@@ -21,6 +21,7 @@ CONF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 DB_DIR=/data/clamav
 WORK_DIR="${WORK_DIR:-/data/tmp}"
 SOCKET_DIR=/run/clamav
+SEED_DIR=/opt/clamav-db
 export WORK_DIR
 
 log() {
@@ -49,6 +50,24 @@ fi
 
 # 2. provisioning runs in the background, 3. the server starts immediately
 provision() {
+  # Seed the volume from the copy baked into the image, so a first boot does not
+  # have to pull the whole database while a platform health check counts down.
+  if [ ! -e "$DB_DIR/daily.cvd" ] && [ ! -e "$DB_DIR/daily.cld" ] && [ -d "$SEED_DIR" ]; then
+    if ls "$SEED_DIR"/daily.c* >/dev/null 2>&1; then
+      log info entrypoint.signatures.seeding
+
+      if cp -a "$SEED_DIR"/. "$DB_DIR"/ 2>/dev/null; then
+        if id clamav >/dev/null 2>&1; then
+          chown -R clamav:clamav "$DB_DIR"
+        fi
+
+        log info entrypoint.signatures.seeded
+      else
+        log warn entrypoint.signatures.seed_failed
+      fi
+    fi
+  fi
+
   # 3. signatures --------------------------------------------------------------
   NEEDS_SIGNATURES=0
 

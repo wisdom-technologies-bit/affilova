@@ -50,10 +50,9 @@ COPY freshclam.conf /etc/clamav/freshclam.conf
 
 RUN chmod +x ./entrypoint.sh
 
-# 8080 is the HTTP API; /data holds the signatures and the scratch space and must
-# be a persistent volume so a redeploy does not re-download ~300 MB.
+# 8080 is the HTTP API; /data holds the signatures and the scratch space. Attach a
+# Railway Volume mounted at /data so a redeploy does not re-download ~300 MB.
 EXPOSE 8080
-VOLUME ["/data"]
 
 # Health is "clamd answers PING and the signatures are younger than 72 hours",
 # which is exactly what /healthz reports.

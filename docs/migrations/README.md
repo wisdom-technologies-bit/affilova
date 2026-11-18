@@ -381,6 +381,45 @@ catalog functions **without** the scan gate. Existing verdicts
 are lost: run it only on a database you are willing to reset. Objects already
 copied into `quarantine/` stay in the bucket.
 
+## The eighth migration: the ops overview (20261116000100_ops_overview)
+
+Run this one **after** the malware scanning migration and its verify file are
+clean. It adds three functions that only read, and nothing else: no table, no
+column, no change to any function that already exists. The admin Security page
+calls them to show how the scan pipeline and the background queue are doing.
+
+The steps are the same as above:
+
+1. **Step 1**: copy all of
+   `supabase/migrations/20261116000100_ops_overview.sql` into a new SQL Editor
+   query and click **Run**. It must succeed, and a second **Run** must also
+   succeed.
+2. **Step 2**: copy all of
+   `supabase/verify/20261116000100_ops_overview_verify.sql`, click **Run**, and
+   check that every `passed` is `t`. This one has 11 checks.
+3. **Step 3**: what it created:
+   - `scan_overview()`: a count for each of the eight scan statuses, how many
+     minutes the oldest waiting file has been waiting, how many scan answers
+     arrived in the last day, and how many infections were seen in the last
+     thirty days.
+   - `job_overview()`: a count for each of the five job statuses, the age of the
+     oldest queued job, how many jobs are dead, and one heartbeat row per cron
+     job with the age of its last run in seconds.
+   - `list_recent_scan_events(p_limit int default 20)`: the latest scanner
+     answers, newest first, with the verdict, the detail code, the engine, the
+     signature version and the time. The limit is clamped to 1..100. It returns
+     no file name and no vendor: an operator counts verdicts, they do not read
+     who uploaded what.
+   - All three are `SECURITY DEFINER` with an empty `search_path`, and only
+     `service_role` may execute them. A client role cannot call them.
+
+Its rollback block drops the three functions. They own no table and write
+nothing, so nothing is lost; the Security page shows its "could not read the
+overview" state until the migration is applied again.
+
+The Security page itself, and what the self-test on it does and does not prove,
+are described in `docs/scanning.md`.
+
 ## Creating the first admin
 
 Every new signup is created as a `customer`. The first admin has to be added by hand,

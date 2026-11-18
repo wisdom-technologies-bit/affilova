@@ -1,10 +1,13 @@
 /**
  * The HTTP surface.
  *
- * Two routes only: `POST /scan` and `GET /healthz`. The request is authenticated
- * before its body is read, the body is capped at 8 KB, and every field is
- * validated against the scanning contract before a job is queued. Responses
- * never echo the reason a secret was refused.
+ * Three routes: `POST /scan`, `POST /selftest` and `GET /healthz`. A request is
+ * authenticated before its body is read, the body is capped at 8 KB, and every
+ * field is validated against the scanning contract before a job is queued.
+ * Responses never echo the reason a secret was refused.
+ *
+ * `/selftest` runs the same pipeline as `/scan` and answers with the verdict
+ * instead of sending a callback. It takes one caller at a time.
  */
 
 import { createServer } from "node:http"
@@ -35,8 +38,18 @@ import { createLogger } from "#log"
 import type { Logger } from "#log"
 import { ARCHIVE_EXTENSIONS, ALLOWED_EXTENSIONS, isAllowedExtension } from "#mime-policy"
 import { ScanQueue, prepareWorkDir } from "#queue"
-import { runScan } from "#scan-runner"
-import type { ScanJob, ScanRunnerDeps } from "#scan-runner"
+import { runScan, runScanPipeline } from "#scan-runner"
+import type { PipelineDeps, ScanJob, ScanRunnerDeps } from "#scan-runner"
+import {
+  SELFTEST_DEADLINE_MS,
+  createSelftestJob,
+  createSelftestLock,
+  errorResult,
+  timeoutResult,
+  toSelftestResult,
+  validateSelftestRequest,
+} from "#selftest"
+import type { SelftestLock, SelftestRunner } from "#selftest"
 import { CALLBACK_PATH, checkCallbackUrl, checkDownloadUrl } from "#url-guard"
 
 export const MAX_REQUEST_BODY_BYTES = 8192
@@ -51,11 +64,24 @@ export type Admission =
   | { readonly accepted: true }
   | { readonly accepted: false; readonly reason: "full" | "closed" }
 
+/**
+ * Everything `POST /selftest` needs. The runner is injected so the route can be
+ * tested without a network, and so production can prove it uses the same
+ * pipeline function as a queued scan.
+ */
+export type SelftestContext = {
+  readonly pipeline: PipelineDeps
+  readonly run: SelftestRunner
+  readonly lock: SelftestLock
+  readonly deadlineMs?: number
+}
+
 export type ServerContext = {
   readonly config: ScannerConfig
   readonly admission: (job: ScanJob) => Admission
   readonly readiness: () => Promise<Readiness>
   readonly log: Logger
+  readonly selftest: SelftestContext
 }
 
 export type ValidationResult =
@@ -300,6 +326,111 @@ async function handleScan(context: ServerContext, request: IncomingMessage, resp
   sendJson(response, 202, { accepted: true })
 }
 
+/**
+ * Answers the outcome of one self-test with a 200, whatever the verdict: the
+ * caller asked what the chain does, and "it fails" is an answer, not an error.
+ */
+async function handleSelftest(
+  context: ServerContext,
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> {
+  if (!isAuthorized(request.headers.authorization, context.config.sharedSecret)) {
+    request.resume()
+    context.log.lifecycle("selftest.unauthorized")
+    sendJson(response, 401, { error: "unauthorized" }, { connection: "close" })
+
+    return
+  }
+
+  const body = await readBody(request)
+
+  if (body.kind === "too_large") {
+    context.log.lifecycle("selftest.payload_too_large")
+    sendJson(response, 413, { error: "payload_too_large" }, { connection: "close" })
+
+    return
+  }
+
+  if (body.kind === "invalid_json") {
+    sendJson(response, 400, { error: "invalid_json" })
+
+    return
+  }
+
+  if (body.kind === "read_error") {
+    sendJson(response, 400, { error: "invalid_request" })
+
+    return
+  }
+
+  const validation = validateSelftestRequest(body.value, context.config)
+
+  if (!validation.ok) {
+    sendJson(response, 400, { error: "invalid_request", field: validation.field })
+
+    return
+  }
+
+  const { selftest } = context
+
+  if (!selftest.lock.tryAcquire()) {
+    context.log.lifecycle("selftest.busy")
+    sendJson(
+      response,
+      429,
+      { error: "selftest_busy" },
+      { "retry-after": String(RETRY_AFTER_SECONDS) },
+    )
+
+    return
+  }
+
+  const startedAt = Date.now()
+  const deadlineMs = selftest.deadlineMs ?? SELFTEST_DEADLINE_MS
+  const job = createSelftestJob(validation.request)
+
+  let timer: ReturnType<typeof setTimeout> | undefined
+
+  try {
+    const expired = new Promise<null>((resolveExpired) => {
+      timer = setTimeout(() => {
+        resolveExpired(null)
+      }, deadlineMs)
+    })
+
+    // The pipeline enforces the same deadline itself, so this race is the
+    // backstop that guarantees an answer even if a stage ignores its abort.
+    const report = await Promise.race([selftest.run(job, selftest.pipeline), expired])
+
+    const result =
+      report === null
+        ? timeoutResult(Date.now() - startedAt)
+        : toSelftestResult(report.payload, report.durationMs)
+
+    context.log.lifecycle("selftest.result", {
+      verdict: result.verdict,
+      durationMs: result.durationMs,
+    })
+
+    sendJson(response, 200, { ...result })
+
+    return
+  } catch {
+    context.log.lifecycle("selftest.error")
+
+    sendJson(response, 200, { ...errorResult("scanner_error", Date.now() - startedAt) })
+
+    return
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer)
+    }
+
+    selftest.lock.release()
+  }
+}
+
 async function handleRequest(
   context: ServerContext,
   request: IncomingMessage,
@@ -322,6 +453,12 @@ async function handleRequest(
 
     if (path === "/scan" && request.method === "POST") {
       await handleScan(context, request, response)
+
+      return
+    }
+
+    if (path === "/selftest" && request.method === "POST") {
+      await handleSelftest(context, request, response)
 
       return
     }
@@ -376,7 +513,7 @@ function main(): void {
     readClamavInfo: createEngineInfoCache(loadClamavInfo, Date.now).get,
     now: Date.now,
     log,
-  } satisfies Omit<ScanRunnerDeps, "sendCallback">
+  } satisfies PipelineDeps
 
   const queue = new ScanQueue<ScanJob>({
     concurrency: config.concurrency,
@@ -406,6 +543,16 @@ function main(): void {
     now: Date.now,
   })
 
+  // The self-test runs the same pipeline function as a queued scan, with its
+  // own tighter deadlines: a self-test must answer inside 25 seconds.
+  const selftestPipeline: PipelineDeps = {
+    ...runnerDeps,
+    overallTimeoutMs: SELFTEST_DEADLINE_MS,
+    downloadTimeoutMs: 10_000,
+    commandTimeoutMs: 15_000,
+    clamavTimeoutMs: 20_000,
+  }
+
   const server = createScannerServer({
     config,
     admission: (job: ScanJob): Admission => {
@@ -419,6 +566,11 @@ function main(): void {
     },
     readiness,
     log,
+    selftest: {
+      pipeline: selftestPipeline,
+      run: runScanPipeline,
+      lock: createSelftestLock(),
+    },
   })
 
   void prepareWorkDir(config.workDir).then((removed: number) => {

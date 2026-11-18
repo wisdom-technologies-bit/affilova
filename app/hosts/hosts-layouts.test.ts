@@ -182,6 +182,7 @@ const EXPECTED_LABELS: Record<ShellApp, readonly string[]> = {
     "Transactions",
     "VAT",
     "Support",
+    "Security",
     "Blog",
     "Settings",
   ],

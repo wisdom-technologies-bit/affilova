@@ -21,6 +21,16 @@ log() {
   printf '{"level":"%s","event":"%s"}\n' "$1" "$2"
 }
 
+# Resolve the ClamAV binaries explicitly. Debian installs clamd in /usr/sbin,
+# which is not on every PATH, and "command not found" inside the wait loop below
+# would otherwise cost three silent minutes before failing.
+for candidate in clamd clamdscan freshclam; do
+  if ! command -v "$candidate" >/dev/null 2>&1; then
+    log fatal "entrypoint.missing_tool.$candidate"
+    exit 1
+  fi
+done
+
 mkdir -p "$DB_DIR" "$WORK_DIR" "$SOCKET_DIR"
 
 if id clamav >/dev/null 2>&1; then

@@ -381,73 +381,12 @@ catalog functions **without** the scan gate. Existing verdicts
 are lost: run it only on a database you are willing to reset. Objects already
 copied into `quarantine/` stay in the bucket.
 
-## The eighth migration: commerce core (20261116000200_commerce_core)
 
-Run this one **after** the malware scanning migration and its verify file are
-clean. It needs the foundation (`settings`, `audit_log`, `profiles`,
-`user_roles`, `has_role`, `is_staff`, `set_updated_at`), the job queue
-(`enqueue_job`), roles and onboarding (`vendor_profiles`, `affiliate_profiles`)
-and the catalog (`products`, `product_files`), so all of those have to be in place
-first.
 
 The steps are the same as above:
 
 1. **Step 1**: copy all of
-   `supabase/migrations/20261116000200_commerce_core.sql` into a new SQL Editor
-   query and click **Run**. It must succeed, and a second **Run** must also
-   succeed.
-2. **Step 2**: copy all of
-   `supabase/verify/20261116000200_commerce_core_verify.sql`, click **Run**, and
-   check that every `passed` is `t`. This one has 24 checks.
-3. **Step 3**: what it created:
-   - Thirteen tables: `orders`, `order_items`, `order_tax_lines`,
-     `entitlements`, `download_log`, `ledger_accounts`, `ledger_transactions`,
-     `ledger_entries`, `refund_requests`, `order_disputes`,
-     `payout_blackout_dates`, `vat_periods` and `vat_adjustments`.
-   - A double-entry ledger with eight seeded accounts. It is **append only**:
-     rows can be added but never edited, deleted or truncated by any role, and a
-     transaction whose debits and credits do not match is rejected at commit.
-   - `order_status`, a new enum for the six order states.
-   - `order_number_seq`, the sequence behind the `AFV-2026-000142` order numbers.
-   - Twenty-seven server-only functions: `create_order`, `process_paid_order`,
-     `attach_paystack_init`, `expire_pending_orders`, the refund and dispute
-     functions, `claim_download`, `get_party_balance`, the VAT period functions,
-     the payout calendar functions, and the small helpers they share
-     (`compute_split`, `compute_withdrawal_fee`, `is_payout_day`,
-     `next_order_number`, the settings readers).
-   - Two read models for the portal: `vendor_sales` and `affiliate_commissions`.
-     Neither exposes the buyer's email or name.
-   - Nine settings: `withdrawal_fee_bps` (200), `withdrawal_fee_min_kobo`
-     (5,000), `withdrawal_fee_cap_kobo` (200,000), `processor_fee_bearer`
-     (`platform`), `auto_payout_default` (true), `payout_weekdays` (Monday to
-     Friday), `payout_run_hour_lagos` (10), `order_expiry_hours` (24) and
-     `guest_checkout_enabled` (true). Existing rows are never overwritten.
-4. **Step 4**: nothing to configure. VAT is **off** until someone sets
-   `vat_enabled` to true, so a fresh install sells with no tax.
 
-Nobody writes these tables from the app. A buyer reads their own orders and
-downloads, a vendor reads their own sales, an affiliate reads their own
-commissions, and staff read what their role allows. Everything that moves money
-goes through a function called by the server with the service role. `anon` cannot
-read or write anything here, and no client role has `INSERT`, `UPDATE` or
-`DELETE` on any of these tables.
-
-The ledger accounts, the posting examples, the order and refund state machines,
-the VAT rules and the payout settings are in `docs/commerce.md`.
-
-Its rollback block drops the thirteen tables, the two views, the twenty-nine
-functions, the enum and the sequence, and deletes the nine settings rows. **The
-ledger cannot be rebuilt from the payment provider alone**, so take a backup
-before running it. Nothing from another migration is dropped: products, profiles
-and the other settings stay.
-
-## Running the commerce tests locally
-
-`supabase/tests/commerce_core_test.sh` builds a throwaway local Postgres
-database, applies every migration, runs every verify file, applies the commerce
-migration twice, runs the rollback and re-applies, then runs the assertions and
-two real two-session concurrency tests. It is not part of `pnpm test` because it
-needs a local Postgres server and a superuser connection.
 
 ## Creating the first admin
 

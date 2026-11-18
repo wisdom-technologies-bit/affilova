@@ -1,7 +1,7 @@
 # Scanning contract
 
 This is the agreement between the Affilova app and the scanner service in
-`services/scanner`. Both sides must be changed together: the request shape, the
+`services/scanner`. It covers `POST /scan`, `POST /selftest` and `GET /healthz`. Both sides must be changed together: the request shape, the
 response codes and the callback signature below are what the app validates.
 
 ## Request
@@ -56,6 +56,58 @@ only when clamd answers `PING` and the signature database is younger than 72
 hours. Otherwise it answers `503` with the same shape and `ok:false`
 (`signatureAgeHours` is `null` when there is no database). Every other path
 answers `404`.
+
+## Self-test
+
+```
+POST {SCANNER_URL}/selftest
+Authorization: Bearer <SCANNER_SHARED_SECRET>
+Content-Type: application/json
+```
+
+```json
+{
+  "downloadUrl": "https://<bucket>.r2.cloudflarestorage.com/selftest/<uuid>/hello.txt",
+  "expectedSizeBytes": 26,
+  "extension": "txt"
+}
+```
+
+The self-test exists so an operator can prove the whole chain (storage, the
+service, ClamAV and the policies) without creating a product or a file record. It
+runs the **same pipeline** as `POST /scan` — download with the size cap, libmagic
+type detection, the MIME policy, the archive policy, ClamAV and the temporary
+file cleanup — and answers with the verdict instead of queueing and calling back.
+It is one function in the service (`runScanPipeline`), so a passing self-test
+cannot come from a second implementation that a real scan never runs.
+
+| Field | Rule |
+| --- | --- |
+| `downloadUrl` | exactly the same guard as a scan: https, no credentials, no non-default port, host must end with `ALLOWED_DOWNLOAD_HOST_SUFFIX`, no IP literal |
+| `expectedSizeBytes` | integer from 1 to 2097152 (2 MiB); a self-test is small on purpose |
+| `extension` | the same accepted list as a scan |
+
+There is no `scanId`, no `fileId` and no `callbackUrl`: nothing is recorded, so
+there is nothing to echo.
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | `{"verdict":…,"detail":…,"sha256":…,"detectedMime":…,"engine":…,"signatureVersion":…,"durationMs":N}` | the pipeline ran; the verdict is the answer |
+| 400 | `{"error":"invalid_request","field":"…"}` | a field failed validation |
+| 400 | `{"error":"invalid_json"}` | the body is not JSON |
+| 401 | `{"error":"unauthorized"}` | missing or wrong secret, checked before the body is read |
+| 413 | `{"error":"payload_too_large"}` | body over 8 KB |
+| 429 | `{"error":"selftest_busy"}` + `Retry-After` | another self-test is already running |
+
+A verdict of `infected`, `rejected`, `needs_review` or `error` is a **200**: the
+caller asked what the chain does, and a failure is an answer. The overall budget
+is 25 seconds; a self-test that overruns answers `200` with `verdict: "error"` and
+`detail: "timeout"`. Only one self-test runs at a time, so two operators cannot
+load the service through this route.
+
+The self-test does **not** exercise the callback route or the database. Those are
+covered by uploading a real file in a product; `docs/scanning.md` says the same
+where staff read it.
 
 ## Callback
 

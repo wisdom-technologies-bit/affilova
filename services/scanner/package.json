@@ -19,6 +19,7 @@
     "#mime-policy": "./src/mime-policy.ts",
     "#queue": "./src/queue.ts",
     "#scan-runner": "./src/scan-runner.ts",
+    "#selftest": "./src/selftest.ts",
     "#server": "./src/server.ts",
     "#signature": "./src/signature.ts",
     "#url-guard": "./src/url-guard.ts"

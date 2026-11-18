@@ -6,7 +6,10 @@ import type { ScannerConfig } from "#config"
 import { createLogger } from "#log"
 import { MAX_REQUEST_BODY_BYTES, RETRY_AFTER_SECONDS, createScannerServer, validateScanRequest } from "#server"
 import type { Admission, ServerContext } from "#server"
-import type { ScanJob } from "#scan-runner"
+import { runScanPipeline } from "#scan-runner"
+import type { PipelineDeps, PipelineReport, ScanJob } from "#scan-runner"
+import { createSelftestLock } from "#selftest"
+import type { SelftestRunner } from "#selftest"
 
 const SHARED_SECRET = `shared-${"a".repeat(40)}`
 const CALLBACK_SECRET = `callback-${"b".repeat(40)}`
@@ -40,6 +43,26 @@ function validBody(overrides: Readonly<Record<string, unknown>> = {}): Record<st
   }
 }
 
+const PIPELINE: PipelineDeps = {
+  workDir: "/tmp/selftest-unused",
+  maxFileBytes: 2_097_152,
+  fetch: async () => {
+    throw new Error("the pipeline is not reached by these tests")
+  },
+  download: async () => {
+    throw new Error("the pipeline is not reached by these tests")
+  },
+  runCommand: async () => ({ code: 0, stdout: "", stderr: "", timedOut: false }),
+  scanFile: async () => ({ kind: "clean" }),
+  readClamavInfo: async () => ({ engine: "1.4.6", signatureVersion: "28186" }),
+  now: () => 0,
+  log: createLogger(() => undefined),
+}
+
+const NEVER_RUNS: SelftestRunner = async (): Promise<PipelineReport> => {
+  throw new Error("no self-test is expected in this test")
+}
+
 type RunningServer = {
   readonly baseUrl: string
   readonly jobs: ScanJob[]
@@ -60,7 +83,11 @@ afterEach(async () => {
 })
 
 async function start(
-  options: { readonly admission?: Admission; readonly readiness?: Readiness } = {},
+  options: {
+    readonly admission?: Admission
+    readonly readiness?: Readiness
+    readonly selftestRun?: SelftestRunner
+  } = {},
 ): Promise<RunningServer> {
   const jobs: ScanJob[] = []
   const logs: string[] = []
@@ -76,6 +103,11 @@ async function start(
     log: createLogger((line: string) => {
       logs.push(line)
     }),
+    selftest: {
+      pipeline: PIPELINE,
+      run: options.selftestRun ?? NEVER_RUNS,
+      lock: createSelftestLock(),
+    },
   }
 
   const server = createScannerServer(context)

@@ -176,6 +176,57 @@ characters and a confirmation step; the decision is written to the audit log as
 An `infected` verdict is never reviewable. There is no "mark clean" for malware,
 in the screen or in the database function.
 
+## Self-test
+
+The admin app has a **Security** page with one button that proves the chain works
+without touching a product. It is the first thing to press after a deployment,
+after a scanner upgrade, after a ClamAV signature update, or whenever someone
+asks "is scanning actually working?".
+
+The page also shows, above the button: whether the scanner answers and whether
+ClamAV is reachable, how old its signatures are, the count of files in each scan
+status, how long the oldest waiting file has waited, the background queue with a
+heartbeat per cron job, and the last twenty verdicts (no file names, no vendors).
+
+**What it does.** It builds four files in memory, writes them to the bucket under
+`selftest/<uuid>/`, presigns a five minute GET URL for each, and calls the
+scanner's `POST /selftest` once per file, in turn. The scanner runs the same
+pipeline a real scan runs: it downloads with the size cap, detects the real type,
+applies the MIME policy, the archive policy and ClamAV, and cleans up its temp
+files. There is no callback. The page compares each answer to what that sample
+must produce and shows Passed or Failed per row. Every object is deleted in a
+`finally` block, whatever happened.
+
+| Sample | What it is | Must answer |
+| --- | --- | --- |
+| `hello.txt` | The text "Affilova scanner self-test" | `clean` |
+| `eicar.txt` | The standard EICAR test string, assembled from two halves in code so the repository never contains the literal | `infected`, with an EICAR signature |
+| `not-a-pdf.pdf` | A minimal PE executable named `.pdf` | `rejected`, detail `executable_type` |
+| `archive.zip` | A valid stored zip generated in code, holding `run.exe` | `needs_review`, detail `archive_contains_executable` |
+
+**What it proves.** The app can reach the bucket and presign a URL; the scanner
+is up, authenticated and reachable from the app; it can fetch from R2; its type
+detection, MIME policy, archive policy and ClamAV all work; and each policy
+answers with the verdict and detail code the rest of the app depends on.
+
+**What it does not prove.** It does not exercise the callback: no result is
+signed, sent or verified, and no `file_scan_events` row is written. It does not
+exercise the database state machine, the gates that block submission and download
+before a `clean` verdict, the quarantine copy, or the weekly rescan. It also does
+not prove that a real upload's bytes are what the scanner sees: the samples are
+built here, not uploaded by a browser.
+
+To test those, upload real files in a draft product: one harmless file, and (only
+in staging) one EICAR file. That path goes through the browser upload, the signed
+PUT, the `scan_file` job, the signed callback, `record_scan_result` and the
+gates.
+
+**Rules.** The button is admin only. It is rate limited to five runs an hour per
+person, counted in Postgres, and the limiter denies rather than allows when it
+cannot count. Each run writes one `audit_log` row, `ops.scanner_selftest`, with
+the pass and fail counts and nothing else: no sample names, no verdicts, no URLs.
+The signed URLs the self-test creates are never logged or returned to the browser.
+
 ## Runbook
 
 **The scanner is down.** Uploads still work. Files stay `not_scanned` and then
@@ -233,3 +284,10 @@ either: only the fact that a scan was requested.
 | `app/api/cron/[job]/route.ts` | The `scan-sweep` schedule. |
 | `lib/catalog/actions/vendor.ts` | Queues the scan on upload, and the status polling. |
 | `lib/catalog/actions/admin.ts` | `reviewFileScanAction`. |
+| `supabase/migrations/20261116000100_ops_overview.sql` | `scan_overview`, `job_overview` and `list_recent_scan_events`, read-only and service_role only. |
+| `supabase/verify/20261116000100_ops_overview_verify.sql` | 11 checks that the ops migration did what it says. |
+| `lib/ops/selftest-samples.ts` | The four samples, built in memory, and what each must produce. |
+| `lib/ops/scanner-selftest.ts` | `runScannerSelfTest`: upload, presign, call `POST /selftest`, compare, delete. |
+| `lib/ops/actions.ts` | `getSecurityOverviewAction` and `runScannerSelfTestAction`. |
+| `components/ops/security-panel.tsx` | The Security page body and the button. |
+| `app/hosts/admin/security/page.tsx` | The page itself. |

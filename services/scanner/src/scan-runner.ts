@@ -45,14 +45,17 @@ export type CallbackDelivery = {
   readonly attempts: number
 }
 
-export type ScanRunnerDeps = {
+/**
+ * Everything the pipeline needs. The self-test uses this shape directly: it runs
+ * the same stages as a queued scan and has no callback to send.
+ */
+export type PipelineDeps = {
   readonly workDir: string
   readonly maxFileBytes: number
   readonly fetch: FetchLike
   readonly download: (options: DownloadOptions) => Promise<DownloadResult>
   readonly runCommand: RunCommand
   readonly scanFile: (filePath: string, timeoutMs?: number) => Promise<ClamavOutcome>
-  readonly sendCallback: (payload: CallbackPayload) => Promise<CallbackDelivery>
   readonly readClamavInfo: () => Promise<ClamavInfo>
   readonly now: () => number
   readonly log: Logger
@@ -63,9 +66,21 @@ export type ScanRunnerDeps = {
   readonly clamavTimeoutMs?: number
 }
 
+/** A queued scan: the pipeline plus the callback it must deliver. */
+export type ScanRunnerDeps = PipelineDeps & {
+  readonly sendCallback: (payload: CallbackPayload) => Promise<CallbackDelivery>
+}
+
 export type ScanRunReport = {
   readonly payload: CallbackPayload
   readonly delivery: CallbackDelivery
+  readonly durationMs: number
+}
+
+/** What the pipeline alone answers: the payload, the stage timings, the time. */
+export type PipelineReport = {
+  readonly payload: CallbackPayload
+  readonly stages: Record<string, number>
   readonly durationMs: number
 }
 
@@ -94,9 +109,13 @@ function firstLine(text: string): string {
 }
 
 /**
- * Runs one scan end to end: pipeline, cleanup, callback, log line.
+ * Runs the stages for one job: download, detect, policies, ClamAV, cleanup.
+ *
+ * This is the whole scan. It sends no callback and writes no log line, which is
+ * what lets the self-test reuse it: there is one implementation of the pipeline,
+ * so a self-test cannot pass while a real scan fails.
  */
-export async function runScan(job: ScanJob, deps: ScanRunnerDeps): Promise<ScanRunReport> {
+export async function runScanPipeline(job: ScanJob, deps: PipelineDeps): Promise<PipelineReport> {
   const startedAt = deps.now()
   const destination = join(deps.workDir, job.scanId)
   const controller = new AbortController()
@@ -121,6 +140,20 @@ export async function runScan(job: ScanJob, deps: ScanRunnerDeps): Promise<ScanR
     }
   })()
 
+  return {
+    payload: result.payload,
+    stages: result.stages,
+    durationMs: deps.now() - startedAt,
+  }
+}
+
+/**
+ * Runs one scan end to end: pipeline, cleanup, callback, log line.
+ */
+export async function runScan(job: ScanJob, deps: ScanRunnerDeps): Promise<ScanRunReport> {
+  const startedAt = deps.now()
+  const result = await runScanPipeline(job, deps)
+
   let delivery: CallbackDelivery = { delivered: false, attempts: 0 }
 
   try {
@@ -142,7 +175,7 @@ export async function runScan(job: ScanJob, deps: ScanRunnerDeps): Promise<ScanR
 
 function buildPayload(
   job: ScanJob,
-  deps: ScanRunnerDeps,
+  deps: PipelineDeps,
   fields: {
     readonly verdict: ScanVerdict
     readonly detail: string
@@ -164,7 +197,7 @@ function buildPayload(
   }
 }
 
-async function removeTemporaryFile(deps: ScanRunnerDeps, destination: string): Promise<void> {
+async function removeTemporaryFile(deps: PipelineDeps, destination: string): Promise<void> {
   const remove = deps.removeFile ?? (async (filePath: string): Promise<void> => {
     await rm(filePath, { force: true })
   })
@@ -182,7 +215,7 @@ async function removeTemporaryFile(deps: ScanRunnerDeps, destination: string): P
  */
 async function runStages(
   job: ScanJob,
-  deps: ScanRunnerDeps,
+  deps: PipelineDeps,
   context: StageContext,
   signal: AbortSignal,
 ): Promise<StageResult> {

@@ -388,6 +388,70 @@ The steps are the same as above:
 1. **Step 1**: copy all of
 
 
+## The checkout support migration (20261117000100_checkout_support)
+
+Run this after `20261116000200_commerce_core.sql`. It is the database half of
+taking money with Paystack: the record of webhook deliveries, the reads the
+checkout and the scheduled jobs need, and the two markers a refund passes
+through. It changes nothing that already exists.
+
+### Run it
+
+1. **SQL Editor**, **New query**, paste all of
+   `supabase/migrations/20261117000100_checkout_support.sql`, click **Run**.
+2. You should see **"Success. No rows returned."**
+3. Run it a second time. It must also succeed: every statement is written to skip
+   what already exists.
+4. Then paste `supabase/verify/20261117000100_checkout_support_verify.sql` and run
+   it. Every `passed` must be `t`. If one is `f`, stop and report which check.
+
+### What it creates
+
+- **`webhook_events`** — one row per webhook delivery, with the SHA-256 of the
+  body and nothing else of the body. The unique key on
+  `(provider, body_sha256)` is what makes a Paystack retry recognisable, so a
+  delivery is never handled twice. Row level security is on and no browser role
+  has any privilege on it.
+- **`insert_webhook_event`** and **`finish_webhook_event`** — record a delivery
+  and record its outcome. An outcome that is already final is never rewritten.
+- **`get_order_by_reference`** — the order behind a Paystack reference, or null.
+- **`fail_order`** — moves a *pending* order to failed with an audit row. A paid
+  order is never touched.
+- **`list_orders_needing_verification`** — pending orders between 10 minutes and
+  24 hours old, oldest first, for the reconciliation job.
+- **`find_open_refund`**, **`mark_refund_submitted`**, **`mark_refund_failed`** —
+  the three steps of a refund after it is approved.
+- **`purge_old_webhook_events`** — forgets deliveries older than 30 days.
+
+All nine functions are `SECURITY DEFINER`, use `SET search_path = ''`, and are
+callable only by `service_role`.
+
+### How to check it worked
+
+```sql
+SELECT public.get_order_by_reference('afv_nothing_is_here');
+```
+
+That must return nothing (no rows). A row means a reference you did not expect.
+
+```sql
+SELECT count(*) FROM public.webhook_events;
+```
+
+`0` before the first Paystack event arrives, which is normal.
+
+### Rolling it back
+
+The file ends with a commented rollback block. Copy it, remove the leading
+`-- ` from every line, and run it. It drops the table and the nine functions and
+deletes the migration row. It does **not** touch orders, refunds, disputes or the
+ledger: this migration never writes to them.
+
+### What it does not do
+
+It creates no page, no component and no route. It does not change any existing
+function, so the commerce core behaves exactly as it did before.
+
 ## Creating the first admin
 
 Every new signup is created as a `customer`. The first admin has to be added by hand,

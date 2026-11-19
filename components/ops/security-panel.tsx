@@ -454,6 +454,67 @@ export function SelfTestResults({
   )
 }
 
+function paymentsModeWords(mode: SecurityOverview["payments"]["mode"]): {
+  label: string
+  good: boolean
+} {
+  if (mode === "test") {
+    return { label: "Test mode: no real money moves", good: true }
+  }
+
+  if (mode === "live") {
+    return { label: "Live mode: real money moves", good: true }
+  }
+
+  if (mode === "invalid") {
+    return { label: "The Paystack secret key is not a test or live key", good: false }
+  }
+
+  return { label: "Not configured: no Paystack secret key is set", good: false }
+}
+
+function PaymentsSection({ payments }: { payments: SecurityOverview["payments"] }) {
+  const mode = paymentsModeWords(payments.mode)
+  const entries = Object.entries(payments.webhookEvents)
+
+  return (
+    <Section
+      title="Payments"
+      description="Which Paystack mode this deployment talks to, and how the webhook deliveries of the last day ended."
+    >
+      <dl className="grid gap-4 text-sm lg:grid-cols-3">
+        <div>
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">Paystack</dt>
+          <dd className="mt-1">
+            <Badge tone={mode.good ? "good" : "bad"}>{mode.label}</Badge>
+          </dd>
+        </div>
+
+        <div className="lg:col-span-2">
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+            Webhook events, last {payments.windowHours} hours
+          </dt>
+          <dd className="mt-1 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {entries.map(([status, count]) => (
+              <div key={status} className="rounded-md border border-border p-3">
+                <p className="text-xs capitalize text-muted-foreground">{status}</p>
+                <p className="mt-1 text-lg font-semibold tabular-nums text-brand-ink">{count}</p>
+              </div>
+            ))}
+          </dd>
+        </div>
+      </dl>
+
+      {payments.webhookEvents.failed === undefined ? null : (
+        <p className="mt-3 text-xs text-muted-foreground">
+          A failed delivery is one Paystack will send again: the database or Paystack itself was
+          unreachable when it arrived.
+        </p>
+      )}
+    </Section>
+  )
+}
+
 function SelfTestSection() {
   const [rows, setRows] = useState<readonly SelfTestRow[] | null>(null)
   const [summary, setSummary] = useState<string>("")
@@ -538,6 +599,7 @@ export function SecurityPanel({
           <ScannerSection health={overview.scanner} />
           <PipelineSection scan={overview.scan} now={now} />
           <JobsSection jobs={overview.jobs} />
+          <PaymentsSection payments={overview.payments} />
           <EventsSection events={overview.events} now={now} />
         </>
       )}

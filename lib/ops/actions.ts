@@ -1,5 +1,7 @@
 "use server"
 
+import { webhookEventCounts } from "@/lib/commerce/db"
+import { getPaystackEnv, type PaystackMode } from "@/lib/env"
 import { logger } from "@/lib/logger"
 import { can } from "@/lib/identity/permissions"
 import { getAuthUser, getUserRoles, type AppRole } from "@/lib/identity/session"
@@ -73,11 +75,20 @@ export interface ScanEventRow {
   createdAt: string
 }
 
+export interface PaymentOverview {
+  /** test, live, invalid, or unconfigured when no secret key is set at all. */
+  mode: PaystackMode | "unconfigured"
+  /** Webhook deliveries in the last 24 hours, one count per status. */
+  webhookEvents: Readonly<Record<string, number>>
+  windowHours: number
+}
+
 export interface SecurityOverview {
   scanner: ScannerHealth
   scan: ScanOverview
   jobs: JobOverview
   events: readonly ScanEventRow[]
+  payments: PaymentOverview
   /** The server's clock, so the page can say how old a heartbeat is. */
   fetchedAt: string
 }
@@ -251,6 +262,55 @@ async function requireOpsActor(action: "area:admin" | "roles:grant", onlyRoles?:
 }
 
 // ---------------------------------------------------------------------------
+// Payments
+// ---------------------------------------------------------------------------
+
+const WEBHOOK_STATUSES = ["received", "processed", "ignored", "failed"] as const
+
+const WEBHOOK_WINDOW_HOURS = 24
+
+/** The mode the deployment is in, or "unconfigured" when there is no key. */
+function paystackMode(): PaystackMode | "unconfigured" {
+  try {
+    return getPaystackEnv().mode
+  } catch {
+    return "unconfigured"
+  }
+}
+
+/**
+ * The Paystack half of the page: which mode this deployment is pointed at, and
+ * how the webhook deliveries of the last day ended.
+ *
+ * A missing key is a state, not an error: the page still renders, and it says so.
+ * A missing webhook_events table (the migration not applied yet) reads as zeros.
+ */
+async function paymentOverview(): Promise<PaymentOverview> {
+  const since = new Date(Date.now() - WEBHOOK_WINDOW_HOURS * 60 * 60 * 1000).toISOString()
+
+  let counts: Record<string, number> = {}
+
+  try {
+    const answer = await webhookEventCounts(since)
+    counts = answer
+  } catch {
+    logger.error("ops_webhook_counts_failed", {})
+  }
+
+  const webhookEvents: Record<string, number> = {}
+
+  for (const status of WEBHOOK_STATUSES) {
+    webhookEvents[status] = readCount(counts[status])
+  }
+
+  return {
+    mode: paystackMode(),
+    webhookEvents,
+    windowHours: WEBHOOK_WINDOW_HOURS,
+  }
+}
+
+// ---------------------------------------------------------------------------
 // getSecurityOverviewAction
 // ---------------------------------------------------------------------------
 
@@ -272,11 +332,12 @@ export async function getSecurityOverviewAction(): Promise<SecurityOverviewResul
   try {
     const supabase = getSupabaseAdminClient()
 
-    const [health, scanAnswer, jobAnswer, eventAnswer] = await Promise.all([
+    const [health, scanAnswer, jobAnswer, eventAnswer, payments] = await Promise.all([
       getScannerHealth(),
       supabase.rpc("scan_overview"),
       supabase.rpc("job_overview"),
       supabase.rpc("list_recent_scan_events", { p_limit: 20 }),
+      paymentOverview(),
     ])
 
     if (scanAnswer.error !== null || jobAnswer.error !== null || eventAnswer.error !== null) {
@@ -296,6 +357,7 @@ export async function getSecurityOverviewAction(): Promise<SecurityOverviewResul
         scan: toScanOverview(scanAnswer.data),
         jobs: toJobOverview(jobAnswer.data),
         events: toScanEvents(eventAnswer.data),
+        payments,
         fetchedAt: new Date().toISOString(),
       },
     }

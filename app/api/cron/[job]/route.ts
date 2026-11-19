@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server"
 
+import {
+  expirePendingOrders,
+  listOrdersNeedingVerification,
+  processPaidOrder,
+  purgeOldWebhookEvents,
+} from "@/lib/commerce/db"
+import { runReconcilePending } from "@/lib/commerce/reconcile"
 import { getServerEnv } from "@/lib/env"
 import { logger } from "@/lib/logger"
 import { isValidCronSecret } from "@/lib/jobs/cron-auth"
@@ -13,6 +20,7 @@ import {
   releaseJob,
 } from "@/lib/jobs/queue"
 import { runProcessQueue } from "@/lib/jobs/runner"
+import { verifyTransaction } from "@/lib/paystack/client"
 import { getSupabaseAdminClient } from "@/lib/supabase/admin"
 
 // Called by an external scheduler, never by a browser: no caching, and the
@@ -24,9 +32,25 @@ const PROCESS_QUEUE_JOB = "process-queue"
 const HEARTBEAT_CHECK_JOB = "heartbeat-check"
 const CLEANUP_JOB = "cleanup"
 const SCAN_SWEEP_JOB = "scan-sweep"
+const RECONCILE_JOB = "reconcile-pending"
+const EXPIRE_JOB = "expire-orders"
 
 // The endpoint only accepts these names.
-const ALLOWED_JOBS = [PROCESS_QUEUE_JOB, HEARTBEAT_CHECK_JOB, CLEANUP_JOB, SCAN_SWEEP_JOB]
+const ALLOWED_JOBS = [
+  PROCESS_QUEUE_JOB,
+  HEARTBEAT_CHECK_JOB,
+  CLEANUP_JOB,
+  SCAN_SWEEP_JOB,
+  RECONCILE_JOB,
+  EXPIRE_JOB,
+]
+
+// How long a webhook delivery is remembered for duplicate detection. Paystack's
+// own retries are over within 72 hours in live mode, so 30 days is generous.
+const WEBHOOK_RETENTION_DAYS = 30
+
+// The expiry sweep is bounded so one call never holds a long lock.
+const EXPIRE_BATCH = 500
 
 // The daily job type enqueued by cleanup, and its de-duplication key: one run per
 // UTC day, however many times cleanup is called.
@@ -222,9 +246,13 @@ export async function POST(request: Request, context: RouteContext): Promise<Nex
       // schedule: one scheduler entry point is easier to reason about than two.
       const storageCleanupQueued = await enqueueStorageCleanup()
 
+      // The webhook delivery log is only useful for as long as a retry can
+      // arrive, so the oldest rows go with the same daily sweep.
+      const webhookEventsPurged = await purgeOldWebhookEvents(WEBHOOK_RETENTION_DAYS)
+
       await recordHeartbeatSafely(CLEANUP_JOB, "ok", startedAt)
 
-      return json({ ok: true, deleted, storageCleanupQueued }, 200)
+      return json({ ok: true, deleted, storageCleanupQueued, webhookEventsPurged }, 200)
     } catch (error) {
       await recordHeartbeatSafely(CLEANUP_JOB, "error", startedAt, shortMessage(error))
       logger.error("cron_job_failed", { job: CLEANUP_JOB, reason: shortMessage(error) })
@@ -243,6 +271,40 @@ export async function POST(request: Request, context: RouteContext): Promise<Nex
     } catch (error) {
       await recordHeartbeatSafely(SCAN_SWEEP_JOB, "error", startedAt, shortMessage(error))
       logger.error("cron_job_failed", { job: SCAN_SWEEP_JOB, reason: shortMessage(error) })
+
+      return json({ ok: false }, 500)
+    }
+  }
+
+  if (job === RECONCILE_JOB) {
+    try {
+      const summary = await runReconcilePending({
+        listReferences: listOrdersNeedingVerification,
+        verifyTransaction,
+        processPaidOrder,
+      })
+
+      await recordHeartbeatSafely(RECONCILE_JOB, "ok", startedAt)
+
+      return json({ ok: true, ...summary }, 200)
+    } catch (error) {
+      await recordHeartbeatSafely(RECONCILE_JOB, "error", startedAt, shortMessage(error))
+      logger.error("cron_job_failed", { job: RECONCILE_JOB, reason: shortMessage(error) })
+
+      return json({ ok: false }, 500)
+    }
+  }
+
+  if (job === EXPIRE_JOB) {
+    try {
+      const expired = await expirePendingOrders(EXPIRE_BATCH)
+
+      await recordHeartbeatSafely(EXPIRE_JOB, "ok", startedAt)
+
+      return json({ ok: true, expired }, 200)
+    } catch (error) {
+      await recordHeartbeatSafely(EXPIRE_JOB, "error", startedAt, shortMessage(error))
+      logger.error("cron_job_failed", { job: EXPIRE_JOB, reason: shortMessage(error) })
 
       return json({ ok: false }, 500)
     }

@@ -56,6 +56,11 @@ const OVERVIEW: SecurityOverview = {
       },
     ],
   },
+  payments: {
+    mode: "test",
+    webhookEvents: { received: 0, processed: 12, ignored: 3, failed: 1 },
+    windowHours: 24,
+  },
   events: [
     {
       verdict: "clean",
@@ -314,5 +319,36 @@ describe("SelfTestResults", () => {
 
     expect(html).toContain('role="alert"')
     expect(html).toContain("Too many attempts")
+  })
+})
+
+describe("the Security page, payments section", () => {
+  it("says which Paystack mode the deployment is in", () => {
+    expect(render()).toContain("Test mode: no real money moves")
+
+    expect(
+      render({ payments: { mode: "live", webhookEvents: { received: 0, processed: 0, ignored: 0, failed: 0 }, windowHours: 24 } }),
+    ).toContain("Live mode: real money moves")
+  })
+
+  it("says so plainly when there is no key or the key is wrong", () => {
+    expect(
+      render({ payments: { mode: "unconfigured", webhookEvents: { received: 0, processed: 0, ignored: 0, failed: 0 }, windowHours: 24 } }),
+    ).toContain("Not configured: no Paystack secret key is set")
+
+    expect(
+      render({ payments: { mode: "invalid", webhookEvents: { received: 0, processed: 0, ignored: 0, failed: 0 }, windowHours: 24 } }),
+    ).toContain("The Paystack secret key is not a test or live key")
+  })
+
+  it("shows the webhook counts of the last day, one per status", () => {
+    const html = render()
+
+    expect(html).toContain("Webhook events, last 24 hours")
+    expect(html).toContain("processed")
+    expect(html).toContain("ignored")
+    expect(html).toContain("failed")
+    expect(html).toContain("12")
+    expect(html).toContain("3")
   })
 })

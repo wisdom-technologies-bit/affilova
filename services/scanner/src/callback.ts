@@ -34,7 +34,7 @@ export type CallbackPayload = {
   readonly detail: string
   readonly sha256: string | null
   readonly detectedMime: string | null
-  readonly engine: "clamav"
+  readonly engine: "bouncer"
   readonly signatureVersion: string | null
   readonly scannedAt: string
 }

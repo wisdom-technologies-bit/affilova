@@ -19,6 +19,7 @@ export type ScannerConfig = {
   readonly workDir: string
   readonly concurrency: number
   readonly queueLimit: number
+  readonly bouncerApiKey: string
 }
 
 export const DEFAULT_PORT = 10000
@@ -166,6 +167,7 @@ export function loadConfig(env: ConfigEnv = process.env): ScannerConfig {
     port: readInteger(env, "PORT", DEFAULT_PORT, 1, 65535),
     sharedSecret: readSecret(env, "SCANNER_SHARED_SECRET"),
     callbackSecret: readSecret(env, "SCANNER_CALLBACK_SECRET"),
+    bouncerApiKey: readRequired(env, "BOUNCER_API_KEY"),
     allowedCallbackOrigins: readOrigins(env, "ALLOWED_CALLBACK_ORIGINS"),
     allowedDownloadHostSuffix: readHostSuffix(env, "ALLOWED_DOWNLOAD_HOST_SUFFIX"),
     maxFileBytes: readInteger(env, "MAX_FILE_BYTES", DEFAULT_MAX_FILE_BYTES, 1, Number.MAX_SAFE_INTEGER),

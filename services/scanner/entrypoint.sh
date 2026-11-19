@@ -1,4 +1,3 @@
-
 #!/bin/sh
 # Lightweight entrypoint. No local malware engine or signature database.
 

@@ -585,7 +585,7 @@ function main(): void {
       callbackPath: CALLBACK_PATH,
     })
 
-    server.listen(config.port, () => {
+    server.listen(config.port, "0.0.0.0", () => {
       log.lifecycle("scanner.listening", { port: config.port })
     })
   })

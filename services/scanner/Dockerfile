@@ -9,7 +9,6 @@
 FROM node:24-bookworm-slim
 
 ENV NODE_ENV=production \
-    PORT=8080 \
     WORK_DIR=/data/tmp
 
 # clamav        signature database and the libclamav engine
@@ -22,10 +21,12 @@ ENV NODE_ENV=production \
 # enable, so RAR5 archives cannot be listed and are reported as
 # needs_review / archive_unlistable rather than silently accepted.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
+        && apt-get install -y --no-install-recommends \
         clamav \
         clamav-daemon \
+        clamdscan \
         clamav-freshclam \
+        gosu \
         p7zip-full \
         libmagic1 \
         file \
@@ -52,11 +53,11 @@ RUN chmod +x ./entrypoint.sh
 
 # 8080 is the HTTP API; /data holds the signatures and the scratch space. Attach a
 # Railway Volume mounted at /data so a redeploy does not re-download ~300 MB.
-EXPOSE 8080
+EXPOSE 10000
 
 # Health is "clamd answers PING and the signatures are younger than 72 hours",
 # which is exactly what /healthz reports.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=300s --retries=3 \
-    CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||8080)+'/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+    CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||10000)+'/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 ENTRYPOINT ["/app/services/scanner/entrypoint.sh"]

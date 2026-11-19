@@ -21,7 +21,7 @@ export type ScannerConfig = {
   readonly queueLimit: number
 }
 
-export const DEFAULT_PORT = 8080
+export const DEFAULT_PORT = 10000
 export const DEFAULT_ALLOWED_DOWNLOAD_HOST_SUFFIX = ".r2.cloudflarestorage.com"
 export const DEFAULT_MAX_FILE_BYTES = 2147483648
 export const DEFAULT_WORK_DIR = "/data/tmp"

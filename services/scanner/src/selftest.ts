@@ -1,11 +1,12 @@
+
 /**
  * The self-test request.
  *
  * A self-test runs the pipeline a queued scan runs — download with a size cap,
- * libmagic type detection, the MIME policy, the archive policy, ClamAV and the
+ * libmagic type detection, the MIME policy, the archive policy, Bouncer and the
  * temporary file cleanup — but it answers inline instead of sending a callback.
  * It exists so an operator can prove the whole chain (storage, this service,
- * ClamAV, the policies) without creating a product or a file record.
+ * Bouncer, the policies) without creating a product or a file record.
  *
  * What it deliberately does not do: read or write the app's database, send a
  * callback, or touch any product. The app's own self-test runner explains that
@@ -18,7 +19,7 @@
 import { randomUUID } from "node:crypto"
 
 import type { CallbackPayload } from "#callback"
-import { PAYLOAD_ENGINE } from "#clamav"
+import { BOUNCER_ENGINE } from "#bouncer"
 import type { ScannerConfig } from "#config"
 import { isAllowedExtension } from "#mime-policy"
 import type { PipelineDeps, PipelineReport, ScanJob } from "#scan-runner"
@@ -186,7 +187,7 @@ export function errorResult(detail: string, durationMs: number): SelftestResult 
     detail,
     sha256: null,
     detectedMime: null,
-    engine: PAYLOAD_ENGINE,
+    engine: BOUNCER_ENGINE,
     signatureVersion: null,
     durationMs,
   }

@@ -1,0 +1,62 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`email templates > snapshots the text versions 1`] = `
+"Payment received
+
+Order: AFV-2026-000142
+Product: Instagram Growth Playbook
+Amount: ₦25,000
+Date: 18 Nov 2026, 11:00 (West Africa Time)
+
+Downloads: https://affilova.example/access/token.sig
+
+Refunds: requests are accepted within 72 hours of purchase.
+
+The link is personal to this order. If you forward it, whoever opens it can download your files.
+
+Questions? Contact us through our contact page:
+https://affilova.example/contact"
+`;
+
+exports[`email templates > snapshots the text versions 2`] = `
+"You made a sale
+
+Product: Instagram Growth Playbook
+Order: AFV-2026-000142
+Sale amount: ₦25,000
+Your share: ₦20,000
+Held until: 25 Nov 2026, 11:00 (West Africa Time)
+
+The buyer's details are not included in this email.
+
+Questions? Contact us through our contact page:
+https://affilova.example/contact"
+`;
+
+exports[`email templates > snapshots the text versions 3`] = `
+"You earned a commission
+
+Product: Instagram Growth Playbook
+Order: AFV-2026-000142
+Commission: ₦5,000
+Held until: 25 Nov 2026, 11:00 (West Africa Time)
+
+The buyer's details are not included in this email.
+
+Questions? Contact us through our contact page:
+https://affilova.example/contact"
+`;
+
+exports[`email templates > snapshots the text versions 4`] = `
+"Your refund was issued
+
+Order: AFV-2026-000142
+Product: Instagram Growth Playbook
+Amount refunded: ₦25,000
+
+The money goes back to the account you paid with. How long it takes depends on that bank, not on us.
+Downloads for this order are no longer available.
+
+If you did not ask for this refund, contact us through our contact page:
+https://affilova.example/contact"
+`;

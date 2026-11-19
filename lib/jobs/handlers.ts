@@ -13,6 +13,18 @@ import {
   runScanSweepJob,
 } from "@/lib/scanning/jobs"
 
+import { sendEmail } from "@/lib/email/brevo"
+import { readOrderSummary } from "@/lib/commerce/order-summary"
+import { createAccessToken } from "@/lib/commerce/access-token"
+import { appUrl } from "@/lib/identity/app-urls"
+
+import {
+  ORDER_PAID_JOB,
+  REFUND_NOTICE_JOB,
+  emailLog,
+  runOrderPaidJob,
+  runRefundNoticeJob,
+} from "./order-email"
 import { runStorageCleanupJob } from "./storage-cleanup"
 import type { Job } from "./types"
 
@@ -77,4 +89,33 @@ registerHandler(REFUND_SUBMIT_JOB, async (job) => {
     markFailed: markRefundFailed,
     logWarn: (event, fields) => logger.warn(event, fields),
   })
+})
+
+// Email the buyer, the vendor and (when there is one) the affiliate after a
+// payment. Every send is claimed in public.email_log first, so a retry that
+// follows a partial failure sends only what is missing.
+// Built per job, not at import: the branding URLs read the environment, and a
+// module that cannot load without it would break every route that imports this
+// file.
+function orderEmailDeps() {
+  return {
+    readOrder: readOrderSummary,
+    createToken: createAccessToken,
+    send: sendEmail,
+    log: emailLog,
+    branding: {
+      siteUrl: appUrl("public", "/"),
+      contactUrl: appUrl("public", "/contact"),
+    },
+  }
+}
+
+registerHandler(ORDER_PAID_JOB, async (job) => {
+  await runOrderPaidJob(job.payload, orderEmailDeps())
+})
+
+// Tell the buyer their money was returned. Enqueued by the refund flow; the
+// handler is the same shape as order_paid, with its own dedupe kind.
+registerHandler(REFUND_NOTICE_JOB, async (job) => {
+  await runRefundNoticeJob(job.payload, orderEmailDeps())
 })

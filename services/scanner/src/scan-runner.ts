@@ -1,14 +1,15 @@
+
 /**
  * The per-job pipeline.
  *
  * Order is fixed by the contract, because each stage is only worth running when
  * the cheaper one before it passed:
  *
- *   size_mismatch -> type policy -> archive policy -> ClamAV -> clean
+ *   size_mismatch -> type policy -> archive policy -> Bouncer -> clean
  *
  * The temporary file is removed in a `finally` block on every path, including a
  * timeout, so a crash cannot leave an unscanned upload behind. Dependencies are
- * injected so the whole pipeline can be tested without a network, ClamAV or
+ * injected so the whole pipeline can be tested without a network, Bouncer or
  * 7-Zip.
  */
 
@@ -19,8 +20,7 @@ import { decideArchiveListing, parseSevenZipListing } from "#archive-policy"
 import type { ArchiveListing } from "#archive-policy"
 import { sanitiseDetail } from "#callback"
 import type { CallbackPayload, ScanVerdict } from "#callback"
-import { PAYLOAD_ENGINE } from "#clamav"
-import type { ClamavInfo, ClamavOutcome } from "#clamav"
+import { BOUNCER_ENGINE, type BouncerOutcome } from "#bouncer"
 import { DOWNLOAD_TIMEOUT_MS, downloadToFile, DownloadFailure } from "#download"
 import type { DownloadOptions, DownloadResult, FetchLike } from "#download"
 import type { RunCommand } from "#exec"
@@ -29,7 +29,6 @@ import { decideMime, isArchiveExtension, normaliseMime } from "#mime-policy"
 
 export const OVERALL_TIMEOUT_MS = 1_200_000
 export const COMMAND_TIMEOUT_MS = 120_000
-export const CLAMAV_TIMEOUT_MS = 300_000
 
 export type ScanJob = {
   readonly scanId: string
@@ -55,15 +54,14 @@ export type PipelineDeps = {
   readonly fetch: FetchLike
   readonly download: (options: DownloadOptions) => Promise<DownloadResult>
   readonly runCommand: RunCommand
-  readonly scanFile: (filePath: string, timeoutMs?: number) => Promise<ClamavOutcome>
-  readonly readClamavInfo: () => Promise<ClamavInfo>
+  readonly scanFile: (filePath: string, mimeType: string, timeoutMs?: number) => Promise<BouncerOutcome>
   readonly now: () => number
   readonly log: Logger
   readonly removeFile?: (filePath: string) => Promise<void>
   readonly overallTimeoutMs?: number
   readonly downloadTimeoutMs?: number
   readonly commandTimeoutMs?: number
-  readonly clamavTimeoutMs?: number
+  readonly scanTimeoutMs?: number
 }
 
 /** A queued scan: the pipeline plus the callback it must deliver. */
@@ -94,8 +92,6 @@ type StageContext = {
   readonly timedOut: () => boolean
 }
 
-const UNKNOWN_CLAMAV_INFO: ClamavInfo = { engine: "unknown", signatureVersion: null }
-
 function firstLine(text: string): string {
   for (const line of text.split(/\r?\n/)) {
     const trimmed = line.trim()
@@ -109,7 +105,7 @@ function firstLine(text: string): string {
 }
 
 /**
- * Runs the stages for one job: download, detect, policies, ClamAV, cleanup.
+ * Runs the stages for one job: download, detect, policies, Bouncer, cleanup.
  *
  * This is the whole scan. It sends no callback and writes no log line, which is
  * what lets the self-test reuse it: there is one implementation of the pipeline,
@@ -191,7 +187,7 @@ function buildPayload(
     detail: sanitiseDetail(fields.detail),
     sha256: fields.sha256,
     detectedMime: fields.detectedMime === null ? null : normaliseMime(fields.detectedMime),
-    engine: PAYLOAD_ENGINE,
+    engine: BOUNCER_ENGINE,
     signatureVersion: fields.signatureVersion,
     scannedAt: new Date(deps.now()).toISOString(),
   }
@@ -221,7 +217,6 @@ async function runStages(
 ): Promise<StageResult> {
   const stages: Record<string, number> = {}
   const commandTimeoutMs = deps.commandTimeoutMs ?? COMMAND_TIMEOUT_MS
-  const clamavTimeoutMs = deps.clamavTimeoutMs ?? CLAMAV_TIMEOUT_MS
 
   const failure = (
     verdict: ScanVerdict,
@@ -324,44 +319,42 @@ async function runStages(
       }
     }
 
-    const clamavStartedAt = deps.now()
-    let outcome: ClamavOutcome
+    const scanStartedAt = deps.now()
+    let outcome: BouncerOutcome
 
     try {
-      outcome = await deps.scanFile(context.destination, clamavTimeoutMs)
+      outcome = await deps.scanFile(
+        context.destination,
+        detectedMime,
+        deps.scanTimeoutMs ?? 300_000,
+      )
     } catch {
       outcome = { kind: "error", detail: "scanner_error" }
     }
 
-    stages.scan = deps.now() - clamavStartedAt
-
-    let info: ClamavInfo
-
-    try {
-      info = await deps.readClamavInfo()
-    } catch {
-      info = UNKNOWN_CLAMAV_INFO
-    }
-
-    const signatureVersion = info.signatureVersion
+    stages.scan = deps.now() - scanStartedAt
 
     if (context.timedOut()) {
-      return failure("error", "timeout", { sha256, detectedMime, signatureVersion })
+      return failure("error", "timeout", { sha256, detectedMime })
     }
 
     if (outcome.kind === "clean") {
-      return failure("clean", "clean", { sha256, detectedMime, signatureVersion })
+      return failure("clean", "clean", { sha256, detectedMime })
     }
 
     if (outcome.kind === "infected") {
-      return failure("infected", outcome.signature, { sha256, detectedMime, signatureVersion })
+      return failure("infected", outcome.detail, { sha256, detectedMime })
+    }
+
+    if (outcome.kind === "needs_review") {
+      return failure("needs_review", outcome.detail, { sha256, detectedMime })
     }
 
     if (outcome.kind === "rejected") {
-      return failure("rejected", outcome.detail, { sha256, detectedMime, signatureVersion })
+      return failure("rejected", outcome.detail, { sha256, detectedMime })
     }
 
-    return failure("error", outcome.detail, { sha256, detectedMime, signatureVersion })
+    return failure("error", outcome.detail, { sha256, detectedMime })
   } catch {
     return failure("error", context.timedOut() ? "timeout" : "scanner_error")
   } finally {

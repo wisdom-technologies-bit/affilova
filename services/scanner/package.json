@@ -8,10 +8,10 @@
     "node": ">=24"
   },
   "imports": {
+    "#bouncer": "./src/bouncer.ts",
     "#archive-policy": "./src/archive-policy.ts",
     "#auth": "./src/auth.ts",
     "#callback": "./src/callback.ts",
-    "#clamav": "./src/clamav.ts",
     "#config": "./src/config.ts",
     "#download": "./src/download.ts",
     "#exec": "./src/exec.ts",

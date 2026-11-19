@@ -1,5 +1,5 @@
-
-import { openAsBlob, stat } from "node:fs/promises"
+import { openAsBlob } from "node:fs"
+import { stat } from "node:fs/promises"
 import { basename } from "node:path"
 
 export const BOUNCER_ENGINE = "bouncer"

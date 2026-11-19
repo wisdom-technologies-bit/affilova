@@ -1,3 +1,4 @@
+
 /**
  * The HTTP surface.
  *
@@ -18,18 +19,7 @@ import { fileURLToPath } from "node:url"
 import { isAuthorized } from "#auth"
 import type { CallbackPayload } from "#callback"
 import { createCallbackSender, defaultSleep } from "#callback"
-import {
-  CLAMD_SOCKET_PATH,
-  CLAMAV_DB_DIR,
-  PAYLOAD_ENGINE,
-  createEngineInfoCache,
-  createReadinessProbe,
-  parseClamdVersion,
-  pingClamd,
-  readSignatureAgeHours,
-  scanFile,
-} from "#clamav"
-import type { ClamavInfo, Readiness } from "#clamav"
+import { BOUNCER_ENGINE, scanFile } from "#bouncer"
 import { loadConfig } from "#config"
 import type { ScannerConfig } from "#config"
 import { downloadToFile, nodeFetch } from "#download"
@@ -79,7 +69,10 @@ export type SelftestContext = {
 export type ServerContext = {
   readonly config: ScannerConfig
   readonly admission: (job: ScanJob) => Admission
-  readonly readiness: () => Promise<Readiness>
+  readonly readiness: () => Promise<{
+    readonly ready: boolean
+    readonly engine: string
+  }>
   readonly log: Logger
   readonly selftest: SelftestContext
 }
@@ -253,8 +246,7 @@ async function handleHealth(context: ServerContext, response: ServerResponse): P
 
   sendJson(response, readiness.ready ? 200 : 503, {
     ok: readiness.ready,
-    clamd: readiness.clamd,
-    signatureAgeHours: readiness.signatureAgeHours,
+    engine: readiness.engine,
   })
 }
 
@@ -478,15 +470,6 @@ export function createScannerServer(context: ServerContext): Server {
   })
 }
 
-/**
- * Reads the engine and signature version once, then hourly through the cache.
- */
-async function loadClamavInfo(): Promise<ClamavInfo> {
-  const result = await runCommand("clamdscan", ["--version"], { timeoutMs: 10_000 })
-
-  return parseClamdVersion(`${result.stdout}\n${result.stderr}`)
-}
-
 function main(): void {
   let config: ScannerConfig
 
@@ -509,8 +492,8 @@ function main(): void {
     fetch: nodeFetch,
     download: downloadToFile,
     runCommand,
-    scanFile,
-    readClamavInfo: createEngineInfoCache(loadClamavInfo, Date.now).get,
+    scanFile: (filePath: string, mimeType: string, timeoutMs?: number) =>
+      scanFile(filePath, config.bouncerApiKey, mimeType, timeoutMs),
     now: Date.now,
     log,
   } satisfies PipelineDeps
@@ -537,10 +520,12 @@ function main(): void {
     },
   })
 
-  const readiness = createReadinessProbe({
-    ping: () => pingClamd(CLAMD_SOCKET_PATH),
-    signatureAge: () => readSignatureAgeHours(CLAMAV_DB_DIR, Date.now()),
-    now: Date.now,
+  const readiness = async (): Promise<{
+    readonly ready: boolean
+    readonly engine: string
+  }> => ({
+    ready: Boolean(config.bouncerApiKey),
+    engine: BOUNCER_ENGINE,
   })
 
   // The self-test runs the same pipeline function as a queued scan, with its
@@ -550,7 +535,7 @@ function main(): void {
     overallTimeoutMs: SELFTEST_DEADLINE_MS,
     downloadTimeoutMs: 10_000,
     commandTimeoutMs: 15_000,
-    clamavTimeoutMs: 20_000,
+    scanTimeoutMs: 20_000,
   }
 
   const server = createScannerServer({
@@ -581,7 +566,7 @@ function main(): void {
       extensions: ALLOWED_EXTENSIONS.length,
       archiveExtensions: ARCHIVE_EXTENSIONS.length,
       staleFilesRemoved: removed,
-      engine: PAYLOAD_ENGINE,
+      engine: BOUNCER_ENGINE,
       callbackPath: CALLBACK_PATH,
     })
 

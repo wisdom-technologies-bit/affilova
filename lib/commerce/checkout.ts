@@ -60,9 +60,14 @@ export type StartCheckoutInput = z.input<typeof startCheckoutSchema> & {
   ip: string
 }
 
+/**
+ * The click the browser remembered for this product.
+ *
+ * Only a click id: the affiliate is never sent by the browser, and is derived
+ * from the click by the database.
+ */
 export interface Attribution {
-  affiliateId: string
-  clickId: string | null
+  clickId: string
 }
 
 export interface CreateOrderCall {
@@ -99,8 +104,14 @@ export interface CheckoutDeps {
   rateLimit: typeof rateLimit
   verifyTurnstile: (token: string) => Promise<{ ok: boolean }>
   getBuyerUserId: () => Promise<string | null>
-  /** The affiliate extension point. Returns null until the tracking task lands. */
-  readAttribution: () => Promise<Attribution | null>
+  /** The click remembered for this product, or null when there is none. */
+  readAttribution: (productId: string) => Promise<Attribution | null>
+  /**
+   * The affiliate a click belongs to, decided by the database: null when the
+   * click is unknown, for another product, too old, or its affiliate is no
+   * longer allowed to promote.
+   */
+  getClickAttribution: (clickId: string, productId: string) => Promise<string | null>
   createOrder: (call: CreateOrderCall) => Promise<CreatedOrder>
   initializeTransaction: (call: InitializeCall) => Promise<InitializedTransaction>
   attachPaystackInit: (orderId: string, accessCode: string) => Promise<void>
@@ -148,6 +159,39 @@ function failureReason(error: unknown): string {
   }
 
   return "paystack_error"
+}
+
+/**
+ * Who, if anyone, is owed a commission on this order.
+ *
+ * The cookie can only name a click. The affiliate comes from
+ * get_click_attribution, which checks the click's product, age and the
+ * affiliate's current eligibility in the database. A failure at any point is
+ * "no affiliate": attribution is never a reason a buyer cannot pay.
+ */
+async function resolveAttribution(
+  productId: string,
+  deps: CheckoutDeps,
+): Promise<{ affiliateId: string | null; clickId: string | null }> {
+  let attribution: Attribution | null
+
+  try {
+    attribution = await deps.readAttribution(productId)
+  } catch {
+    return { affiliateId: null, clickId: null }
+  }
+
+  if (attribution === null) {
+    return { affiliateId: null, clickId: null }
+  }
+
+  try {
+    const affiliateId = await deps.getClickAttribution(attribution.clickId, productId)
+
+    return { affiliateId, clickId: attribution.clickId }
+  } catch {
+    return { affiliateId: null, clickId: attribution.clickId }
+  }
 }
 
 export async function runStartCheckout(
@@ -205,7 +249,7 @@ export async function runStartCheckout(
 
   // 4. The order. The price is the database's answer, not the browser's.
   const buyerUserId = await deps.getBuyerUserId()
-  const attribution = await deps.readAttribution()
+  const { affiliateId, clickId } = await resolveAttribution(productId, deps)
   const reference = generateReference(deps.randomChar)
 
   let order: CreatedOrder
@@ -216,8 +260,8 @@ export async function runStartCheckout(
       email,
       name: name === undefined || name === "" ? null : name,
       productId,
-      affiliateId: attribution?.affiliateId ?? null,
-      clickId: attribution?.clickId ?? null,
+      affiliateId,
+      clickId,
       // Opaque on purpose: the orders table holds a hash, never an address.
       ipHash: rateLimitKey(["order-ip", input.ip]),
       reference,

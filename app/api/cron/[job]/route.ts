@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server"
 
 import {
+  lagosDay,
+  previousLagosDay,
+  purgeOldClicks,
+  rollupAffiliateStats,
+  scanClickAnomalies,
+} from "@/lib/affiliate/stats"
+import {
   expirePendingOrders,
   listOrdersNeedingVerification,
   processPaidOrder,
@@ -34,6 +41,8 @@ const CLEANUP_JOB = "cleanup"
 const SCAN_SWEEP_JOB = "scan-sweep"
 const RECONCILE_JOB = "reconcile-pending"
 const EXPIRE_JOB = "expire-orders"
+const ROLLUPS_JOB = "rollups"
+const RISK_SCAN_JOB = "risk-scan"
 
 // The endpoint only accepts these names.
 const ALLOWED_JOBS = [
@@ -43,11 +52,17 @@ const ALLOWED_JOBS = [
   SCAN_SWEEP_JOB,
   RECONCILE_JOB,
   EXPIRE_JOB,
+  ROLLUPS_JOB,
+  RISK_SCAN_JOB,
 ]
 
 // How long a webhook delivery is remembered for duplicate detection. Paystack's
 // own retries are over within 72 hours in live mode, so 30 days is generous.
 const WEBHOOK_RETENTION_DAYS = 30
+
+// How long a click is kept. Long enough for a year-on-year comparison, short
+// enough that the table stays a working set.
+const CLICK_RETENTION_MONTHS = 13
 
 // The expiry sweep is bounded so one call never holds a long lock.
 const EXPIRE_BATCH = 500
@@ -250,9 +265,13 @@ export async function POST(request: Request, context: RouteContext): Promise<Nex
       // arrive, so the oldest rows go with the same daily sweep.
       const webhookEventsPurged = await purgeOldWebhookEvents(WEBHOOK_RETENTION_DAYS)
 
+      // Clicks are kept for 13 months, then forgotten. A click older than that
+      // cannot attribute anything: the attribution window is 30 days.
+      const clicksPurged = await purgeOldClicks(CLICK_RETENTION_MONTHS)
+
       await recordHeartbeatSafely(CLEANUP_JOB, "ok", startedAt)
 
-      return json({ ok: true, deleted, storageCleanupQueued, webhookEventsPurged }, 200)
+      return json({ ok: true, deleted, storageCleanupQueued, webhookEventsPurged, clicksPurged }, 200)
     } catch (error) {
       await recordHeartbeatSafely(CLEANUP_JOB, "error", startedAt, shortMessage(error))
       logger.error("cron_job_failed", { job: CLEANUP_JOB, reason: shortMessage(error) })
@@ -305,6 +324,39 @@ export async function POST(request: Request, context: RouteContext): Promise<Nex
     } catch (error) {
       await recordHeartbeatSafely(EXPIRE_JOB, "error", startedAt, shortMessage(error))
       logger.error("cron_job_failed", { job: EXPIRE_JOB, reason: shortMessage(error) })
+
+      return json({ ok: false }, 500)
+    }
+  }
+
+  if (job === ROLLUPS_JOB) {
+    try {
+      // Yesterday and today in Lagos time, in one call: today's numbers keep up
+      // with the day, and yesterday's are corrected if a late payment landed.
+      const now = new Date()
+      const rows = await rollupAffiliateStats(previousLagosDay(now), lagosDay(now))
+
+      await recordHeartbeatSafely(ROLLUPS_JOB, "ok", startedAt)
+
+      return json({ ok: true, days: 2, rows }, 200)
+    } catch (error) {
+      await recordHeartbeatSafely(ROLLUPS_JOB, "error", startedAt, shortMessage(error))
+      logger.error("cron_job_failed", { job: ROLLUPS_JOB, reason: shortMessage(error) })
+
+      return json({ ok: false }, 500)
+    }
+  }
+
+  if (job === RISK_SCAN_JOB) {
+    try {
+      const flags = await scanClickAnomalies()
+
+      await recordHeartbeatSafely(RISK_SCAN_JOB, "ok", startedAt)
+
+      return json({ ok: true, flags }, 200)
+    } catch (error) {
+      await recordHeartbeatSafely(RISK_SCAN_JOB, "error", startedAt, shortMessage(error))
+      logger.error("cron_job_failed", { job: RISK_SCAN_JOB, reason: shortMessage(error) })
 
       return json({ ok: false }, 500)
     }

@@ -5,7 +5,7 @@ import { z } from "zod"
 
 import * as db from "@/lib/commerce/db"
 import { commerceErrorMessage, GENERIC_COMMERCE_ERROR } from "@/lib/commerce/errors"
-import { runStartCheckout, type Attribution, type StartCheckoutResult } from "@/lib/commerce/checkout"
+import { runStartCheckout, type StartCheckoutResult } from "@/lib/commerce/checkout"
 import { enqueueRefundSubmit } from "@/lib/commerce/refund-submit"
 import { appUrl } from "@/lib/identity/app-urls"
 import { getAuthUser } from "@/lib/identity/session"
@@ -13,6 +13,7 @@ import { logger } from "@/lib/logger"
 import { initializeTransaction } from "@/lib/paystack/client"
 import { clientIpFromHeaders, rateLimit } from "@/lib/rate-limit"
 import { verifyCheckoutTurnstile } from "@/lib/security/turnstile-verify"
+import { readAttribution } from "@/lib/tracking/attribution"
 
 // The checkout and refund server actions.
 //
@@ -56,10 +57,10 @@ export async function startCheckoutAction(input: StartCheckoutRequest): Promise<
 
           return user === null ? null : user.id
         },
-        // The affiliate extension point. The tracking task fills this in; until
-        // then every order is created with no affiliate, which is exactly what a
-        // buyer following no referral link gets.
-        readAttribution: async (): Promise<Attribution | null> => null,
+        // The click this browser remembers for the product, and the affiliate
+        // the database derives from it. Neither is ever read from the form.
+        readAttribution,
+        getClickAttribution: db.getClickAttribution,
         createOrder: db.createOrder,
         initializeTransaction,
         attachPaystackInit: db.attachPaystackInit,

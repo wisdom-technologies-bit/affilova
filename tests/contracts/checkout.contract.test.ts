@@ -19,19 +19,30 @@ const edges = vi.hoisted(() => ({
   createOrder: vi.fn(),
   attachPaystackInit: vi.fn(),
   failOrder: vi.fn(),
+  getClickAttribution: vi.fn(),
   initializeTransaction: vi.fn(),
   verifyCheckoutTurnstile: vi.fn(),
   rateLimit: vi.fn(),
 }))
 
+const cookieJar = vi.hoisted(() => ({ values: new Map<string, string>() }))
+
 vi.mock("next/headers", () => ({
   headers: async () => new Headers({ "x-forwarded-for": "203.0.113.9" }),
+  cookies: async () => ({
+    get: (name: string) => {
+      const value = cookieJar.values.get(name)
+
+      return value === undefined ? undefined : { name, value }
+    },
+  }),
 }))
 
 vi.mock("@/lib/commerce/db", () => ({
   createOrder: edges.createOrder,
   attachPaystackInit: edges.attachPaystackInit,
   failOrder: edges.failOrder,
+  getClickAttribution: edges.getClickAttribution,
 }))
 
 vi.mock("@/lib/paystack/client", async () => {
@@ -69,6 +80,7 @@ import { submitPurchase, validatePurchase, type PurchaseOutcome } from "@/lib/co
 
 beforeEach(() => {
   process.env.NEXT_PUBLIC_HOST_PUBLIC = "affilova.vercel.app"
+  cookieJar.values.clear()
 
   edges.rateLimit.mockReset()
   edges.rateLimit.mockResolvedValue({ allowed: true, remaining: 9, resetAt: new Date() })
@@ -86,6 +98,8 @@ beforeEach(() => {
   edges.attachPaystackInit.mockResolvedValue(undefined)
   edges.failOrder.mockReset()
   edges.failOrder.mockResolvedValue(undefined)
+  edges.getClickAttribution.mockReset()
+  edges.getClickAttribution.mockResolvedValue(null)
   edges.initializeTransaction.mockReset()
   edges.initializeTransaction.mockResolvedValue({
     authorizationUrl: "https://checkout.paystack.com/abc123",
@@ -134,6 +148,59 @@ describe("the purchase card and the checkout action agree", () => {
 
     // The Turnstile token the card collected is the one the server verified.
     expect(edges.verifyCheckoutTurnstile).toHaveBeenCalledWith("token-1")
+  })
+
+  it("takes the affiliate from the click, never from the browser", async () => {
+    const CLICK = "44444444-4444-4444-8444-444444444444"
+    const AFFILIATE = "55555555-5555-4555-8555-555555555555"
+    const STRANGER = "66666666-6666-4666-8666-666666666666"
+
+    // The click this browser really was given for this product.
+    cookieJar.values.set("afv_ref", `${PRODUCT}:${CLICK}`)
+    edges.getClickAttribution.mockResolvedValue(AFFILIATE)
+
+    // Not part of the contract: a browser naming its own affiliate must be
+    // ignored, whatever it sends. The cast is what lets the extra keys through
+    // the type checker, exactly as a hostile browser would.
+    const hostile = {
+      productId: PRODUCT,
+      email: "buyer@example.com",
+      turnstileToken: "token-1",
+      affiliateId: STRANGER,
+      clickId: "not-a-click",
+    }
+
+    const answer = await startCheckoutAction(
+      hostile as unknown as Parameters<typeof startCheckoutAction>[0],
+    )
+
+    expect(answer).toEqual({ ok: true, authorizationUrl: "https://checkout.paystack.com/abc123" })
+
+    // The click id came from the cookie, and the affiliate from the database.
+    expect(edges.getClickAttribution).toHaveBeenCalledWith(CLICK, PRODUCT)
+    expect(edges.createOrder.mock.calls[0]?.[0]).toMatchObject({
+      affiliateId: AFFILIATE,
+      clickId: CLICK,
+    })
+  })
+
+  it("creates the order with no affiliate when the click is not usable", async () => {
+    cookieJar.values.set("afv_ref", `${PRODUCT}:44444444-4444-4444-8444-444444444444`)
+    // A click that belongs to another product, or an affiliate who can no
+    // longer promote: the database answers null.
+    edges.getClickAttribution.mockResolvedValue(null)
+
+    const answer = await startCheckoutAction({
+      productId: PRODUCT,
+      email: "buyer@example.com",
+      turnstileToken: "token-1",
+    })
+
+    expect(answer).toEqual({ ok: true, authorizationUrl: "https://checkout.paystack.com/abc123" })
+    expect(edges.createOrder.mock.calls[0]?.[0]).toMatchObject({
+      affiliateId: null,
+      clickId: "44444444-4444-4444-8444-444444444444",
+    })
   })
 
   it("ignores a price a browser tries to send", async () => {

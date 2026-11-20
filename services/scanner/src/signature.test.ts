@@ -11,10 +11,10 @@ export const CALLBACK_VECTOR_SECRET = "0123456789abcdef0123456789abcdef012345678
 export const CALLBACK_VECTOR_TIMESTAMP = 1763000000
 
 export const CALLBACK_VECTOR_BODY =
-  '{"scanId":"6af469de-05d7-4ae1-9d69-b68600000001","fileId":"6af469de-05d7-4ae1-9d69-b68600000002","verdict":"clean","detail":"clean","sha256":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08","detectedMime":"application/pdf","engine":"clamav","signatureVersion":"28186","scannedAt":"2026-11-18T05:00:00.000Z"}'
+  '{"scanId":"6af469de-05d7-4ae1-9d69-b68600000001","fileId":"6af469de-05d7-4ae1-9d69-b68600000002","verdict":"clean","detail":"clean","sha256":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08","detectedMime":"application/pdf","engine":"bouncer","signatureVersion":null,"scannedAt":"2026-11-18T05:00:00.000Z"}'
 
 export const CALLBACK_VECTOR_SIGNATURE =
-  "731104f6dda6976ce558fc83e2a1238b50b89b06e2c36972671208d2f89a5ef2"
+  "5b741292c123770fe4eef48a838f64e37e2f7cc16f7748e3790935a57588c4b5"
 
 describe("signCallbackBody", () => {
   it("matches the shared test vector", () => {

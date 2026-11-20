@@ -4,12 +4,14 @@ import {
   getCloudinaryEnv,
   getR2Env,
   getScannerEnv,
+  getTrackingEnv,
   parseCloudinaryEnv,
   parseOrderAccessSecret,
   parsePublicEnv,
   parseR2Env,
   parseScannerEnv,
   parseServerEnv,
+  parseTrackingEnv,
 } from "./env"
 
 const validPublicSource = {
@@ -281,5 +283,43 @@ describe("parseOrderAccessSecret", () => {
     expect(() => parseOrderAccessSecret({ ORDER_ACCESS_SECRET: "   " })).toThrow(
       /ORDER_ACCESS_SECRET/,
     )
+  })
+})
+
+describe("parseTrackingEnv", () => {
+  it("accepts a secret of 32 characters", () => {
+    const env = parseTrackingEnv({ CLICK_HASH_SECRET: "a".repeat(32) })
+
+    expect(env.CLICK_HASH_SECRET).toBe("a".repeat(32))
+  })
+
+  it("refuses a secret shorter than 32 characters", () => {
+    // A short salt is the whole point of the length rule: the hash has to be
+    // impossible to reverse by trying every likely IP.
+    expect(() => parseTrackingEnv({ CLICK_HASH_SECRET: "a".repeat(31) })).toThrow(/CLICK_HASH_SECRET/)
+  })
+
+  it("refuses a missing secret", () => {
+    expect(() => parseTrackingEnv({})).toThrow(/CLICK_HASH_SECRET/)
+  })
+
+  it("reads process.env when called, and throws when it is absent", () => {
+    const before = process.env.CLICK_HASH_SECRET
+
+    try {
+      process.env.CLICK_HASH_SECRET = "b".repeat(40)
+
+      expect(getTrackingEnv().CLICK_HASH_SECRET).toBe("b".repeat(40))
+
+      delete process.env.CLICK_HASH_SECRET
+
+      expect(() => getTrackingEnv()).toThrow(/CLICK_HASH_SECRET/)
+    } finally {
+      if (before === undefined) {
+        delete process.env.CLICK_HASH_SECRET
+      } else {
+        process.env.CLICK_HASH_SECRET = before
+      }
+    }
   })
 })

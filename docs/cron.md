@@ -31,10 +31,12 @@ detail. `CRON_SECRET` must be at least 32 characters; see `.env.example`.
 | ----------------- | ------------- | --------------------------------------------------------------------- |
 | `process-queue`   | every minute  | Claims a small batch of queued jobs, runs them, records a heartbeat.   |
 | `heartbeat-check` | every 5 min   | Reports any schedule that has not checked in for over 5 minutes.       |
-| `cleanup`         | daily at 03:00 | Deletes old rate-limit windows, queues the storage sweep, records a heartbeat. |
+| `cleanup`         | daily at 03:00 | Deletes old rate-limit windows, purges clicks older than 13 months, queues the storage sweep, records a heartbeat. |
 | `scan-sweep`      | every 5 min   | Queues one scan sweep for the current minute, so new, failed and stale files are scanned. |
 | `reconcile-pending` | every 10 min | Asks Paystack about pending orders and posts the ones that were paid. |
 | `expire-orders`   | hourly        | Expires unpaid orders whose 24-hour window has passed.                  |
+| `rollups`         | hourly        | Recomputes affiliate daily stats for yesterday and today, Lagos time.   |
+| `risk-scan`       | hourly        | Flags click bursts and affiliates whose clicks never become sales.      |
 
 Any other name is answered with `404 {"error":"not_found"}`.
 
@@ -44,10 +46,12 @@ the function keeps a full day of history). Its answer adds the number of deleted
 rows to the usual body:
 
 ```json
-{"ok":true,"deleted":12,"storageCleanupQueued":true,"webhookEventsPurged":4}
+{"ok":true,"deleted":12,"storageCleanupQueued":true,"webhookEventsPurged":4,"clicksPurged":0}
 ```
 
-`deleted` is `0` on a quiet day, which is normal.
+`deleted` is `0` on a quiet day, which is normal. `clicksPurged` is the number
+of affiliate clicks older than 13 months that were deleted; see
+`docs/tracking.md` for why that is the window.
 
 `webhookEventsPurged` is the number of webhook deliveries older than 30 days that
 were forgotten. The log is only needed for as long as a Paystack retry can
@@ -116,12 +120,38 @@ lock. An expired order can still be paid: `process_paid_order` accepts an
 `expired` order and moves it to `paid`, which is what happens when a buyer pays
 just before the window closes and the webhook arrives late.
 
+### The `rollups` job
+
+Calls `public.rollup_affiliate_stats(yesterday, today)`, where both days are
+Lagos days, and answers `{"ok":true,"days":2,"rows":3}`.
+
+Two days, not one, because a click at 23:59 and its sale at 00:05 belong to
+different days and the rollup for each is cheap. The function recomputes rather
+than adds, so running it again is always safe and never double counts. Each call
+is one statement over two days of data and stays far inside the 20 second
+budget.
+
+### The `risk-scan` job
+
+Calls `public.scan_click_anomalies()` and answers
+`{"ok":true,"flags":2}`.
+
+It writes at most one flag per affiliate, kind and Lagos day:
+
+- `click_burst`: one link took more than 200 clicks from a single IP hash within
+  one hour.
+- `clicks_without_sales`: an affiliate collected more than 500 unique clicks in
+  24 hours and has no paid order in the same window.
+
+A flag is a note for a person, not an automatic ban. `risk_flags` is readable by
+admin and moderator only, and the scan only looks at the last 24 hours, so it
+stays cheap.
+
 ### Not implemented yet
 
-`approve-commissions` hourly, `rollups` hourly, `reconcile-daily` at 02:00,
-`vat-reminders` on the 14th and 19th at 09:00, `payout-run` weekly. Do not add
-these to the scheduler until the job exists: the endpoint answers 404 for an
-unknown name.
+`approve-commissions` hourly, `reconcile-daily` at 02:00, `vat-reminders` on the
+14th and 19th at 09:00, `payout-run` weekly. Do not add these to the scheduler
+until the job exists: the endpoint answers 404 for an unknown name.
 
 ## cron-job.org settings
 

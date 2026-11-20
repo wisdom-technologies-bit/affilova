@@ -146,6 +146,24 @@ const scannerEnvSchema = z.object({
   ),
 })
 
+// Affiliate click tracking. Read only by lib/tracking/hash.ts, and only when a
+// click is actually being hashed: a deployment that never serves a tracked link
+// still builds and still runs everything else.
+//
+// The secret is what makes the daily salt unguessable, so a stored hash cannot be
+// reversed by hashing a guessed address against a known day. At least 32
+// characters, because a short secret is a short dictionary.
+const trackingEnvSchema = z.object({
+  CLICK_HASH_SECRET: z.preprocess(
+    present,
+    z
+      .string({ required_error: "is required" })
+      .min(32, "must be at least 32 characters long"),
+  ),
+})
+
+export type TrackingEnv = z.infer<typeof trackingEnvSchema>
+
 // Paystack. Read only by lib/paystack/client.ts and by the webhook route, and
 // only when a payment is actually being made or a webhook is being checked: a
 // deployment with no Paystack key still builds and still serves every page that
@@ -242,6 +260,16 @@ export function parseCloudinaryEnv(source: EnvSource): CloudinaryEnv {
 
   if (!result.success) {
     throw new Error(formatIssues("Cloudinary", result.error))
+  }
+
+  return result.data
+}
+
+export function parseTrackingEnv(source: EnvSource): TrackingEnv {
+  const result = trackingEnvSchema.safeParse(source)
+
+  if (!result.success) {
+    throw new Error(formatIssues("click tracking", result.error))
   }
 
   return result.data
@@ -358,6 +386,14 @@ export function getScannerEnv(): ScannerEnv {
     SCANNER_URL: process.env.SCANNER_URL,
     SCANNER_SHARED_SECRET: process.env.SCANNER_SHARED_SECRET,
     SCANNER_CALLBACK_SECRET: process.env.SCANNER_CALLBACK_SECRET,
+  })
+}
+
+// Deliberately uncached: only a tracked link needs it, and a missing secret must
+// not break a build or an unrelated page.
+export function getTrackingEnv(): TrackingEnv {
+  return parseTrackingEnv({
+    CLICK_HASH_SECRET: process.env.CLICK_HASH_SECRET,
   })
 }
 

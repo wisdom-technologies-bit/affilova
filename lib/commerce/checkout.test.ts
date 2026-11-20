@@ -13,6 +13,7 @@ import { PaystackError } from "@/lib/paystack/client"
 const PRODUCT_ID = "11111111-1111-1111-1111-111111111111"
 const ORDER_ID = "22222222-2222-2222-2222-222222222222"
 const BUYER_ID = "33333333-3333-3333-3333-333333333333"
+const CLICK_ID = "44444444-4444-4444-8444-444444444444"
 
 interface Fakes {
   deps: CheckoutDeps
@@ -50,6 +51,7 @@ function makeFakes(overrides: Partial<CheckoutDeps> = {}): Fakes {
     },
     getBuyerUserId: async () => null,
     readAttribution: async () => null,
+    getClickAttribution: async () => null,
     createOrder: async (call) => {
       orders.push(call)
 
@@ -162,14 +164,110 @@ describe("the happy path", () => {
     expect(fakes.orders[0]?.buyerUserId).toBe(BUYER_ID)
   })
 
-  it("passes the affiliate through when attribution exists", async () => {
+  it("passes the affiliate the database derives from the click", async () => {
     const fakes = makeFakes({
-      readAttribution: async () => ({ affiliateId: BUYER_ID, clickId: null }),
+      readAttribution: async () => ({ clickId: CLICK_ID }),
+      getClickAttribution: async () => BUYER_ID,
     })
 
     await runStartCheckout(VALID, fakes.deps)
 
     expect(fakes.orders[0]?.affiliateId).toBe(BUYER_ID)
+    expect(fakes.orders[0]?.clickId).toBe(CLICK_ID)
+  })
+})
+
+describe("attribution", () => {
+  it("asks for the attribution of the product being bought", async () => {
+    const seen: string[] = []
+
+    const fakes = makeFakes({
+      readAttribution: async (productId) => {
+        seen.push(productId)
+
+        return { clickId: CLICK_ID }
+      },
+      getClickAttribution: async () => BUYER_ID,
+    })
+
+    await runStartCheckout(VALID, fakes.deps)
+
+    expect(seen).toEqual([PRODUCT_ID])
+  })
+
+  it("creates the order with no affiliate when the click is unknown or foreign", async () => {
+    const fakes = makeFakes({
+      readAttribution: async () => ({ clickId: CLICK_ID }),
+      // The database refuses a click for another product, an expired window, or
+      // an affiliate who may no longer promote.
+      getClickAttribution: async () => null,
+    })
+
+    await runStartCheckout(VALID, fakes.deps)
+
+    expect(fakes.orders[0]?.affiliateId).toBeNull()
+    expect(fakes.orders[0]?.clickId).toBe(CLICK_ID)
+  })
+
+  it("ignores an affiliate id the browser tried to send", async () => {
+    const fakes = makeFakes()
+
+    const tampered = {
+      ...VALID,
+      affiliateId: BUYER_ID,
+      affiliate: BUYER_ID,
+      clickId: CLICK_ID,
+    } as unknown as typeof VALID
+
+    await runStartCheckout(tampered, fakes.deps)
+
+    expect(fakes.orders[0]?.affiliateId).toBeNull()
+    expect(fakes.orders[0]?.clickId).toBeNull()
+  })
+
+  it("never sends an affiliate when the cookie cannot be read", async () => {
+    const fakes = makeFakes({
+      readAttribution: async () => {
+        throw new Error("cookies() outside a request")
+      },
+    })
+
+    const result = await runStartCheckout(VALID, fakes.deps)
+
+    expect(result.ok).toBe(true)
+    expect(fakes.orders[0]?.affiliateId).toBeNull()
+    expect(fakes.orders[0]?.clickId).toBeNull()
+  })
+
+  it("still takes the order when the attribution lookup fails", async () => {
+    const fakes = makeFakes({
+      readAttribution: async () => ({ clickId: CLICK_ID }),
+      getClickAttribution: async () => {
+        throw new Error("get_click_attribution failed")
+      },
+    })
+
+    const result = await runStartCheckout(VALID, fakes.deps)
+
+    expect(result.ok).toBe(true)
+    expect(fakes.orders[0]?.affiliateId).toBeNull()
+    expect(fakes.orders[0]?.clickId).toBe(CLICK_ID)
+  })
+
+  it("does not ask the database when there is no click", async () => {
+    const calls: string[] = []
+
+    const fakes = makeFakes({
+      getClickAttribution: async (clickId) => {
+        calls.push(clickId)
+
+        return null
+      },
+    })
+
+    await runStartCheckout(VALID, fakes.deps)
+
+    expect(calls).toHaveLength(0)
   })
 })
 

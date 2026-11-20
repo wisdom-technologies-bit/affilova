@@ -13,6 +13,7 @@ import {
   signImageUploadAction,
 } from "@/lib/catalog/actions/vendor"
 import type { ProductImage } from "@/lib/catalog/action-types"
+import { takeChosenFiles } from "@/lib/catalog/file-input"
 import {
   describeImageFileProblem,
   describeImagePixelProblem,
@@ -122,8 +123,8 @@ export function ImageManager({
   const atLimit = images.length + pending.length >= MAX_IMAGES
   const disabled = readOnlyReason !== undefined || cloudName === null || atLimit
 
-  async function accept(list: FileList | null): Promise<void> {
-    if (list === null || list.length === 0 || cloudName === null) {
+  async function accept(list: readonly File[]): Promise<void> {
+    if (list.length === 0 || cloudName === null) {
       return
     }
 
@@ -299,9 +300,9 @@ export function ImageManager({
             disabled={disabled}
             className="sr-only"
             onChange={(event) => {
-              const chosen = event.target.files
-              event.target.value = ""
-              void accept(chosen)
+              // Copied out before the input is cleared: the FileList is live, and
+              // clearing it first is why choosing an image used to do nothing.
+              void accept(takeChosenFiles(event.target))
             }}
           />
           <p className="mt-2 text-xs leading-5 text-muted-foreground">

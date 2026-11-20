@@ -11,6 +11,7 @@ import {
 } from "@/lib/catalog/actions/vendor"
 import type { FileScanStatus, ProductFile } from "@/lib/catalog/action-types"
 import { fileStatusLabel, formatBytes, isScanPending } from "@/lib/catalog/format"
+import { takeChosenFiles } from "@/lib/catalog/file-input"
 import { ALLOWED_FILE_TYPES, MAX_FILES_PER_PRODUCT } from "@/lib/catalog/files"
 import { ScanStatusLine, UploadRow, type LocalUpload } from "@/components/catalog/upload-row"
 import { uploadFile } from "@/lib/catalog/upload-client"
@@ -153,8 +154,8 @@ export function FileManager({
     patch(id, { status: "failed", message: outcome.message })
   }
 
-  async function accept(list: FileList | null): Promise<void> {
-    if (list === null || list.length === 0) {
+  async function accept(list: readonly File[]): Promise<void> {
+    if (list.length === 0) {
       return
     }
 
@@ -226,7 +227,9 @@ export function FileManager({
           }
 
           event.preventDefault()
-          void accept(event.dataTransfer.files)
+          // A drop has no input to reset, but the same copy keeps the two paths
+          // identical.
+          void accept(Array.from(event.dataTransfer.files))
         }}
         className="rounded-md border border-dashed border-border px-4 py-6"
       >
@@ -252,9 +255,9 @@ export function FileManager({
           className="sr-only"
           aria-label="Files to upload"
           onChange={(event) => {
-            const chosen = event.target.files
-            event.target.value = ""
-            void accept(chosen)
+            // The files are copied out before the input is cleared: the FileList
+            // is live, and clearing it first empties the list being uploaded.
+            void accept(takeChosenFiles(event.target))
           }}
         />
       </div>

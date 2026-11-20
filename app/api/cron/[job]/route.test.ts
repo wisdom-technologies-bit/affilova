@@ -25,6 +25,15 @@ const adminState = vi.hoisted(() => ({
   keepOldRateLimits: 0,
   enqueued: [] as { type: string; dedupeKey?: string }[],
   enqueueError: null as Error | null,
+  // purge_old_clicks(): the click retention sweep.
+  purgeClicksData: 0 as unknown,
+  purgeClicksError: null as { message: string } | null,
+  // rollup_affiliate_stats() and scan_click_anomalies().
+  rollupData: 0 as unknown,
+  rollupError: null as { message: string } | null,
+  rollupCalls: [] as { p_from: string; p_to: string }[],
+  scanData: 0 as unknown,
+  scanError: null as { message: string } | null,
 }))
 
 vi.mock("@/lib/jobs/queue", () => ({
@@ -49,13 +58,29 @@ vi.mock("@/lib/supabase/admin", () => ({
     from: () => ({
       select: async () => ({ data: adminState.rows, error: adminState.error }),
     }),
-    rpc: async (name: string) => {
+    rpc: async (name: string, args?: Record<string, unknown>) => {
+      if (name === "rollup_affiliate_stats" && args !== undefined) {
+        adminState.rollupCalls.push({ p_from: String(args.p_from), p_to: String(args.p_to) })
+      }
+
       if (name === "cleanup_rate_limits") {
         return { data: adminState.cleanupData, error: adminState.cleanupError }
       }
 
       if (name === "purge_old_webhook_events") {
         return { data: adminState.purgeData, error: adminState.purgeError }
+      }
+
+      if (name === "purge_old_clicks") {
+        return { data: adminState.purgeClicksData, error: adminState.purgeClicksError }
+      }
+
+      if (name === "rollup_affiliate_stats") {
+        return { data: adminState.rollupData, error: adminState.rollupError }
+      }
+
+      if (name === "scan_click_anomalies") {
+        return { data: adminState.scanData, error: adminState.scanError }
       }
 
       return { data: null, error: { message: `unexpected rpc ${name}` } }
@@ -107,6 +132,13 @@ beforeEach(() => {
   adminState.purgeError = null
   adminState.enqueued = []
   adminState.enqueueError = null
+  adminState.purgeClicksData = 0
+  adminState.purgeClicksError = null
+  adminState.rollupData = 0
+  adminState.rollupError = null
+  adminState.rollupCalls = []
+  adminState.scanData = 0
+  adminState.scanError = null
 })
 
 describe("POST /api/cron/[job]", () => {
@@ -227,6 +259,7 @@ describe("POST /api/cron/[job]", () => {
       deleted: 7,
       storageCleanupQueued: true,
       webhookEventsPurged: 0,
+      clicksPurged: 0,
     })
     expect(queue.recordHeartbeat).toHaveBeenCalledWith(
       "cleanup",
@@ -293,6 +326,7 @@ describe("POST /api/cron/[job]", () => {
       deleted: 0,
       storageCleanupQueued: false,
       webhookEventsPurged: 0,
+      clicksPurged: 0,
     })
     expect(queue.recordHeartbeat).toHaveBeenCalledWith("cleanup", "ok", expect.any(Number), null)
   })
@@ -307,6 +341,7 @@ describe("POST /api/cron/[job]", () => {
       deleted: 3,
       storageCleanupQueued: true,
       webhookEventsPurged: 0,
+      clicksPurged: 0,
     })
   })
 
@@ -321,6 +356,7 @@ describe("POST /api/cron/[job]", () => {
       deleted: 0,
       storageCleanupQueued: true,
       webhookEventsPurged: 0,
+      clicksPurged: 0,
     })
   })
 
@@ -384,6 +420,7 @@ describe("cleanup and the webhook log", () => {
       deleted: 0,
       storageCleanupQueued: true,
       webhookEventsPurged: 4,
+      clicksPurged: 0,
     })
   })
 
@@ -404,5 +441,84 @@ describe("cleanup and the webhook log", () => {
     expect(response.status).toBe(500)
     expect(body).toEqual({ ok: false })
     expect(JSON.stringify(body)).not.toContain("webhook_events")
+  })
+})
+
+describe("the affiliate jobs", () => {
+  it("rolls up yesterday and today in Lagos time", async () => {
+    adminState.rollupData = 3
+
+    const response = await callRoute("rollups", `Bearer ${SECRET}`)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ ok: true, days: 2, rows: 3 })
+    expect(adminState.rollupCalls).toHaveLength(1)
+
+    const call = adminState.rollupCalls[0]
+    expect(call?.p_from).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(call?.p_to).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+
+    // Yesterday is exactly one day before today, both Lagos days.
+    const from = new Date(`${call?.p_from}T00:00:00Z`).getTime()
+    const to = new Date(`${call?.p_to}T00:00:00Z`).getTime()
+    expect(to - from).toBe(24 * 60 * 60 * 1000)
+
+    expect(queue.recordHeartbeat).toHaveBeenCalledWith("rollups", "ok", expect.any(Number), null)
+  })
+
+  it("answers 500 without details when the rollup fails", async () => {
+    adminState.rollupError = { message: 'relation "affiliate_clicks" does not exist' }
+
+    const response = await callRoute("rollups", `Bearer ${SECRET}`)
+    const body = (await response.json()) as Record<string, unknown>
+
+    expect(response.status).toBe(500)
+    expect(body).toEqual({ ok: false })
+    expect(JSON.stringify(body)).not.toContain("affiliate_clicks")
+  })
+
+  it("scans for click anomalies and reports how many flags were added", async () => {
+    adminState.scanData = 2
+
+    const response = await callRoute("risk-scan", `Bearer ${SECRET}`)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ ok: true, flags: 2 })
+    expect(queue.recordHeartbeat).toHaveBeenCalledWith("risk-scan", "ok", expect.any(Number), null)
+  })
+
+  it("answers 500 when the risk scan fails", async () => {
+    adminState.scanError = { message: "permission denied for function scan_click_anomalies" }
+
+    const response = await callRoute("risk-scan", `Bearer ${SECRET}`)
+
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({ ok: false })
+  })
+
+  it("purges old clicks with the cleanup job", async () => {
+    adminState.purgeClicksData = 12
+
+    const response = await callRoute("cleanup", `Bearer ${SECRET}`)
+
+    expect(await response.json()).toMatchObject({ ok: true, clicksPurged: 12 })
+  })
+
+  it("answers 500 when the click purge fails", async () => {
+    adminState.purgeClicksError = { message: "permission denied for function purge_old_clicks" }
+
+    const response = await callRoute("cleanup", `Bearer ${SECRET}`)
+
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({ ok: false })
+  })
+
+  it("still refuses these job names without the secret", async () => {
+    const rollups = await callRoute("rollups")
+    const scan = await callRoute("risk-scan")
+
+    expect(rollups.status).toBe(401)
+    expect(scan.status).toBe(401)
+    expect(adminState.rollupCalls).toHaveLength(0)
   })
 })

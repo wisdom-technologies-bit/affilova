@@ -101,6 +101,36 @@ export async function createOrder(call: CreateOrderCall): Promise<CreatedOrder> 
   return { orderId, number, totalKobo, currency, reference }
 }
 
+/**
+ * The affiliate a click belongs to, or null.
+ *
+ * The database is the only authority here: it checks that the click exists, is
+ * for this product, is inside the attribution window and that the affiliate may
+ * still promote. A null answer means the order is created with no affiliate.
+ */
+export async function getClickAttribution(clickId: string, productId: string): Promise<string | null> {
+  const { data, error } = await getSupabaseAdminClient().rpc("get_click_attribution", {
+    p_click: clickId,
+    p_product: productId,
+  })
+
+  if (error) {
+    throw rpcFailure("get_click_attribution")
+  }
+
+  if (typeof data === "string") {
+    return data === "" ? null : data
+  }
+
+  if (Array.isArray(data)) {
+    const [value]: unknown[] = data
+
+    return typeof value === "string" && value !== "" ? value : null
+  }
+
+  return null
+}
+
 export async function attachPaystackInit(orderId: string, accessCode: string): Promise<void> {
   const { error } = await getSupabaseAdminClient().rpc("attach_paystack_init", {
     p_order: orderId,

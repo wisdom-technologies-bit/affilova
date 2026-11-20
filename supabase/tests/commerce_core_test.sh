@@ -110,7 +110,7 @@ bootstrap "$DB" || { echo "bootstrap failed"; exit 1; }
 apply_migrations "$DB" || { echo "applying migrations failed"; exit 1; }
 
 count=$(q "select count(*) from public.app_migrations")
-if [ "$count" = "12" ]; then pass "twelve migrations applied"; else fail "twelve migrations applied" "got $count"; fi
+if [ "$count" = "13" ]; then pass "thirteen migrations applied"; else fail "thirteen migrations applied" "got $count"; fi
 
 step "Verify files (every check must be true)"
 for f in "$ROOT"/supabase/verify/*.sql; do

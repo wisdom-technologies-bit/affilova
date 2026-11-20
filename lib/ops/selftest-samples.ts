@@ -244,7 +244,7 @@ export function buildSelfTestSamples(): readonly SelfTestSample[] {
       contentType: "text/plain",
       bytes: TEXT_ENCODER.encode(eicarTestString()),
       expected: { verdict: "infected", detail: null, detailPrefix: "Eicar" },
-      proves: "ClamAV is really running and its signatures really match.",
+      proves: "Bouncer is really running and its verdicts really match.",
     },
     {
       name: "not-a-pdf.pdf",

@@ -44,23 +44,6 @@ function scannerStateWords(health: ScannerHealth): string {
   return "Ready"
 }
 
-/** Fresh under a day, ok under three days, stale beyond. */
-function signatureStateWords(hours: number | null): { label: string; stale: boolean } {
-  if (hours === null) {
-    return { label: "Unknown: the scanner did not report an age", stale: true }
-  }
-
-  if (hours < 24) {
-    return { label: `Fresh (under 24 hours, ${hours} hours old)`, stale: false }
-  }
-
-  if (hours < 72) {
-    return { label: `OK (under 72 hours, ${hours} hours old)`, stale: false }
-  }
-
-  return { label: `Stale (${hours} hours old): update the signatures`, stale: true }
-}
-
 function formatAge(seconds: number): string {
   if (seconds < 90) {
     return `${seconds} seconds ago`
@@ -143,8 +126,6 @@ function Section({
 }
 
 function ScannerSection({ health }: { health: ScannerHealth }) {
-  const signature = signatureStateWords(health.signatureAgeHours)
-
   return (
     <Section
       title="Scanner"
@@ -158,17 +139,17 @@ function ScannerSection({ health }: { health: ScannerHealth }) {
           </dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">ClamAV</dt>
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">Engine</dt>
           <dd className="mt-1">
-            <Badge tone={health.clamd ? "good" : "bad"}>
-              {health.clamd ? "Reachable" : "Not reachable"}
-            </Badge>
+            <Badge tone="neutral">Bouncer</Badge>
           </dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">Signatures</dt>
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">Signature age</dt>
           <dd className="mt-1">
-            <Badge tone={signature.stale ? "bad" : "good"}>{signature.label}</Badge>
+            {/* Bouncer keeps its own detection data on its side, so /healthz has
+                no signature age to report and there is nothing here to check. */}
+            <Badge tone="neutral">not applicable</Badge>
           </dd>
         </div>
       </dl>
@@ -550,7 +531,7 @@ function SelfTestSection() {
   return (
     <Section
       title="Run scanner self-test"
-      description="Sends four known files through the same pipeline a real upload uses: the bucket, the scanner, ClamAV and the policies. It creates no product and no file record."
+      description="Sends four known files through the same pipeline a real upload uses: the bucket, the scanner, Bouncer and the policies. It creates no product and no file record."
     >
       <button
         type="button"

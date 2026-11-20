@@ -15,7 +15,7 @@ import { buildSelfTestSamples, matchesExpectation } from "@/lib/ops/selftest-sam
 import type { SelfTestSample, SelfTestVerdict } from "@/lib/ops/selftest-samples"
 
 // The one-click proof that the whole chain works: this app, the bucket, the
-// scanner service, ClamAV and the scan policies.
+// scanner service, Bouncer and the scan policies.
 //
 // It writes four known files to the bucket under selftest/<uuid>/, gives the
 // scanner a five minute signed URL for each, calls POST /selftest and compares

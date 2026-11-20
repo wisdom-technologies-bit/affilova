@@ -110,7 +110,9 @@ bootstrap "$DB" || { echo "bootstrap failed"; exit 1; }
 apply_migrations "$DB" || { echo "applying migrations failed"; exit 1; }
 
 count=$(q "select count(*) from public.app_migrations")
-if [ "$count" = "13" ]; then pass "thirteen migrations applied"; else fail "thirteen migrations applied" "got $count"; fi
+# Counted from the folder, so adding a migration does not break an old harness.
+expected=$(ls "$ROOT"/supabase/migrations/*.sql | wc -l | tr -d ' ')
+if [ "$count" = "$expected" ]; then pass "$expected migrations applied"; else fail "$expected migrations applied" "got $count"; fi
 
 step "Verify files (every check must be true)"
 for f in "$ROOT"/supabase/verify/*.sql; do

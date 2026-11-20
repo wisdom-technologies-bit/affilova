@@ -4,6 +4,7 @@ import { useState } from "react"
 
 import { Turnstile } from "@/components/auth/turnstile"
 import { startCheckoutAction } from "@/lib/commerce/actions"
+import { CHECKOUT_TURNSTILE_ACTION } from "@/lib/commerce/turnstile-action"
 import { submitPurchase } from "@/lib/commerce/purchase"
 
 // The buy box.
@@ -111,7 +112,7 @@ export function PurchaseCardView(props: PurchaseCardViewProps) {
 
         <div className="mt-4">
           <Turnstile
-            action="checkout"
+            action={CHECKOUT_TURNSTILE_ACTION}
             onToken={props.onToken}
             onExpire={props.onExpire}
             onError={props.onError}

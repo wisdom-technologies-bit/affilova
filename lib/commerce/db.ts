@@ -416,7 +416,7 @@ export async function processRefund(input: {
   requestId: string
   providerReference: string | null
   amountKobo: number
-}): Promise<{ status: "processed" | "already_processed" }> {
+}): Promise<{ status: "processed" | "already_processed"; orderId: string }> {
   const { data, error } = await getSupabaseAdminClient().rpc("process_refund", {
     p_request: input.requestId,
     p_provider_reference: input.providerReference,
@@ -434,12 +434,13 @@ export async function processRefund(input: {
   }
 
   const status = readString(row, "status")
+  const orderId = readString(row, "order_id")
 
-  if (status !== "processed" && status !== "already_processed") {
+  if ((status !== "processed" && status !== "already_processed") || orderId === null) {
     throw rpcFailure("process_refund")
   }
 
-  return { status }
+  return { status, orderId }
 }
 
 export async function markRefundSubmitted(requestId: string, providerReference: string): Promise<void> {

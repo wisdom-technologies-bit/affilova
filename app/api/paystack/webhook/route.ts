@@ -5,6 +5,8 @@ import { z } from "zod"
 import * as db from "@/lib/commerce/db"
 import type { WebhookOutcome } from "@/lib/commerce/db"
 import { getPaystackEnv } from "@/lib/env"
+import { enqueueJob } from "@/lib/jobs/queue"
+import { REFUND_NOTICE_JOB, refundNoticeDedupeKey } from "@/lib/jobs/order-email"
 import { logger } from "@/lib/logger"
 import { PaystackError, verifyTransaction, type VerifiedTransaction } from "@/lib/paystack/client"
 import {
@@ -57,6 +59,7 @@ export interface WebhookDeps {
   processPaidOrder: typeof db.processPaidOrder
   findOpenRefund: typeof db.findOpenRefund
   processRefund: typeof db.processRefund
+  enqueueJob: typeof enqueueJob
   markRefundFailed: typeof db.markRefundFailed
   getOrderByReference: typeof db.getOrderByReference
   openDispute: typeof db.openDispute
@@ -294,11 +297,29 @@ async function handleRefundProcessed(data: unknown, deps: WebhookDeps): Promise<
       return ignored("no_open_request")
     }
 
-    await deps.processRefund({
+    const processed = await deps.processRefund({
       requestId: open.requestId,
       providerReference: refundProviderReference(data),
       amountKobo: open.amountKobo,
     })
+
+    // The reversal is posted. Tell the buyer, once: the job's dedupe key is the
+    // order, so a second delivery (or a retry after this one) cannot queue a
+    // second notice, and the email_log claim behind it is the second guard.
+    // A queue failure is logged and not turned into a retry: the delivery record
+    // has already marked this body as seen, so Paystack's retry would be answered
+    // as a duplicate and the notice would never be queued anyway.
+    if (processed.status === "processed") {
+      try {
+        await deps.enqueueJob({
+          type: REFUND_NOTICE_JOB,
+          payload: { order_id: processed.orderId },
+          dedupeKey: refundNoticeDedupeKey(processed.orderId),
+        })
+      } catch {
+        deps.log.error("paystack_refund_notice_enqueue_failed", {})
+      }
+    }
 
     return OK
   } catch (error) {
@@ -585,6 +606,7 @@ function configuredDeps(): WebhookDeps | null {
       processPaidOrder: db.processPaidOrder,
       findOpenRefund: db.findOpenRefund,
       processRefund: db.processRefund,
+      enqueueJob,
       markRefundFailed: db.markRefundFailed,
       getOrderByReference: db.getOrderByReference,
       openDispute: db.openDispute,

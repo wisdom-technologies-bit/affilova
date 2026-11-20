@@ -28,6 +28,7 @@ interface Fakes {
     finish: { id: string; status: string; error: string | null }[]
     processPaidOrder: Record<string, unknown>[]
     processRefund: Record<string, unknown>[]
+    enqueue: { type: string; payload: Record<string, unknown>; dedupeKey: string | undefined }[]
     markRefundFailed: { requestId: string; reason: string }[]
     openDispute: { reference: string; note: string }[]
     resolveDispute: { orderId: string; outcome: string }[]
@@ -57,6 +58,7 @@ function makeFakes(overrides: Partial<WebhookDeps> = {}): Fakes {
     finish: [],
     processPaidOrder: [],
     processRefund: [],
+    enqueue: [],
     markRefundFailed: [],
     openDispute: [],
     resolveDispute: [],
@@ -91,7 +93,16 @@ function makeFakes(overrides: Partial<WebhookDeps> = {}): Fakes {
     processRefund: async (input) => {
       calls.processRefund.push({ ...input })
 
-      return { status: "processed" }
+      return { status: "processed", orderId: ORDER_ID }
+    },
+    enqueueJob: async (input) => {
+      calls.enqueue.push({
+        type: input.type,
+        payload: input.payload ?? {},
+        dedupeKey: input.dedupeKey,
+      })
+
+      return "job-1"
     },
     markRefundFailed: async (requestId, reason) => {
       calls.markRefundFailed.push({ requestId, reason })
@@ -408,6 +419,74 @@ describe("refund events", () => {
       amountKobo: 40333,
     })
     expect(fakes.calls.finish[0]?.status).toBe("processed")
+  })
+
+  it("queues the buyer's refund notice once the reversal is posted", async () => {
+    const response = await handlePaystackWebhook(
+      request(body("refund.processed", { id: 3018284, transaction: { reference: "afv_abc123" } })),
+      fakes.deps,
+    )
+
+    expect(response.status).toBe(200)
+    expect(fakes.calls.enqueue).toEqual([
+      { type: "refund_notice", payload: { order_id: ORDER_ID }, dedupeKey: `refund_notice:${ORDER_ID}` },
+    ])
+  })
+
+  it("does not queue a second notice when the reversal was already posted", async () => {
+    fakes = makeFakes({
+      processRefund: async () => ({ status: "already_processed", orderId: ORDER_ID }),
+    })
+
+    const response = await handlePaystackWebhook(
+      request(body("refund.processed", { id: 3018284, transaction: { reference: "afv_abc123" } })),
+      fakes.deps,
+    )
+
+    expect(response.status).toBe(200)
+    expect(fakes.calls.enqueue).toHaveLength(0)
+  })
+
+  it("does not queue a second notice for a redelivered refund.processed", async () => {
+    const raw = body("refund.processed", { id: 3018284, transaction: { reference: "afv_abc123" } })
+
+    await handlePaystackWebhook(request(raw), fakes.deps)
+
+    // Paystack retries the same body: insertEvent now reports it as a duplicate.
+    const retry = makeFakes({
+      insertEvent: async () => ({ id: "event-1", duplicate: true }),
+      enqueueJob: async (input) => {
+        retry.calls.enqueue.push({
+          type: input.type,
+          payload: input.payload ?? {},
+          dedupeKey: input.dedupeKey,
+        })
+
+        return "job-2"
+      },
+    })
+
+    const response = await handlePaystackWebhook(request(raw), retry.deps)
+
+    expect(response.status).toBe(200)
+    expect(retry.calls.enqueue).toHaveLength(0)
+  })
+
+  it("keeps the reversal when the notice cannot be queued", async () => {
+    fakes = makeFakes({
+      enqueueJob: async () => {
+        throw new Error("queue_unavailable")
+      },
+    })
+
+    const response = await handlePaystackWebhook(
+      request(body("refund.processed", { id: 3018284, transaction: { reference: "afv_abc123" } })),
+      fakes.deps,
+    )
+
+    expect(response.status).toBe(200)
+    expect(fakes.calls.finish[0]?.status).toBe("processed")
+    expect(fakes.log.error).toHaveBeenCalledWith("paystack_refund_notice_enqueue_failed", {})
   })
 
   it("ignores refund.processed with no open request", async () => {

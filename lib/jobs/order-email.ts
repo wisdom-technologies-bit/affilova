@@ -27,6 +27,15 @@ import type { OrderSummary } from "@/lib/commerce/order-summary"
 export const ORDER_PAID_JOB = "order_paid"
 export const REFUND_NOTICE_JOB = "refund_notice"
 
+/**
+ * The de-duplication key for the refund notice. One live notice job per order, so
+ * a refunded order whose webhook is delivered twice cannot queue two emails; the
+ * email_log claim is the second guard behind it.
+ */
+export function refundNoticeDedupeKey(orderId: string): string {
+  return `${REFUND_NOTICE_JOB}:${orderId}`
+}
+
 /** The dedupe key for one email: never the address itself. */
 export function recipientHash(email: string): string {
   return createHash("sha256").update(email.trim().toLowerCase()).digest("hex").slice(0, 32)

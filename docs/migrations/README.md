@@ -577,6 +577,68 @@ functions it added. `create_order` is **not** restored by the rollback: the
 previous version lives in `20261116000200_commerce_core.sql`, and re-running that
 file puts it back.
 
+## The affiliate read models migration (20261119000100_affiliate_read_models)
+
+Run it after the affiliate tracking migration has been applied and every check in
+its verify file is `t`. It adds no table and no data of its own: it is ten
+functions that the affiliate and merchant screens read through, and one write
+(the revoke of an invitation).
+
+### What it creates
+
+- `affiliate_marketplace(...)`: the products an affiliate may promote, with their
+  own access state and link count. Live products of active vendors only, full
+  text search with a trigram fallback for a typo, four sort orders, keyset pages
+  capped at 30 rows.
+- `affiliate_overview(...)`: clicks, unique clicks, orders, revenue, commission,
+  conversion rate and earnings per hundred clicks for a range of whole Lagos
+  days, plus the ledger balance (pending, available, total, negative).
+- `affiliate_daily_series(...)`: one row per Lagos day, including days with no
+  activity, so a chart has no missing days.
+- `affiliate_link_stats(...)`: every link the affiliate owns, with its numbers in
+  the range and its status.
+- `affiliate_breakdown(...)`: the top 20 groups by `sub1`, `utm_source` or
+  product. Orders are attributed through the click that started them.
+- `affiliate_commission_list(...)`: the affiliate's commissions, newest first,
+  with the hold end (`available_at`) read from the ledger.
+- `vendor_affiliate_requests(...)`: access requests for the vendor's own
+  products, filterable by status and product.
+- `vendor_affiliate_stats(...)`: how each affiliate performed on the vendor's
+  products, ordered by revenue.
+- `vendor_invites(uuid)`: the vendor's invitations. The token and its hash are
+  never returned.
+- `revoke_affiliate_invite(uuid, uuid)`: revokes an invitation. The vendor who
+  owns the product, a staff admin or a staff moderator may do it, and the action
+  is written to `audit_log`.
+
+Every function takes the actor as its first argument, is `SECURITY DEFINER` with
+an empty `search_path`, and is executable by `service_role` only. An affiliate
+function checks that the actor really is an active affiliate, and every query is
+filtered by that actor's id; a vendor function checks the vendor profile and
+joins the products to it, so one vendor can never see another vendor's
+affiliates.
+
+### Checking it worked
+
+Run `supabase/verify/20261119000100_affiliate_read_models_verify.sql`. Every row
+must show `passed = t`. It checks that the ten functions exist with their exact
+signatures, that each one is `SECURITY DEFINER` with an empty `search_path`, that
+the nine read models are `STABLE` and contain no write, that `anon` and
+`authenticated` cannot execute any of them, that `service_role` can, and that the
+search indexes the marketplace relies on still exist.
+
+The behaviour (the maths, search, sorts, cursor pages, ownership isolation,
+revoke permissions and index use with 100000 clicks) is covered by
+`supabase/tests/affiliate_read_models_test.sh`, which needs a throwaway local
+database.
+
+### Rollback
+
+The commented block at the end of the migration drops the ten functions and the
+`app_migrations` row. Nothing else is touched: the audit rows written by
+`revoke_affiliate_invite()` stay in `public.audit_log`, because they record a
+decision a person really made.
+
 ## Never run SQL on production first
 
 Run every migration on **staging** and confirm every verification check is `t`

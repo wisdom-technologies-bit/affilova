@@ -76,7 +76,9 @@ for f in "$ROOT"/supabase/migrations/*.sql; do
   run_file "$f" >/dev/null || { echo "migration failed: $f"; exit 1; }
 done
 count=$(q "select count(*) from public.app_migrations")
-if [ "$count" = "13" ]; then pass "thirteen migrations applied"; else fail "thirteen migrations applied" "got $count"; fi
+# Counted from the folder, so adding a migration does not break an old harness.
+expected=$(ls "$ROOT"/supabase/migrations/*.sql | wc -l | tr -d ' ')
+if [ "$count" = "$expected" ]; then pass "$expected migrations applied"; else fail "$expected migrations applied" "got $count"; fi
 
 step "Verify file"
 out=$(su "$SUPER_USER" -c "psql -v ON_ERROR_STOP=1 -q -At -d $DB" < "$VERIFY" 2>&1)

@@ -76,7 +76,7 @@ for f in "$ROOT"/supabase/migrations/*.sql; do
   run_file "$f" >/dev/null || { echo "migration failed: $f"; exit 1; }
 done
 count=$(q "select count(*) from public.app_migrations")
-if [ "$count" = "11" ]; then pass "eleven migrations applied"; else fail "eleven migrations applied" "got $count"; fi
+if [ "$count" = "12" ]; then pass "twelve migrations applied"; else fail "twelve migrations applied" "got $count"; fi
 
 step "Verify file"
 out=$(su "$SUPER_USER" -c "psql -v ON_ERROR_STOP=1 -q -At -d $DB" < "$VERIFY" 2>&1)

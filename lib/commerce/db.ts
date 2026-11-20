@@ -568,6 +568,63 @@ export async function requestRefund(input: {
   return { requestId, autoApproved }
 }
 
+/**
+ * Ask for a refund as a guest: the caller is not signed in, so the database
+ * proves ownership with the address the order was bought with. Same rules and
+ * same answers as request_refund, which is why the result shape is identical.
+ */
+export async function requestRefundByEmail(input: {
+  orderId: string
+  email: string
+  reason: string
+}): Promise<{ requestId: string; autoApproved: boolean }> {
+  const { data, error } = await getSupabaseAdminClient().rpc("request_refund_by_email", {
+    p_order: input.orderId,
+    p_email: input.email,
+    p_reason: input.reason,
+  })
+
+  if (error) {
+    throw new Error(typeof error.message === "string" ? error.message.trim() : "request_refund_failed")
+  }
+
+  const row = firstObject(data)
+
+  if (row === null) {
+    throw rpcFailure("request_refund_by_email")
+  }
+
+  const requestId = readString(row, "request_id")
+  const autoApproved = row.auto_approved
+
+  if (requestId === null || typeof autoApproved !== "boolean") {
+    throw rpcFailure("request_refund_by_email")
+  }
+
+  return { requestId, autoApproved }
+}
+
+/** The address an order was bought with, for the guest refund proof. */
+export async function readOrderBuyerEmail(orderId: string): Promise<string | null> {
+  const { data, error } = await getSupabaseAdminClient()
+    .from("orders")
+    .select("buyer_email")
+    .eq("id", orderId)
+    .maybeSingle()
+
+  if (error) {
+    throw rpcFailure("read_order_buyer_email")
+  }
+
+  if (data === null) {
+    return null
+  }
+
+  const email = readString(data as Record<string, unknown>, "buyer_email")
+
+  return email === null ? null : email.trim()
+}
+
 export async function decideRefund(input: {
   actorId: string
   requestId: string

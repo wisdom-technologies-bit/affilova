@@ -117,7 +117,7 @@ bootstrap "$DB" || { echo "bootstrap failed"; exit 1; }
 apply_migrations "$DB" || { echo "applying migrations failed"; exit 1; }
 
 count=$(q "select count(*) from public.app_migrations")
-if [ "$count" = "11" ]; then pass "eleven migrations applied"; else fail "eleven migrations applied" "got $count"; fi
+if [ "$count" = "12" ]; then pass "twelve migrations applied"; else fail "twelve migrations applied" "got $count"; fi
 
 step "Every migration applied a second time"
 if apply_migrations "$DB" >/dev/null 2>&1; then

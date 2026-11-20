@@ -124,7 +124,7 @@ export function AccessView({ grant, token, now }: AccessViewProps) {
               (West Africa Time).
             </p>
             <div className="mt-4">
-              <RefundForm token={token} />
+              <RefundForm token={token} orderId={order.orderId} />
             </div>
           </>
         ) : (

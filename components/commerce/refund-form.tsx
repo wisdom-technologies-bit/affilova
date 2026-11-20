@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 
-import { requestRefundForOrderAction } from "@/app/access/[token]/actions"
+import { requestRefundWithTokenAction } from "@/app/access/[token]/actions"
 
 // Ask for a refund, while the window is open.
 //
@@ -14,9 +14,11 @@ export const REFUND_MAX = 1000
 
 export interface RefundFormProps {
   token: string
+  /** The order the page is showing. The action refuses it unless the token names it. */
+  orderId: string
 }
 
-export function RefundForm({ token }: RefundFormProps) {
+export function RefundForm({ token, orderId }: RefundFormProps) {
   const [reason, setReason] = useState("")
   const [status, setStatus] = useState("")
   const [busy, setBusy] = useState(false)
@@ -37,7 +39,7 @@ export function RefundForm({ token }: RefundFormProps) {
     setStatus("")
 
     try {
-      const result = await requestRefundForOrderAction({ token, reason: trimmed })
+      const result = await requestRefundWithTokenAction({ token, orderId, reason: trimmed })
 
       setStatus(result.message ?? "")
       setDone(result.ok)

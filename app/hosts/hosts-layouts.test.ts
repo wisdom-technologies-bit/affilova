@@ -50,6 +50,27 @@ vi.mock("@/lib/catalog/actions/admin", () => ({
   listReviewQueueAction: catalog.listReviewQueueAction,
 }))
 
+// The affiliate and merchant affiliate screens read their first page on the
+// server too. These mocks answer with honest empty pages so the render tests
+// never reach a database.
+const affiliate = vi.hoisted(() => ({
+  getMarketplaceAction: vi.fn(),
+  getCategoriesAction: vi.fn(),
+  getOverviewAction: vi.fn(),
+  getDailySeriesAction: vi.fn(),
+  getLinkStatsAction: vi.fn(),
+  getBreakdownAction: vi.fn(),
+  getCommissionsAction: vi.fn(),
+  getCommissionHoldDays: vi.fn(),
+  getAffiliateRequestsAction: vi.fn(),
+  getVendorAffiliateStatsAction: vi.fn(),
+  getInvitesAction: vi.fn(),
+  revokeInviteAction: vi.fn(),
+  getLinkQrAction: vi.fn(),
+}))
+
+vi.mock("@/lib/affiliate/read-actions", () => affiliate)
+
 vi.mock("@/app/auth/actions", () => ({
   signOutAction: vi.fn(async () => ({ ok: true })),
 }))
@@ -99,7 +120,9 @@ import MerchantSalesPage from "@/app/hosts/merchant/sales/page"
 import MerchantSettingsPage from "@/app/hosts/merchant/settings/page"
 import MerchantStorePage from "@/app/hosts/merchant/store/page"
 
-type RenderedPage = () => ReactElement | Promise<ReactElement>
+type PageProps = { searchParams: Promise<Record<string, string | string[] | undefined>> }
+
+type RenderedPage = (props: PageProps) => ReactElement | Promise<ReactElement>
 
 const PAGES: Record<ShellApp, Record<string, RenderedPage>> = {
   merchant: {
@@ -229,13 +252,15 @@ function activeLabels(html: string): string[] {
   )
 }
 
+const EMPTY_PARAMS: PageProps = { searchParams: Promise.resolve({}) }
+
 async function renderPage(page: RenderedPage): Promise<string> {
-  return renderToStaticMarkup(await page())
+  return renderToStaticMarkup(await page(EMPTY_PARAMS))
 }
 
 async function renderThroughLayout(app: ShellApp, page: RenderedPage): Promise<string> {
   const layout = LAYOUTS[app]
-  const tree = await layout({ children: await page() })
+  const tree = await layout({ children: await page(EMPTY_PARAMS) })
 
   return renderToStaticMarkup(tree)
 }
@@ -266,6 +291,48 @@ beforeEach(() => {
   currentApp.getRequestPath.mockResolvedValue("/products?status=draft")
   catalog.listVendorProductsAction.mockResolvedValue({ ok: true, items: [], nextCursor: null })
   catalog.listReviewQueueAction.mockResolvedValue({ ok: true, items: [], nextCursor: null })
+
+  affiliate.getMarketplaceAction.mockResolvedValue({
+    ok: true,
+    data: { items: [], nextCursor: null },
+  })
+  affiliate.getCategoriesAction.mockResolvedValue({ ok: true, data: [] })
+  affiliate.getOverviewAction.mockResolvedValue({
+    ok: true,
+    data: {
+      clicks: 0,
+      uniqueClicks: 0,
+      orders: 0,
+      revenueKobo: 0,
+      commissionKobo: 0,
+      conversionBps: 0,
+      epcKoboPer100Clicks: 0,
+      balance: { pendingKobo: 0, availableKobo: 0, totalKobo: 0, negative: false },
+    },
+  })
+  affiliate.getDailySeriesAction.mockResolvedValue({ ok: true, data: [] })
+  affiliate.getLinkStatsAction.mockResolvedValue({
+    ok: true,
+    data: { items: [], nextCursor: null },
+  })
+  affiliate.getBreakdownAction.mockResolvedValue({
+    ok: true,
+    data: { dimension: "product", rows: [] },
+  })
+  affiliate.getCommissionsAction.mockResolvedValue({
+    ok: true,
+    data: { items: [], nextCursor: null },
+  })
+  affiliate.getCommissionHoldDays.mockResolvedValue(7)
+  affiliate.getAffiliateRequestsAction.mockResolvedValue({
+    ok: true,
+    data: { items: [], nextCursor: null },
+  })
+  affiliate.getVendorAffiliateStatsAction.mockResolvedValue({
+    ok: true,
+    data: { items: [], nextCursor: null },
+  })
+  affiliate.getInvitesAction.mockResolvedValue({ ok: true, data: [] })
 })
 
 describe("every page renders exactly one h1", () => {

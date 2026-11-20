@@ -34,6 +34,15 @@ const MESSAGES: Readonly<Record<string, string>> = {
 
   // Tracking
   invalid_click: "The click could not be recorded.",
+
+  // Read models
+  invalid_range: "Choose a date range of 366 days or fewer, starting before it ends.",
+  invalid_sort: "Choose one of the available sort orders.",
+  invalid_cursor: "That page of results is no longer available. Start again.",
+  invalid_dimension: "Choose one of the available breakdowns.",
+  invalid_status: "Choose one of the available statuses.",
+  qr_unavailable: "The QR code could not be created just now. Please try again.",
+  product_not_found: "That product is not available.",
 }
 
 /** The sentence for a code, or the generic one. Never the database's own text. */

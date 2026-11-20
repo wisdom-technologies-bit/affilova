@@ -5,6 +5,7 @@ import {
   getR2Env,
   getScannerEnv,
   parseCloudinaryEnv,
+  parseOrderAccessSecret,
   parsePublicEnv,
   parseR2Env,
   parseScannerEnv,
@@ -262,5 +263,23 @@ describe("getScannerEnv", () => {
     } finally {
       process.env = before
     }
+  })
+})
+
+describe("parseOrderAccessSecret", () => {
+  it("accepts a secret of at least 32 characters", () => {
+    expect(parseOrderAccessSecret({ ORDER_ACCESS_SECRET: "0123456789abcdef0123456789abcdef" })).toBe(
+      "0123456789abcdef0123456789abcdef",
+    )
+  })
+
+  it("refuses a missing or short secret, and names the variable", () => {
+    expect(() => parseOrderAccessSecret({})).toThrow(/ORDER_ACCESS_SECRET/)
+    expect(() => parseOrderAccessSecret({ ORDER_ACCESS_SECRET: "short" })).toThrow(
+      /at least 32 characters/,
+    )
+    expect(() => parseOrderAccessSecret({ ORDER_ACCESS_SECRET: "   " })).toThrow(
+      /ORDER_ACCESS_SECRET/,
+    )
   })
 })

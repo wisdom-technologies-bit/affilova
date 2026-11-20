@@ -483,6 +483,50 @@ Roles can also be revoked instead of deleted. Update the row's `status` to
 restore it. Do not delete rows from `user_roles` casually, since the history of who
 was granted what is useful.
 
+## The guest refunds migration (20261118000100_guest_refunds)
+
+Run this after `20261116000200_commerce_core.sql`. It adds one function, so a
+buyer who paid without an account can ask for a refund from the download link in
+their receipt. Nothing that already exists is changed.
+
+### Run it
+
+1. **SQL Editor**, **New query**, paste all of
+   `supabase/migrations/20261118000100_guest_refunds.sql`, click **Run**.
+2. You should see **"Success. No rows returned."**
+3. Run it a second time. It must also succeed.
+4. Then paste `supabase/verify/20261118000100_guest_refunds_verify.sql` and run
+   it. Every `passed` must be `t`. It has nine checks.
+
+### What it creates
+
+- **`request_refund_by_email(p_order uuid, p_email text, p_reason text)`** —
+  returns `{ request_id, auto_approved }`, exactly like `request_refund`. The
+  rules are the same (a paid order, a reason of 10 to 1000 characters,
+  auto-approval while the product's refund window is open, one open request per
+  order), with one difference: the caller proves ownership by passing the address
+  the order was bought with, which must equal `orders.buyer_email` after trimming
+  and lower-casing. A wrong address raises `forbidden`, and it is checked before
+  the order's status so a stranger cannot learn anything about an order that is
+  not theirs.
+- A refund request it opens has `requested_by = NULL` (there is no session), and
+  its audit row records `"via": "access_link"`.
+- The function is `SECURITY DEFINER` with `search_path = ''`, and only
+  `service_role` may execute it. `anon` and `authenticated` cannot.
+
+A guest request is private by construction: the SELECT policies on
+`refund_requests` all compare `requested_by` with `auth.uid()`, so a row with no
+requester is readable by no signed-in buyer.
+
+The signed-in path (`request_refund`) is untouched, so the dashboard keeps
+working exactly as before.
+
+### Rollback
+
+The commented block at the end of the migration drops the function and the
+`app_migrations` row. Refund requests it created are kept: they record what a
+buyer actually asked for.
+
 ## Never run SQL on production first
 
 Run every migration on **staging** and confirm every verification check is `t`

@@ -110,7 +110,7 @@ bootstrap "$DB" || { echo "bootstrap failed"; exit 1; }
 apply_migrations "$DB" || { echo "applying migrations failed"; exit 1; }
 
 count=$(q "select count(*) from public.app_migrations")
-if [ "$count" = "10" ]; then pass "ten migrations applied"; else fail "ten migrations applied" "got $count"; fi
+if [ "$count" = "12" ]; then pass "twelve migrations applied"; else fail "twelve migrations applied" "got $count"; fi
 
 step "Verify files (every check must be true)"
 for f in "$ROOT"/supabase/verify/*.sql; do
@@ -141,6 +141,35 @@ if [ "$again" = "1" ]; then pass "migration recorded once"; else fail "migration
 step "Rollback block and re-apply (on $ROLLBACK_DB)"
 bootstrap "$ROLLBACK_DB" >/dev/null || { echo "bootstrap failed"; exit 1; }
 apply_migrations "$ROLLBACK_DB" >/dev/null || { echo "apply failed"; exit 1; }
+
+# Later migrations are undone first, newest first, which is the only order that
+# works: email_log has a foreign key to orders, so commerce_core's rollback can
+# only drop that table once the later migrations are gone. This is the procedure a
+# person follows by hand, and it keeps this test honest about the block below.
+extract_rollback() {
+  awk '/^-- ROLLBACK$/{r=1} r' "$1" \
+    | sed -n '/^-- BEGIN;$/,/^-- COMMIT;$/p' \
+    | sed 's/^-- //'
+}
+
+CORE="$ROOT/supabase/migrations/20261116000200_commerce_core.sql"
+undone=""
+for f in $(ls -1 "$ROOT"/supabase/migrations/*.sql | sort -r); do
+  [ "$f" = "$CORE" ] && continue
+  [ "$f" \> "$CORE" ] || continue
+  later_sql=$(tmpfile)
+  extract_rollback "$f" > "$later_sql"
+  if [ -s "$later_sql" ]; then
+    if run_file "$later_sql" "$ROLLBACK_DB" >/dev/null 2>&1; then
+      undone="$undone $(basename "$f")"
+    else
+      fail "rollback of $(basename "$f")"
+      run_file "$later_sql" "$ROLLBACK_DB" 2>&1 | tail -5 | sed 's/^/       /'
+    fi
+  fi
+  rm -f "$later_sql"
+done
+if [ -n "$undone" ]; then pass "later migrations rolled back first:$undone"; fi
 
 rollback_sql=$(tmpfile)
 awk '/^-- ROLLBACK$/{r=1} r' "$ROOT/supabase/migrations/20261116000200_commerce_core.sql" \

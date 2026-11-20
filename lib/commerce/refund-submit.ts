@@ -3,6 +3,8 @@ import "server-only"
 import { z } from "zod"
 
 import { commerceErrorMessage } from "@/lib/commerce/errors"
+import { enqueueJob } from "@/lib/jobs/queue"
+import { logger } from "@/lib/logger"
 import type { CreatedRefund } from "@/lib/paystack/client"
 import { PaystackError } from "@/lib/paystack/client"
 import type { RefundRequestRow } from "@/lib/commerce/db"
@@ -34,6 +36,26 @@ export function refundSubmitDedupeKey(requestId: string): string {
  */
 export function refundProviderReference(requestId: string): string {
   return `afv_refund_${requestId.replace(/-/g, "")}`
+}
+
+/**
+ * Queue one approved request for submission.
+ *
+ * One live job per request: the dedupe key is the request id, so a second
+ * approval, a retried decision or a second guest ask cannot submit the same
+ * refund twice. A failure to enqueue is logged and does not undo the approval;
+ * nothing here claims the refund was sent.
+ */
+export async function enqueueRefundSubmit(requestId: string): Promise<void> {
+  try {
+    await enqueueJob({
+      type: REFUND_SUBMIT_JOB,
+      payload: { request_id: requestId },
+      dedupeKey: refundSubmitDedupeKey(requestId),
+    })
+  } catch {
+    logger.error("refund_submit_enqueue_failed", {})
+  }
 }
 
 export const refundSubmitPayloadSchema = z.object({

@@ -281,6 +281,41 @@ Abandoned orders are left to this job, not failed by the sweep.
    vendor, and watch `refund_requests.status` go `approved` → `processed` and the
    order go `refunded`.
 
+### The two URLs and the Turnstile hosts
+
+Copy these exactly; both are on the public host, and Paystack treats a trailing
+slash or a different subdomain as a different endpoint.
+
+| What | Value |
+| --- | --- |
+| Callback URL (where the buyer comes back) | `https://affilova.vercel.app/checkout/return` |
+| Webhook URL (what Paystack calls) | `https://affilova.vercel.app/api/paystack/webhook` |
+
+The callback is built by `appUrl("public", "/checkout/return")` in
+`lib/commerce/checkout.ts`, so it follows `NEXT_PUBLIC_HOST_PUBLIC` rather than
+being written into the code. Paystack appends `?reference=...` (and sometimes
+`trxref`) to it; `/checkout/return` reads either and asks
+`getOrderStatusAction` about it.
+
+**Cloudflare Turnstile hostnames.** The widget can only be solved on a hostname
+Cloudflare knows, and the token it produces carries that hostname. The server
+checks it against the five configured hosts, so all five must be registered on
+the Turnstile widget (Cloudflare dashboard → Turnstile → your site → Hostnames),
+or a checkout started from one of them is refused with `wrong_hostname`:
+
+```
+affilova.vercel.app                  NEXT_PUBLIC_HOST_PUBLIC
+affiliates.affilova.vercel.app       NEXT_PUBLIC_HOST_AFFILIATE
+merchants.affilova.vercel.app        NEXT_PUBLIC_HOST_MERCHANT
+account.affilova.vercel.app          NEXT_PUBLIC_HOST_ACCOUNT
+admin.affilova.vercel.app            NEXT_PUBLIC_HOST_ADMIN
+```
+
+In development `localhost` and `127.0.0.1` are accepted as well, but only when
+`NEXT_PUBLIC_APP_ENV=development` (`checkoutAllowedHostnames()` in
+`lib/security/turnstile-verify.ts`). The action name is `checkout` on both sides:
+the widget sends it and the verifier requires it.
+
 Switching to live is only the key: `sk_live_...` reports **Live mode** on the
 Security page, and the same webhook URL receives live events.
 

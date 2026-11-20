@@ -6,10 +6,9 @@ import { z } from "zod"
 import * as db from "@/lib/commerce/db"
 import { commerceErrorMessage, GENERIC_COMMERCE_ERROR } from "@/lib/commerce/errors"
 import { runStartCheckout, type Attribution, type StartCheckoutResult } from "@/lib/commerce/checkout"
-import { REFUND_SUBMIT_JOB, refundSubmitDedupeKey } from "@/lib/commerce/refund-submit"
+import { enqueueRefundSubmit } from "@/lib/commerce/refund-submit"
 import { appUrl } from "@/lib/identity/app-urls"
 import { getAuthUser } from "@/lib/identity/session"
-import { enqueueJob } from "@/lib/jobs/queue"
 import { logger } from "@/lib/logger"
 import { initializeTransaction } from "@/lib/paystack/client"
 import { clientIpFromHeaders, rateLimit } from "@/lib/rate-limit"
@@ -191,19 +190,4 @@ export async function decideRefundAction(input: {
   }
 
   return { ok: true }
-}
-
-// One live job per request. A failure to enqueue is logged and does not undo the
-// decision: the request stays approved, and the next decision or a retry can
-// submit it. Nothing here claims the refund was sent.
-async function enqueueRefundSubmit(requestId: string): Promise<void> {
-  try {
-    await enqueueJob({
-      type: REFUND_SUBMIT_JOB,
-      payload: { request_id: requestId },
-      dedupeKey: refundSubmitDedupeKey(requestId),
-    })
-  } catch {
-    logger.error("refund_submit_enqueue_failed", { request: requestId })
-  }
 }

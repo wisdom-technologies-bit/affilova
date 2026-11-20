@@ -84,6 +84,9 @@ const serverEnvSchema = z.object({
   ),
   // Optional for now; required once the feature that uses them ships.
   PAYSTACK_SECRET_KEY: optionalString,
+  // Optional here so a deployment that never sends an access link still builds;
+  // required, at least 32 characters, by getOrderAccessSecret().
+  ORDER_ACCESS_SECRET: optionalString,
   R2_ACCOUNT_ID: optionalString,
   R2_ACCESS_KEY_ID: optionalString,
   R2_SECRET_ACCESS_KEY: optionalString,
@@ -173,6 +176,17 @@ export interface PaystackEnv {
   /** Whether the webhook route refuses addresses outside Paystack's list. */
   enforceWebhookIps: boolean
 }
+
+// The secret that signs a buyer's download link. Deliberately separate from
+// every other secret: rotating it invalidates links and nothing else.
+const orderAccessSecretSchema = z.object({
+  ORDER_ACCESS_SECRET: z.preprocess(
+    present,
+    z
+      .string({ required_error: "is required" })
+      .min(32, "must be at least 32 characters long"),
+  ),
+})
 
 export type R2Env = z.infer<typeof r2EnvSchema>
 export type CloudinaryEnv = z.infer<typeof cloudinaryEnvSchema>
@@ -281,6 +295,16 @@ export function parsePaystackEnv(source: EnvSource): PaystackEnv {
   }
 }
 
+export function parseOrderAccessSecret(source: EnvSource): string {
+  const result = orderAccessSecretSchema.safeParse(source)
+
+  if (!result.success) {
+    throw new Error(formatIssues("access link", result.error))
+  }
+
+  return result.data.ORDER_ACCESS_SECRET
+}
+
 let serverEnvCache: ServerEnv | undefined
 let publicEnvCache: PublicEnv | undefined
 
@@ -353,5 +377,13 @@ export function getPaystackEnv(): PaystackEnv {
     NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
     PAYSTACK_WEBHOOK_SECRET: process.env.PAYSTACK_WEBHOOK_SECRET,
     PAYSTACK_WEBHOOK_ENFORCE_IPS: process.env.PAYSTACK_WEBHOOK_ENFORCE_IPS,
+  })
+}
+
+// The access-link secret, read only when a link is signed or verified, and
+// never at import time. A missing or short secret is an error, not a default.
+export function getOrderAccessSecret(): string {
+  return parseOrderAccessSecret({
+    ORDER_ACCESS_SECRET: process.env.ORDER_ACCESS_SECRET,
   })
 }

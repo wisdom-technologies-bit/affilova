@@ -527,6 +527,56 @@ The commented block at the end of the migration drops the function and the
 `app_migrations` row. Refund requests it created are kept: they record what a
 buyer actually asked for.
 
+## The affiliate tracking migration (20261118000200_affiliate_tracking)
+
+Run it the same way as the others: paste the file into the SQL Editor and press
+Run. It is safe to run twice.
+
+### What it creates
+
+- `affiliate_product_access`: which affiliate may promote which product
+  (`pending`, `approved`, `rejected` or `blocked`), and who decided.
+- `affiliate_invites`: a vendor's invitation. Only the SHA-256 of the token is
+  stored, so the link cannot be rebuilt from the table.
+- `affiliate_links`: the `/r/<code>` links, with an optional custom alias.
+- `affiliate_clicks`: one row per human click. **No client can read this table**;
+  only the service role can.
+- `affiliate_daily_stats`: clicks, orders, revenue and commission per day,
+  affiliate, product and link.
+- `risk_flags`: notes for staff about suspicious click patterns.
+
+It also replaces `create_order` with an identical function whose only change is
+that the affiliate must now pass `affiliate_can_promote` as well as the existing
+"not the buyer, not the vendor" checks. Every other line is the same, which is
+why the commerce harness still passes untouched.
+
+### Checking it worked
+
+Run `supabase/verify/20261118000200_affiliate_tracking_verify.sql`. Every row
+must show `passed = t`. It checks that the six tables exist, that row level
+security is on for all of them, that `anon` and `authenticated` cannot read the
+clicks table, that no client can write anything here, that every function is
+`SECURITY DEFINER` with an empty `search_path` and is executable by
+`service_role` only, and that the policies are the expected ten.
+
+The behaviour (links, invites, clicks, attribution, rollups, anomalies, RLS) is
+covered by `supabase/tests/affiliate_tracking_test.sh`, which needs a throwaway
+local database.
+
+### Before you run it
+
+Set `CLICK_HASH_SECRET` in the app's environment to 32 or more random
+characters. Without it, `/r/<code>` answers a redirect to `/` instead of
+recording a click: the route fails closed rather than storing an unsalted hash.
+
+### Rollback
+
+The bottom of the migration has a commented-out rollback block, like every other
+migration. Uncomment it and run it to remove the six tables and the thirteen
+functions it added. `create_order` is **not** restored by the rollback: the
+previous version lives in `20261116000200_commerce_core.sql`, and re-running that
+file puts it back.
+
 ## Never run SQL on production first
 
 Run every migration on **staging** and confirm every verification check is `t`

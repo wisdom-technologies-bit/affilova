@@ -64,7 +64,7 @@ const MESSAGES: Readonly<Record<string, string>> = {
   // Upload rules from lib/catalog/files.ts
   invalid_filename: "That file name cannot be used.",
   empty_file: "That file is empty.",
-  too_large: "A file must be 2 GB or smaller.",
+  too_large: "A file must be 25 MB or smaller.",
   not_allowed_type: "That file type is not allowed.",
   double_extension: "That file name is not allowed.",
 }

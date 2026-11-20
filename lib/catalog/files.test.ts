@@ -9,13 +9,15 @@ import {
   MAX_TOTAL_BYTES,
   MULTIPART_THRESHOLD_BYTES,
   PART_SIZE_BYTES,
+  PROVIDER_SCAN_LIMIT_BYTES,
   sanitizeFilename,
   validateUpload,
 } from "./files"
 
 describe("the limits", () => {
-  it("are the ones the database enforces", () => {
-    expect(MAX_FILE_BYTES).toBe(2_147_483_648)
+  it("keep the provider limit, the app limit and the upload style in step", () => {
+    expect(PROVIDER_SCAN_LIMIT_BYTES).toBe(25 * 1024 * 1024)
+    expect(MAX_FILE_BYTES).toBe(PROVIDER_SCAN_LIMIT_BYTES)
     expect(MAX_FILES_PER_PRODUCT).toBe(10)
     expect(MAX_TOTAL_BYTES).toBe(5 * 1024 * 1024 * 1024)
     expect(MULTIPART_THRESHOLD_BYTES).toBe(100 * 1024 * 1024)
@@ -169,7 +171,7 @@ describe("validateUpload", () => {
     })
   })
 
-  it("accepts exactly 2 GiB and refuses one byte more", () => {
+  it("accepts exactly the provider limit and refuses one byte more", () => {
     expect(validateUpload({ filename: "big.zip", sizeBytes: MAX_FILE_BYTES }).ok).toBe(true)
     expect(validateUpload({ filename: "big.zip", sizeBytes: MAX_FILE_BYTES + 1 })).toEqual({
       ok: false,

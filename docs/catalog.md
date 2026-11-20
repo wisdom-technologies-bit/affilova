@@ -72,13 +72,22 @@ Submit is refused until all of these hold:
 The bytes are private, in R2. What the product owns is a row in
 `public.product_files` created *before* the upload and confirmed *after* it.
 
+The per-file ceiling is the scanning provider's, not the storage's: Bouncer
+accepts at most 25 MB per file, so a larger upload would be stored and then
+rejected by the scan. The app refuses it up front with `too_large`. The value
+lives in one place, `PROVIDER_SCAN_LIMIT_BYTES` in `lib/catalog/files.ts`, and
+`MAX_FILE_BYTES` is that constant. The `product_files.size_bytes` check in the
+database still allows up to 2,147,483,648 bytes: it guards the column, and
+lowering it would need a migration for no gain, because the app and the scanner
+both refuse a bigger file first.
+
 | Rule | Value |
 | ---- | ----- |
-| Largest single file | 2 GiB (2,147,483,648 bytes) |
+| Largest single file | 25 MB (26,214,400 bytes), the scanning provider's limit |
 | Files per product | 10 |
 | Total size per product | 5 GiB, counting pending and uploaded rows |
-| Upload style | a single signed `PUT` up to 100 MiB, multipart above that |
-| Part size | 16 MiB |
+| Upload style | a single signed `PUT`; every allowed file is under the 100 MiB multipart threshold |
+| Part size | 16 MiB (unused while the limit is 25 MB) |
 | Signed PUT lifetime | 15 minutes |
 | Signed part lifetime | 60 minutes |
 | Download link lifetime | 5 minutes |

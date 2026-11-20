@@ -267,6 +267,17 @@ one. Check the clock: a timestamp more than five minutes off is refused, and the
 answer is empty on purpose, so look at `scan_callback_rejected` in the logs for
 the reason.
 
+## Returning to ClamAV
+
+ClamAV is parked, not deleted: the module, its tests and its two config files are
+under `services/scanner/archive/clamav/`, out of the suite and the typecheck. If
+it is funded again, the steps are in
+`services/scanner/archive/clamav/README.md` and in the "Returning to ClamAV"
+section of `docs/scanning-contract.md`. The short version: move the files back,
+re-add the `#clamav` import, point the pipeline at it, install and start `clamd`
+in the image, restore the signature age on `/healthz` and this page, and revisit
+the 25 MB limit that Bouncer forced.
+
 ## Environment variables
 
 | Variable | What it is |

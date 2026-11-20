@@ -247,6 +247,29 @@ More than one machine per region gains nothing: the queue is in memory.
   inside a 20 minute job budget. A timeout is `error` / `timeout` and is
   retryable.
 
+## Returning to ClamAV
+
+ClamAV may come back when it can be funded. The module, its tests, `clamd.conf`
+and `freshclam.conf` are parked under [`archive/clamav/`](archive/clamav/README.md)
+and excluded from the suite and the typecheck, so they cannot fail the build
+while they are out.
+
+1. Move `clamav.ts` and `clamav.test.ts` back to `src/`, and the two config files
+   back to this directory.
+2. Re-add `"#clamav": "./src/clamav.ts"` to the `imports` map in `package.json`.
+3. Pass `#clamav`'s `scanFile` into `PipelineDeps` in `src/scan-runner.ts`, and
+   set `buildPayload`'s `engine` to `PAYLOAD_ENGINE`.
+4. Install ClamAV in the `Dockerfile`, start `clamd` from `entrypoint.sh`, and
+   give the host at least 2 GB of RAM and a persistent disk at `/data`.
+5. Restore `/healthz` to report `clamd` and `signatureAgeHours`, and the admin
+   Security page to show a real signature age.
+6. Raise `PROVIDER_SCAN_LIMIT_BYTES` in `lib/catalog/files.ts` only if the local
+   engine makes a bigger file acceptable again, and update this README, the
+   contract and `docs/catalog.md`.
+
+The same steps, with the reasoning, are in
+[`docs/scanning-contract.md`](../../docs/scanning-contract.md#returning-to-clamav).
+
 ## Files
 
 | File | Purpose |

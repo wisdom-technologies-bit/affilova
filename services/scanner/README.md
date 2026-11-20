@@ -4,6 +4,11 @@ A standalone malware scanner for files uploaded to Affilova. The app posts a
 private object URL, the service downloads it, decides whether it is safe, and
 posts the verdict back to the app on a signed callback.
 
+Malware detection is done by the external [Bouncer](https://usebouncer.dev) API.
+The service keeps no detection engine of its own, so it needs no signature
+database, no daemon and no large instance. ClamAV was the previous engine and is
+parked under [`archive/clamav/`](archive/clamav/README.md) in case it comes back.
+
 The wire contract lives in [`docs/scanning-contract.md`](../../docs/scanning-contract.md).
 
 ## What it does
@@ -16,16 +21,45 @@ The wire contract lives in [`docs/scanning-contract.md`](../../docs/scanning-con
 4. Archives (`zip`, `7z`, `rar`, and the zip-based `docx`, `xlsx`, `pptx`, `epub`)
    are listed with `7z l -slt` and checked for encryption, traversal, symlinks,
    limits and bundled executables.
-5. `clamdscan --no-summary --fdpass` scans the file with ClamAV.
+5. The file is uploaded to Bouncer, which answers `clean`, `malicious` or
+   `suspicious`. A file over the 25 MB provider limit never leaves the host: it
+   is `rejected` with `provider_file_too_large`.
 6. The temporary file is deleted on every path, including timeouts, and the
    signed verdict is posted back to the app.
 
+## The engine
+
+Bouncer is an HTTP API, and the service maps its answer onto the contract like
+this:
+
+| Bouncer | Verdict | Detail |
+| --- | --- | --- |
+| `clean` | `clean` | `clean` |
+| `malicious` | `infected` | the threat names it returned, up to five, cut to 300 characters |
+| `suspicious` | `needs_review` | the reason it returned |
+| `failed`, or any other status | `error` | `scanner_error` |
+| any verdict the service does not recognise | `error` | `scanner_error` |
+| no answer inside the budget | `error` | `timeout` |
+
+An unknown verdict is **never** `clean`. That rule is the reason the mapping is a
+small explicit table instead of a boolean.
+
+Two transports are used: files up to 4.5 MB go in one multipart `POST /v1/scan`;
+larger files get an upload target from `POST /v2/scan`, are uploaded to it, and
+are then polled until the scan finishes. The upload target must be HTTPS on an
+`amazonaws.com` host and the polling URL must be on the Bouncer origin, both with
+redirects refused, so a bad or hostile answer from the provider cannot be turned
+into a request somewhere else.
+
+`engine` in the callback is always `"bouncer"` and `signatureVersion` is always
+`null`: Bouncer keeps its own detection data and does not expose a version.
+
 ## What it does NOT do
 
-* It cannot guarantee that a file is free of malware. ClamAV only detects what it
-  has signatures for, the heuristics can miss new or obfuscated samples, and the
-  archive rules only look one level deep. `clean` means "nothing known was found
-  in the time budget", not "safe".
+* It cannot guarantee that a file is free of malware. Bouncer only detects what
+  it knows, the heuristics can miss new or obfuscated samples, and the archive
+  rules only look one level deep. `clean` means "nothing known was found in the
+  time budget", not "safe".
 * It does not sandbox, execute or detonate files.
 * It does not repair or rewrite files, and it never returns the file to the app.
 * It does not store results. The verdict lives only in the callback; if every
@@ -33,39 +67,37 @@ The wire contract lives in [`docs/scanning-contract.md`](../../docs/scanning-con
 * It does not read encrypted archives. They are rejected, never inspected.
 * It cannot list RAR5 archives (see below), so those come back as
   `needs_review` / `archive_unlistable` and need a human.
+* It cannot scan a file over 25 MB. The app refuses those before upload.
 
 ## Requirements
 
 * Node 24 or newer. The sources are TypeScript and run directly through Node's
   type stripping, so there is **no build step and no npm dependency**. There is
   no `node_modules`.
-* ClamAV (`clamd`, `clamdscan`, `freshclam`), 7-Zip (`p7zip-full`) and libmagic
-  (`file`). The `Dockerfile` installs all of them.
+* 7-Zip (`p7zip-full`) and libmagic (`file`). The `Dockerfile` installs both.
+* A Bouncer API key. Without `BOUNCER_API_KEY` the service refuses to start.
+* No persistent disk and no signature database. `/data/tmp` only needs room for
+  the file being scanned.
 
 ## Local development
 
 ```sh
-# signatures and the daemon (Debian/Ubuntu)
-sudo apt-get install -y clamav clamav-daemon clamav-freshclam p7zip-full libmagic1 file
-sudo mkdir -p /data/clamav /data/tmp /run/clamav
-sudo chown -R clamav:clamav /data/clamav /run/clamav
-sudo freshclam --datadir=/data/clamav
-sudo clamd --config-file="$(pwd)/clamd.conf" &
-
-# install the config where clamdscan looks for it
-sudo cp clamd.conf /etc/clamav/clamd.conf
-sudo cp freshclam.conf /etc/clamav/freshclam.conf
+sudo apt-get install -y p7zip-full libmagic1 file
+sudo mkdir -p /data/tmp
 
 SCANNER_SHARED_SECRET="$(openssl rand -hex 32)" \
 SCANNER_CALLBACK_SECRET="$(openssl rand -hex 32)" \
+BOUNCER_API_KEY="your-bouncer-key" \
 ALLOWED_CALLBACK_ORIGINS="https://app.affilova.com" \
 node src/server.ts
 ```
 
-`GET /healthz` should answer `200 {"ok":true,"clamd":true,"signatureAgeHours":N}`
-once clamd is up.
+`GET /healthz` answers `200 {"ok":true,"engine":"bouncer"}`. There is no
+signature age: Bouncer keeps its own detection data.
 
-The tests are part of the repository suite and run with the root Vitest:
+The tests are part of the repository suite and run with the root Vitest. They
+never touch the network: every test injects a fake `scanFile`, so the suite runs
+with no Bouncer key and no API quota:
 
 ```sh
 pnpm test
@@ -79,17 +111,19 @@ and the error names the variable.
 
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
-| `PORT` | no | `8080` | HTTP port |
+| `PORT` | no | `10000` | HTTP port |
 | `SCANNER_SHARED_SECRET` | **yes** | – | at least 32 characters; the `Authorization: Bearer` value the app sends |
 | `SCANNER_CALLBACK_SECRET` | **yes** | – | at least 32 characters; the HMAC key for callbacks |
+| `BOUNCER_API_KEY` | **yes** | – | the `X-API-Key` sent to Bouncer; never logged |
 | `ALLOWED_CALLBACK_ORIGINS` | **yes** | – | comma separated https origins, e.g. `https://app.affilova.com` |
 | `ALLOWED_DOWNLOAD_HOST_SUFFIX` | no | `.r2.cloudflarestorage.com` | the storage host suffix the download URL must end with |
-| `MAX_FILE_BYTES` | no | `2147483648` | hard ceiling for one object (2 GiB) |
+| `MAX_FILE_BYTES` | no | `2147483648` | download ceiling for one object; does not raise Bouncer's 25 MB limit |
 | `WORK_DIR` | no | `/data/tmp` | scratch space, emptied on start |
 | `CONCURRENCY` | no | `2` | jobs scanned at once |
 | `QUEUE_LIMIT` | no | `100` | jobs allowed to wait; beyond this `POST /scan` answers 429 |
 
-Two secrets, both 32+ random bytes, never logged, never returned.
+Two secrets, both 32+ random bytes, never logged, never returned, plus the
+Bouncer key, which is treated the same way.
 
 ## Deploying on Render
 
@@ -100,13 +134,9 @@ Two secrets, both 32+ random bytes, never logged, never returned.
 4. Set **Root Directory** to `services/scanner`.
 5. Set **Dockerfile Path** to `Dockerfile` (it resolves inside the root
    directory above).
-6. Choose an instance with **at least 2 GB of RAM**. ClamAV holds the signature
-   database in memory (roughly 1.2 GB resident with `DetectPUA` and the bytecode
-   database loaded), so a 512 MB or 1 GB instance will be killed while scanning.
-7. Add a **persistent disk** of **at least 10 GB** mounted at `/data`. The
-   signature database alone is several hundred MB, and `/data/tmp` holds the file
-   being scanned. Without the disk every deploy re-downloads the signatures and
-   the health check fails for the first few minutes.
+6. A small instance is enough: the engine is remote, so there is no signature
+   database to hold in memory. 512 MB works for the default concurrency.
+7. No persistent disk is needed. `/data/tmp` holds one file per in-flight scan.
 8. Set the **Health Check Path** to `/healthz`.
 9. Add the environment variables:
 
@@ -114,19 +144,18 @@ Two secrets, both 32+ random bytes, never logged, never returned.
    | --- | --- |
    | `SCANNER_SHARED_SECRET` | 32+ random characters, shared with the app |
    | `SCANNER_CALLBACK_SECRET` | 32+ random characters, shared with the app |
+   | `BOUNCER_API_KEY` | the key from the Bouncer dashboard |
    | `ALLOWED_CALLBACK_ORIGINS` | `https://app.affilova.com` (add staging origins comma separated) |
    | `ALLOWED_DOWNLOAD_HOST_SUFFIX` | leave unset for `.r2.cloudflarestorage.com` |
-   | `MAX_FILE_BYTES` | leave unset for 2 GiB |
    | `CONCURRENCY` | `2` |
    | `QUEUE_LIMIT` | `100` |
 
-10. Deploy. The first boot downloads the signature database, so allow a few
-    minutes before the health check turns green; `start-period` in the
-    `Dockerfile` health check already allows for that.
+10. Deploy. The health check turns green as soon as the process is listening:
+    there is nothing to download on first boot.
 11. Point the app at the service URL and run one real upload end to end before
     opening the feature to vendors.
 
-### Rotating the two secrets
+### Rotating the secrets
 
 `SCANNER_SHARED_SECRET` and `SCANNER_CALLBACK_SECRET` are the only shared values
 between the app and this service. Rotate them one at a time, and only during a
@@ -145,31 +174,27 @@ value, so a mismatch shows up as `401` in the app logs. Rotating
 (`401`/`400` from `/api/internal/scan-result`). Keep a note of which value is
 live; the service also fails to start if either value is under 32 characters.
 
+`BOUNCER_API_KEY` is independent of the app. Rotate it in the Bouncer dashboard
+and in this service's environment in one change, then redeploy. A wrong key shows
+up as `scanner_error` on every scan, not as a startup failure, so run one real
+scan after rotating.
+
 ## Deploying on Railway
 
 The same image works unchanged.
 
 1. **New Project → Deploy from GitHub repo**, pick the repository.
 2. Set **Root Directory** to `services/scanner` so Railway builds that Dockerfile.
-3. Give the service **at least 2 GB of RAM** and a **volume of at least 10 GB
-   mounted at `/data`**.
+3. A small instance is enough. No volume is required.
 4. Add the same environment variables as above.
 5. Set the health check path to `/healthz` (Settings → Deploy → Healthcheck Path).
 6. Deploy and confirm `/healthz` returns `200`.
 
-### First boot on a cold volume
+### First boot
 
-The server binds within a second, but it reports `503` on `/healthz` until clamd
-has answered `PING` and the signature database is younger than 72 hours. On a
-brand new volume that database has to come down first, which is a few hundred
-megabytes.
-
-A platform health check that insists on `200` will therefore kill the container
-part way through the download, and the next attempt starts the download again.
-On the very first deploy, either leave the health check path empty until
-`/healthz` answers `200` once, or give it a window long enough for the download.
-After that the volume holds the database, the service is ready in about ten
-seconds, and the health check can go back on permanently.
+The server binds within a second and reports `200` on `/healthz` immediately.
+Nothing has to be downloaded, so a cold deploy is ready in seconds. Keep one
+instance: the queue is in memory.
 
 ## Deploying on Fly.io
 
@@ -177,16 +202,14 @@ seconds, and the health check can go back on permanently.
 cd services/scanner
 fly launch --dockerfile Dockerfile --no-deploy
 
-fly volumes create scanner_data --size 10
-# attach it at /data in fly.toml: [mounts] source = "scanner_data" destination = "/data"
-
 fly secrets set \
   SCANNER_SHARED_SECRET="$(openssl rand -hex 32)" \
   SCANNER_CALLBACK_SECRET="$(openssl rand -hex 32)" \
+  BOUNCER_API_KEY="your-bouncer-key" \
   ALLOWED_CALLBACK_ORIGINS="https://app.affilova.com"
 
-# at least 2 GB of memory, and keep one machine so the queue stays coherent
-fly scale vm shared-cpu-2x --memory 2048
+# a small machine is enough now that the engine is remote
+fly scale vm shared-cpu-1x --memory 512
 fly deploy
 ```
 
@@ -197,40 +220,61 @@ Set the health check to `GET /healthz` in `fly.toml`:
   path = "/healthz"
   interval = "30s"
   timeout = "5s"
-  grace_period = "300s"
+  grace_period = "30s"
 ```
 
-Fly needs the volume mounted at `/data` for the same reason as Render, and more
-than one machine per region gains nothing: the queue is in memory.
+More than one machine per region gains nothing: the queue is in memory.
 
 ## Operational notes
 
-* **`clamdscan` and the socket.** `clamdscan` has no option for a socket path; it
-  reads `/etc/clamav/clamd.conf`. The image installs this service's `clamd.conf`
-  there so `clamdscan` talks to the `clamd` that the entrypoint started. If you
-  change `LocalSocket`, change it in `clamd.conf` only; the image copies it.
+* **Health means configured.** `/healthz` is `200` when the process is listening
+  and `BOUNCER_API_KEY` is set. It does not call Bouncer on every health check;
+  the one-click self-test on the admin Security page is what proves the provider
+  is reachable and answering.
+* **Bouncer is a dependency and a cost.** Every scan is a billable call. A
+  Bouncer outage shows up as `error` / `scanner_error`. The service does not
+  retry a whole scan: the app's sweeper queues it again on its next pass, which
+  is why a provider outage costs a scan attempt rather than a stuck file.
+* **25 MB is the hard ceiling.** Files above it are `rejected` /
+  `provider_file_too_large` before any bytes are sent. The app refuses them at
+  upload with `too_large`, using `PROVIDER_SCAN_LIMIT_BYTES` in
+  `lib/catalog/files.ts`, which must equal `BOUNCER_MAX_FILE_BYTES` here.
 * **RAR.** `p7zip-rar` is in Debian non-free and is not installed, so RAR5
   archives cannot be listed and are reported as
   `needs_review` / `archive_unlistable`. RAR4 usually lists and is checked
   normally.
-* **Health means ready.** `/healthz` is only `200` when clamd answers `PING` and
-  the signatures are younger than 72 hours. `entrypoint.sh` runs `freshclam` once
-  if the database is missing or older than a day, then starts `freshclam` in
-  daemon mode with `Checks 24`, so it refreshes hourly.
-* **Shutdown.** On `SIGTERM` the queue stops accepting work, gives running jobs
-  up to 60 seconds, drops the waiting list, clears `/data/tmp` and exits. The
-  temporary directory is also emptied on start, which covers a hard kill.
-* **Logging.** JSON lines carrying `scanId`, `fileId`, `verdict` and stage
-  durations only. URLs, secrets, file names and file contents are never logged.
-* **Scratch space.** A scan needs room for the object plus whatever `clamdscan`
-  writes, so keep `/data` comfortably larger than `MAX_FILE_BYTES` times
-  `CONCURRENCY`.
+* **Timeouts.** One scan has 5 minutes with Bouncer (20 seconds in a self-test)
+  inside a 20 minute job budget. A timeout is `error` / `timeout` and is
+  retryable.
 
-## Layout
+## Returning to ClamAV
+
+ClamAV may come back when it can be funded. The module, its tests, `clamd.conf`
+and `freshclam.conf` are parked under [`archive/clamav/`](archive/clamav/README.md)
+and excluded from the suite and the typecheck, so they cannot fail the build
+while they are out.
+
+1. Move `clamav.ts` and `clamav.test.ts` back to `src/`, and the two config files
+   back to this directory.
+2. Re-add `"#clamav": "./src/clamav.ts"` to the `imports` map in `package.json`.
+3. Pass `#clamav`'s `scanFile` into `PipelineDeps` in `src/scan-runner.ts`, and
+   set `buildPayload`'s `engine` to `PAYLOAD_ENGINE`.
+4. Install ClamAV in the `Dockerfile`, start `clamd` from `entrypoint.sh`, and
+   give the host at least 2 GB of RAM and a persistent disk at `/data`.
+5. Restore `/healthz` to report `clamd` and `signatureAgeHours`, and the admin
+   Security page to show a real signature age.
+6. Raise `PROVIDER_SCAN_LIMIT_BYTES` in `lib/catalog/files.ts` only if the local
+   engine makes a bigger file acceptable again, and update this README, the
+   contract and `docs/catalog.md`.
+
+The same steps, with the reasoning, are in
+[`docs/scanning-contract.md`](../../docs/scanning-contract.md#returning-to-clamav).
+
+## Files
 
 | File | Purpose |
 | --- | --- |
-| `src/server.ts` | HTTP surface: `POST /scan`, `GET /healthz`, wiring and shutdown |
+| `src/server.ts` | HTTP surface: `POST /scan`, `POST /selftest`, `GET /healthz`, wiring and shutdown |
 | `src/config.ts` | environment parsing and validation |
 | `src/auth.ts` | constant time bearer check |
 | `src/signature.ts` | callback HMAC |
@@ -240,13 +284,14 @@ than one machine per region gains nothing: the queue is in memory.
 | `src/download.ts` | streaming download, SHA-256, size limits |
 | `src/mime-policy.ts` | extension to detected MIME table and deny list |
 | `src/archive-policy.ts` | `7z l -slt` parsing and archive rules |
-| `src/clamav.ts` | clamdscan parsing, PING, signature age, engine info |
+| `src/bouncer.ts` | the Bouncer client: upload, poll, verdict mapping, size limit |
 | `src/callback.ts` | signed callback with the retry schedule |
 | `src/exec.ts` | shell-free child process helper |
 | `src/log.ts` | JSON line logging with a key filter |
+| `archive/clamav/` | the parked ClamAV engine, its tests, its configs and a restore guide |
 | `package.json` | module resolution only: zero dependencies |
 
-TypeScript uses `#`-prefixed subpath imports (`#config`, `#clamav`, ...) because
+TypeScript uses `#`-prefixed subpath imports (`#config`, `#bouncer`, ...) because
 Node's type stripping needs an explicit `.ts` extension while the repository's
 `tsconfig.json` rejects `.ts` import paths. The `imports` map in `package.json`
 satisfies both, and Vitest resolves it too.

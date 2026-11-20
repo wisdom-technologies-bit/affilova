@@ -4,8 +4,18 @@
 // the client says it is, so it is never read: an .exe renamed to .pdf is stored
 // as application/pdf and can never be served as something executable.
 
-/** 2 GiB: the largest single file. Mirrors the products.file size CHECK. */
-export const MAX_FILE_BYTES = 2 * 1024 * 1024 * 1024
+/**
+ * The largest file the scanning provider accepts: 25 MB.
+ *
+ * Bouncer, the external malware engine, refuses anything bigger, so a larger
+ * file would be stored and then rejected by the scan. The app therefore refuses
+ * it here, before anything is uploaded. Keep this equal to
+ * BOUNCER_MAX_FILE_BYTES in services/scanner/src/bouncer.ts.
+ */
+export const PROVIDER_SCAN_LIMIT_BYTES = 25 * 1024 * 1024
+
+/** The largest single file: the provider's scan limit. */
+export const MAX_FILE_BYTES = PROVIDER_SCAN_LIMIT_BYTES
 
 /** At most this many files per product. */
 export const MAX_FILES_PER_PRODUCT = 10
@@ -13,7 +23,13 @@ export const MAX_FILES_PER_PRODUCT = 10
 /** 5 GiB of files per product, across all of its files. */
 export const MAX_TOTAL_BYTES = 5 * 1024 * 1024 * 1024
 
-/** Above this size the browser uploads in parts. */
+/**
+ * Above this size the browser uploads in parts.
+ *
+ * This is deliberately above MAX_FILE_BYTES: every file the app accepts is
+ * under it, so every upload takes the single-request path. The multipart path is
+ * kept working for the day a larger provider limit (or a local engine) returns.
+ */
 export const MULTIPART_THRESHOLD_BYTES = 100 * 1024 * 1024
 
 /** The size of one part. S3 requires at least 5 MiB for every part but the last. */

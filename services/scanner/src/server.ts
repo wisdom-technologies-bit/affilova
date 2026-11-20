@@ -66,13 +66,16 @@ export type SelftestContext = {
   readonly deadlineMs?: number
 }
 
+/** What `GET /healthz` reports: whether the engine can scan, and its name. */
+export type ScannerReadiness = {
+  readonly ready: boolean
+  readonly engine: string
+}
+
 export type ServerContext = {
   readonly config: ScannerConfig
   readonly admission: (job: ScanJob) => Admission
-  readonly readiness: () => Promise<{
-    readonly ready: boolean
-    readonly engine: string
-  }>
+  readonly readiness: () => Promise<ScannerReadiness>
   readonly log: Logger
   readonly selftest: SelftestContext
 }
@@ -520,10 +523,7 @@ function main(): void {
     },
   })
 
-  const readiness = async (): Promise<{
-    readonly ready: boolean
-    readonly engine: string
-  }> => ({
+  const readiness = async (): Promise<ScannerReadiness> => ({
     ready: Boolean(config.bouncerApiKey),
     engine: BOUNCER_ENGINE,
   })

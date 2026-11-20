@@ -12,7 +12,11 @@ import {
 import type { FileScanStatus, ProductFile } from "@/lib/catalog/action-types"
 import { fileStatusLabel, formatBytes, isScanPending } from "@/lib/catalog/format"
 import { takeChosenFiles } from "@/lib/catalog/file-input"
-import { ALLOWED_FILE_TYPES, MAX_FILES_PER_PRODUCT } from "@/lib/catalog/files"
+import {
+  ALLOWED_FILE_TYPES,
+  MAX_FILES_PER_PRODUCT,
+  PROVIDER_SCAN_LIMIT_BYTES,
+} from "@/lib/catalog/files"
 import { ScanStatusLine, UploadRow, type LocalUpload } from "@/components/catalog/upload-row"
 import { uploadFile } from "@/lib/catalog/upload-client"
 import { createUploadTransport } from "@/components/catalog/upload-transport"
@@ -25,6 +29,9 @@ import { createUploadTransport } from "@/components/catalog/upload-transport"
 // from.
 
 const ALLOWED_EXTENSIONS = Object.keys(ALLOWED_FILE_TYPES).join(", ")
+
+/** The provider's per-file ceiling, written out for the drop zone. */
+const MAX_FILE_MB = PROVIDER_SCAN_LIMIT_BYTES / (1024 * 1024)
 
 /** While a scan is running the screen asks the server this often. */
 const SCAN_POLL_MS = 5000
@@ -244,7 +251,8 @@ export function FileManager({
           </button>
 
           <p className="text-xs leading-5 text-muted-foreground">
-            Or drop files here. Up to {MAX_FILES_PER_PRODUCT} files, 2 GB each. Allowed: {ALLOWED_EXTENSIONS}.
+            Or drop files here. Files can be up to {MAX_FILE_MB} MB. Up to {MAX_FILES_PER_PRODUCT} files
+            per product. Allowed: {ALLOWED_EXTENSIONS}.
           </p>
         </div>
 

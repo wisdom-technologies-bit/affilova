@@ -20,6 +20,10 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["**/*.test.ts"],
-    exclude: ["**/node_modules/**", "**/.next/**"],
+    // services/scanner/archive holds the ClamAV engine and its tests. They are
+    // parked, not deleted: ClamAV may return when it can be funded again. Until
+    // then they are out of the suite so a test for an engine that is not wired
+    // up cannot fail the build. See services/scanner/archive/clamav/README.md.
+    exclude: ["**/node_modules/**", "**/.next/**", "services/scanner/archive/**"],
   },
 })

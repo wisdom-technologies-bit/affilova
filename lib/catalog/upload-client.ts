@@ -32,9 +32,11 @@ export const RETRY_BASE_DELAY_MS = 500
  * caps the parts array at 100.
  *
  * With the 16 MiB part size startFileUploadAction reserves, that tops a
- * multipart upload out at 1.6 GB, under the 2 GB a file is allowed to be. The
- * client checks it here and says so plainly instead of uploading 128 parts and
- * having the completion refused at the end.
+ * multipart upload out at 1.6 GB. No file the app accepts today reaches that,
+ * because the provider's scan limit is 25 MB and every upload takes the
+ * single-request path. The guard stays anyway: if a larger limit returns, the
+ * client says so plainly instead of uploading parts and having the completion
+ * refused at the end.
  */
 export const MAX_COMPLETABLE_PARTS = 100
 

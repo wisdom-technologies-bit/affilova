@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import type { StartFileUploadResult } from "./action-types"
 import { catalogErrorMessage } from "./errors"
-import { MAX_FILE_BYTES, PART_SIZE_BYTES } from "./files"
+import { MAX_FILE_BYTES, MULTIPART_THRESHOLD_BYTES, PART_SIZE_BYTES } from "./files"
 import {
   MAX_COMPLETABLE_PARTS,
   PART_RETRIES,
@@ -210,13 +210,21 @@ describe("where a file is split", () => {
     expect(shouldUploadInParts(100 * MiB + 1)).toBe(true)
   })
 
-  it("splits a 2 GiB file", () => {
-    expect(shouldUploadInParts(2 * 1024 * MiB)).toBe(true)
-    expect(partCount(2 * 1024 * MiB, PART_SIZE_BYTES)).toBe(128)
+  it("uploads the largest allowed file in one request", () => {
+    // Every file the app accepts is under the multipart threshold, so the
+    // 25 MB provider limit always takes the single-request path.
+    expect(shouldUploadInParts(MAX_FILE_BYTES)).toBe(false)
+  })
+
+  it("splits a file above the multipart threshold", () => {
+    const size = MULTIPART_THRESHOLD_BYTES + 1
+
+    expect(shouldUploadInParts(size)).toBe(true)
+    expect(partCount(size, PART_SIZE_BYTES)).toBe(7)
   })
 
   it("cuts the ranges so they cover the file exactly once", () => {
-    const size = 2 * 1024 * MiB
+    const size = MULTIPART_THRESHOLD_BYTES + 1
     const total = partCount(size, PART_SIZE_BYTES)
 
     expect(partRange(size, PART_SIZE_BYTES, 1)).toEqual({ start: 0, end: PART_SIZE_BYTES })
@@ -263,13 +271,20 @@ describe("a single-request upload", () => {
 })
 
 describe("a multipart upload", () => {
+  // The provider limit is 25 MB, below the production 100 MiB multipart
+  // threshold, so no file the app accepts is big enough to be multipart at the
+  // 16 MiB part size. The engine follows the plan the server returns, so these
+  // tests drive it with a 6 MiB part size and files under the limit: the part
+  // logic is the same, only the numbers are smaller.
+  const PART = 6 * MiB
+
   it("never has more than three parts in flight", async () => {
-    // 64 MiB is four 16 MiB parts, so the limit is reached.
-    const test = harness({ sizeBytes: 64 * MiB, multipart: true })
+    // 24 MiB is four 6 MiB parts, so the limit is reached.
+    const test = harness({ sizeBytes: 24 * MiB, multipart: true, partSizeBytes: PART })
 
     const outcome = await uploadFile({
       productId: "p",
-      source: source(64 * MiB),
+      source: source(24 * MiB),
       transport: test.transport,
       signal: new AbortController().signal,
     })
@@ -282,9 +297,9 @@ describe("a multipart upload", () => {
   })
 
   it("sends every part once, with the ranges the plan implies", async () => {
-    const size = 40 * MiB
+    const size = 18 * MiB
     const input = source(size)
-    const test = harness({ sizeBytes: size, multipart: true })
+    const test = harness({ sizeBytes: size, multipart: true, partSizeBytes: PART })
 
     await uploadFile({
       productId: "p",
@@ -294,15 +309,15 @@ describe("a multipart upload", () => {
     })
 
     expect(input.ranges).toEqual([
-      { start: 0, end: PART_SIZE_BYTES },
-      { start: PART_SIZE_BYTES, end: Math.min(PART_SIZE_BYTES * 2, size) },
-      { start: Math.min(PART_SIZE_BYTES * 2, size), end: size },
+      { start: 0, end: PART },
+      { start: PART, end: Math.min(PART * 2, size) },
+      { start: Math.min(PART * 2, size), end: size },
     ])
   })
 
   it("adds up progress across parts", async () => {
-    const size = 64 * MiB
-    const test = harness({ sizeBytes: size, multipart: true })
+    const size = 24 * MiB
+    const test = harness({ sizeBytes: size, multipart: true, partSizeBytes: PART })
 
     await uploadFile({
       productId: "p",
@@ -325,10 +340,11 @@ describe("a multipart upload", () => {
   })
 
   it("retries a part that fails, then carries on", async () => {
-    const size = 32 * MiB
+    const size = 12 * MiB
     const test = harness({
       sizeBytes: size,
       multipart: true,
+      partSizeBytes: PART,
       fail: (partNumber, attempt) =>
         partNumber === 2 && attempt === 1
           ? new PartUploadError("The upload was interrupted.", { retryable: true })
@@ -349,8 +365,9 @@ describe("a multipart upload", () => {
 
   it("waits longer before each retry", async () => {
     const test = harness({
-      sizeBytes: 32 * MiB,
+      sizeBytes: 12 * MiB,
       multipart: true,
+      partSizeBytes: PART,
       fail: (partNumber, attempt) =>
         partNumber === 1 && attempt <= 3
           ? new PartUploadError("The upload timed out.", { retryable: true })
@@ -359,7 +376,7 @@ describe("a multipart upload", () => {
 
     await uploadFile({
       productId: "p",
-      source: source(32 * MiB),
+      source: source(12 * MiB),
       transport: test.transport,
       signal: new AbortController().signal,
     })
@@ -368,10 +385,11 @@ describe("a multipart upload", () => {
   })
 
   it("gives up on a part that fails four times, and drops the reservation", async () => {
-    const size = 32 * MiB
+    const size = 12 * MiB
     const test = harness({
       sizeBytes: size,
       multipart: true,
+      partSizeBytes: PART,
       fail: (partNumber) =>
         partNumber === 1
           ? new PartUploadError("The upload was interrupted.", { retryable: true })
@@ -393,11 +411,11 @@ describe("a multipart upload", () => {
   })
 
   it("treats a part without an ETag as an error and does not retry it", async () => {
-    const test = harness({ sizeBytes: 32 * MiB, multipart: true, etag: false })
+    const test = harness({ sizeBytes: 12 * MiB, multipart: true, partSizeBytes: PART, etag: false })
 
     const outcome = await uploadFile({
       productId: "p",
-      source: source(32 * MiB),
+      source: source(12 * MiB),
       transport: test.transport,
       signal: new AbortController().signal,
     })
@@ -410,8 +428,9 @@ describe("a multipart upload", () => {
 
   it("replaces a part URL that has expired before trying again", async () => {
     const test = harness({
-      sizeBytes: 32 * MiB,
+      sizeBytes: 12 * MiB,
       multipart: true,
+      partSizeBytes: PART,
       fail: (partNumber, attempt) =>
         partNumber === 1 && attempt === 1
           ? new PartUploadError("The upload link expired.", { retryable: true, expired: true })
@@ -420,7 +439,7 @@ describe("a multipart upload", () => {
 
     const outcome = await uploadFile({
       productId: "p",
-      source: source(32 * MiB),
+      source: source(12 * MiB),
       transport: test.transport,
       signal: new AbortController().signal,
     })
@@ -430,9 +449,10 @@ describe("a multipart upload", () => {
   })
 
   it("refuses a plan with more parts than the completion action accepts", async () => {
-    // 2 GiB in 16 MiB parts is 128 parts; completeMultipartSchema takes 100.
-    const size = 2 * 1024 * MiB
-    const test = harness({ sizeBytes: size, multipart: true })
+    // A plan with a 1 byte part size reaches the completion cap on a tiny file,
+    // which is the only way to prove the guard while the provider limit is 25 MB.
+    const size = 200
+    const test = harness({ sizeBytes: size, multipart: true, partSizeBytes: 1 })
 
     const outcome = await uploadFile({
       productId: "p",
@@ -441,7 +461,7 @@ describe("a multipart upload", () => {
       signal: new AbortController().signal,
     })
 
-    expect(partCount(size, PART_SIZE_BYTES)).toBeGreaterThan(MAX_COMPLETABLE_PARTS)
+    expect(partCount(size, 1)).toBeGreaterThan(MAX_COMPLETABLE_PARTS)
     expect(outcome.ok).toBe(false)
     expect(outcome.ok ? "" : outcome.message).toContain("too large")
     expect(test.calls.putPart).toBe(0)
@@ -453,8 +473,9 @@ describe("cancel", () => {
   it("stops the upload and drops the reservation", async () => {
     const controller = new AbortController()
     const test = harness({
-      sizeBytes: 64 * MiB,
+      sizeBytes: 24 * MiB,
       multipart: true,
+      partSizeBytes: 6 * MiB,
       fail: (partNumber, attempt) => {
         if (partNumber === 1 && attempt === 1) {
           // The person presses Cancel while the first part is in flight.
@@ -467,7 +488,7 @@ describe("cancel", () => {
 
     const outcome = await uploadFile({
       productId: "p",
-      source: source(64 * MiB),
+      source: source(24 * MiB),
       transport: test.transport,
       signal: controller.signal,
     })
@@ -523,7 +544,7 @@ describe("a file the client refuses before it reserves anything", () => {
     await expect(refusal("notes.pdf", 0)).resolves.toBe(catalogErrorMessage("empty_file"))
   })
 
-  it("rejects a file over 2 GB", async () => {
+  it("rejects a file over the 25 MB provider limit", async () => {
     await expect(refusal("huge.pdf", MAX_FILE_BYTES + 1)).resolves.toBe(catalogErrorMessage("too_large"))
   })
 

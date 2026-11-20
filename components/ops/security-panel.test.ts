@@ -65,8 +65,8 @@ const OVERVIEW: SecurityOverview = {
     {
       verdict: "clean",
       detail: "clean",
-      engine: "clamav",
-      signatureVersion: "28186",
+      engine: "bouncer",
+      signatureVersion: null,
       createdAt: "2026-11-18T12:00:00.000Z",
     },
   ],
@@ -121,31 +121,39 @@ describe("the Security page, scanner section", () => {
     const html = render()
 
     expect(html).toContain("Ready")
-    expect(html).toContain("Reachable")
-    expect(html).toContain("Fresh (under 24 hours, 7 hours old)")
   })
 
-  it("says reachable but not ready when the service answers without ClamAV", () => {
+  it("names Bouncer as the engine and says the signature age does not apply", () => {
+    const html = render()
+
+    expect(html).toContain("Engine")
+    expect(html).toContain("Bouncer")
+    expect(html).toContain("Signature age")
+    expect(html).toContain("not applicable")
+  })
+
+  it("keeps saying so whatever the scanner reported about signatures", () => {
+    // /healthz no longer reports clamd or a signature age, and an older service
+    // that still does must not make the page claim something it cannot check.
+    for (const signatureAgeHours of [null, 7, 100]) {
+      const html = render({ scanner: { state: "ok", clamd: true, signatureAgeHours } })
+
+      expect(html).toContain("Bouncer")
+      expect(html).toContain("not applicable")
+    }
+  })
+
+  it("says reachable but not ready when the service answers and is not ready", () => {
     const html = render({ scanner: { state: "degraded", clamd: false, signatureAgeHours: 7 } })
 
     expect(html).toContain("Reachable, but not ready to scan")
-    expect(html).toContain("Not reachable")
   })
 
-  it("says unreachable, and does not pretend the signatures are fine", () => {
+  it("says unreachable when the service did not answer", () => {
     const html = render({ scanner: { state: "unreachable", clamd: false, signatureAgeHours: null } })
 
     expect(html).toContain("Unreachable: the service did not answer")
-    expect(html).toContain("Unknown: the scanner did not report an age")
-  })
-
-  it("calls signatures under three days ok and beyond three days stale", () => {
-    expect(render({ scanner: { state: "ok", clamd: true, signatureAgeHours: 48 } })).toContain(
-      "OK (under 72 hours, 48 hours old)",
-    )
-    expect(render({ scanner: { state: "ok", clamd: true, signatureAgeHours: 100 } })).toContain(
-      "Stale (100 hours old): update the signatures",
-    )
+    expect(html).not.toContain("Unknown: the scanner did not report an age")
   })
 })
 
@@ -232,12 +240,11 @@ describe("the Security page, background jobs", () => {
 })
 
 describe("the Security page, recent scan results", () => {
-  it("lists the verdict, the detail code, the engine and the signature version", () => {
+  it("lists the verdict, the detail code and the engine", () => {
     const html = render()
 
     expect(html).toContain("Recent scan results")
-    expect(html).toContain("28186")
-    expect(html).toContain("clamav")
+    expect(html).toContain("bouncer")
     expect(html).toContain("clean")
   })
 

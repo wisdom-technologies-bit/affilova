@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { createSupabaseFake, type FakeSupabase } from "@/tests/helpers/supabase-fake"
 
-import { PART_SIZE_BYTES, MULTIPART_THRESHOLD_BYTES } from "@/lib/catalog/files"
+import { MAX_FILE_BYTES, PART_SIZE_BYTES, MULTIPART_THRESHOLD_BYTES } from "@/lib/catalog/files"
 import { GENERIC_ERROR } from "@/lib/catalog/errors"
 import { ImageRejectedError } from "@/lib/images/cloudinary"
 
@@ -758,7 +758,13 @@ describe("startFileUploadAction", () => {
     })
   })
 
-  it("uses a multipart plan above the threshold", async () => {
+  // The provider limit is 25 MB, below the 100 MiB multipart threshold, so
+  // startFileUploadAction can no longer be driven into its multipart branch:
+  // every accepted file is a single signed PUT. The two multipart tests are
+  // kept and skipped rather than deleted, so the branch is still covered when a
+  // larger limit (or a local engine) lets files above the threshold through.
+  // The client's multipart engine is still tested in upload-client.test.ts.
+  it.skip("uses a multipart plan above the threshold", async () => {
     const size = MULTIPART_THRESHOLD_BYTES + 1
     const db = useDb(
       createSupabaseFake({
@@ -787,6 +793,31 @@ describe("startFileUploadAction", () => {
     expect(
       state.storageCalls.some((call) => call.method === "createMultipartUpload"),
     ).toBe(true)
+  })
+
+  it("uses a single signed PUT for the largest allowed file", async () => {
+    const db = useDb(
+      createSupabaseFake({
+        tables: { products: ownedProduct() },
+        rpc: () => ({ data: null, error: null }),
+      }),
+    )
+
+    const result = await startFileUploadAction({
+      productId: PRODUCT,
+      filename: "course.zip",
+      sizeBytes: MAX_FILE_BYTES,
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok || result.plan.kind !== "single") {
+      throw new Error("expected a single plan")
+    }
+
+    expect(result.plan.url).toBe("https://signed.example/put")
+    expect(db.rpcCalls[0]?.args.p_multipart_upload_id).toBeNull()
+    expect(state.storageCalls.some((call) => call.method === "createMultipartUpload")).toBe(false)
   })
 
   it("refuses a type that is not allowed, without reserving anything", async () => {
@@ -829,7 +860,7 @@ describe("startFileUploadAction", () => {
     })
   })
 
-  it("aborts the multipart upload when the reservation is refused", async () => {
+  it.skip("aborts the multipart upload when the reservation is refused", async () => {
     useDb(
       createSupabaseFake({
         tables: { products: ownedProduct() },

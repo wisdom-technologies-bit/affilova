@@ -5,12 +5,12 @@ import { join } from "node:path"
 
 import { afterEach, describe, expect, it } from "vitest"
 
-import type { Readiness } from "#clamav"
+import { BOUNCER_ENGINE } from "#bouncer"
 import { loadConfig } from "#config"
 import type { ScannerConfig } from "#config"
 import { createLogger } from "#log"
 import { createScannerServer } from "#server"
-import type { Admission, ServerContext } from "#server"
+import type { Admission, ScannerReadiness, ServerContext } from "#server"
 import { runScanPipeline } from "#scan-runner"
 import type { PipelineDeps, PipelineReport, ScanJob } from "#scan-runner"
 import {
@@ -28,13 +28,15 @@ const SHARED_SECRET = `shared-${"a".repeat(40)}`
 const CALLBACK_SECRET = `callback-${"b".repeat(40)}`
 const CALLBACK_ORIGIN = "https://app.affilova.test"
 const DOWNLOAD_URL = "https://bucket.r2.cloudflarestorage.com/selftest/abc/hello.txt"
+const BOUNCER_KEY = "bouncer-test-key"
 
-const READY: Readiness = { ready: true, clamd: true, signatureAgeHours: 3 }
+const READY: ScannerReadiness = { ready: true, engine: BOUNCER_ENGINE }
 
 function config(): ScannerConfig {
   return loadConfig({
     SCANNER_SHARED_SECRET: SHARED_SECRET,
     SCANNER_CALLBACK_SECRET: CALLBACK_SECRET,
+    BOUNCER_API_KEY: BOUNCER_KEY,
     ALLOWED_CALLBACK_ORIGINS: CALLBACK_ORIGIN,
   })
 }
@@ -94,7 +96,6 @@ function pipeline(overrides: Partial<PipelineDeps> = {}): PipelineDeps {
     },
     runCommand: async () => ({ code: 0, stdout: "", stderr: "", timedOut: false }),
     scanFile: async () => ({ kind: "clean" }),
-    readClamavInfo: async () => ({ engine: "1.4.6", signatureVersion: "28186" }),
     now: () => 0,
     log: createLogger(() => undefined),
     ...overrides,
@@ -110,8 +111,8 @@ function report(overrides: Partial<PipelineReport["payload"]> = {}): PipelineRep
       detail: "clean",
       sha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
       detectedMime: "text/plain",
-      engine: "clamav",
-      signatureVersion: "28186",
+      engine: BOUNCER_ENGINE,
+      signatureVersion: null,
       scannedAt: "2026-11-18T05:00:00.000Z",
       ...overrides,
     },
@@ -132,7 +133,7 @@ async function start(
   const context: ServerContext = {
     config: config(),
     admission: (): Admission => ({ accepted: true }),
-    readiness: async (): Promise<Readiness> => READY,
+    readiness: async (): Promise<ScannerReadiness> => READY,
     log: createLogger((line: string) => {
       logs.push(line)
     }),
@@ -361,8 +362,8 @@ describe("POST /selftest answer", () => {
       detail: "clean",
       sha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
       detectedMime: "text/plain",
-      engine: "clamav",
-      signatureVersion: "28186",
+      engine: BOUNCER_ENGINE,
+      signatureVersion: null,
       durationMs: 12,
     })
   })
@@ -492,7 +493,7 @@ describe("POST /selftest deadline", () => {
     expect(body.detail).toBe("timeout")
     expect(body.sha256).toBeNull()
     expect(body.detectedMime).toBeNull()
-    expect(body.engine).toBe("clamav")
+    expect(body.engine).toBe(BOUNCER_ENGINE)
     expect(typeof body.durationMs).toBe("number")
   })
 
@@ -667,7 +668,7 @@ describe("selftest helpers", () => {
       detail: "timeout",
       sha256: null,
       detectedMime: null,
-      engine: "clamav",
+      engine: BOUNCER_ENGINE,
       signatureVersion: null,
       durationMs: 25_000,
     })

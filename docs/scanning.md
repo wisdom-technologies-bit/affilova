@@ -180,19 +180,21 @@ in the screen or in the database function.
 
 The admin app has a **Security** page with one button that proves the chain works
 without touching a product. It is the first thing to press after a deployment,
-after a scanner upgrade, after a ClamAV signature update, or whenever someone
-asks "is scanning actually working?".
+after a scanner upgrade, after a Bouncer key rotation, or whenever someone asks
+"is scanning actually working?".
 
-The page also shows, above the button: whether the scanner answers and whether
-ClamAV is reachable, how old its signatures are, the count of files in each scan
-status, how long the oldest waiting file has waited, the background queue with a
-heartbeat per cron job, and the last twenty verdicts (no file names, no vendors).
+The page also shows, above the button: whether the scanner answers, the engine it
+runs (**Bouncer**), and "Signature age: not applicable" (the engine is external
+and keeps its own detection data, so there is no signature age to read), the
+count of files in each scan status, how long the oldest waiting file has waited,
+the background queue with a heartbeat per cron job, and the last twenty verdicts
+(no file names, no vendors).
 
 **What it does.** It builds four files in memory, writes them to the bucket under
 `selftest/<uuid>/`, presigns a five minute GET URL for each, and calls the
 scanner's `POST /selftest` once per file, in turn. The scanner runs the same
 pipeline a real scan runs: it downloads with the size cap, detects the real type,
-applies the MIME policy, the archive policy and ClamAV, and cleans up its temp
+applies the MIME policy, the archive policy and Bouncer, and cleans up its temp
 files. There is no callback. The page compares each answer to what that sample
 must produce and shows Passed or Failed per row. Every object is deleted in a
 `finally` block, whatever happened.
@@ -200,13 +202,13 @@ must produce and shows Passed or Failed per row. Every object is deleted in a
 | Sample | What it is | Must answer |
 | --- | --- | --- |
 | `hello.txt` | The text "Affilova scanner self-test" | `clean` |
-| `eicar.txt` | The standard EICAR test string, assembled from two halves in code so the repository never contains the literal | `infected`, with an EICAR signature |
+| `eicar.txt` | The standard EICAR test string, assembled from two halves in code so the repository never contains the literal | `infected`, with the threat name Bouncer returns for EICAR |
 | `not-a-pdf.pdf` | A minimal PE executable named `.pdf` | `rejected`, detail `executable_type` |
 | `archive.zip` | A valid stored zip generated in code, holding `run.exe` | `needs_review`, detail `archive_contains_executable` |
 
 **What it proves.** The app can reach the bucket and presign a URL; the scanner
 is up, authenticated and reachable from the app; it can fetch from R2; its type
-detection, MIME policy, archive policy and ClamAV all work; and each policy
+detection, MIME policy, archive policy and Bouncer all work; and each policy
 answers with the verdict and detail code the rest of the app depends on.
 
 **What it does not prove.** It does not exercise the callback: no result is
@@ -236,13 +238,23 @@ trying a file after five failed attempts, which leaves it in `error` for staff.
 When the scanner is back, the queued files scan on the next sweep. Do not lower
 `scan_required`.
 
-**The scanner reports stale signatures.** It answers `503` by contract. That is
-retryable, so files stay `queued` and retry with backoff until the scanner is
-updated. No app change is needed; check the scanner's signature age, not the app.
+**Every scan comes back `error` with `scanner_error`.** The engine is Bouncer, an
+external API, so the usual cause is a rejected, expired or unset
+`BOUNCER_API_KEY`, or a Bouncer outage. Check the scanner's logs and the Bouncer
+dashboard before touching the app: the app only sees the verdict. Files stay
+`queued` or `error` and the sweeper retries them, so nothing is lost while the
+key is fixed. `/healthz` only proves the service is configured and listening; the
+Security page's self-test is what proves Bouncer is actually answering.
+
+**A file is refused as too large.** The engine accepts at most 25 MB per file,
+and the app refuses anything larger at upload time with `too_large` before it is
+stored. If a vendor needs a bigger file, that is a product decision: raise
+`PROVIDER_SCAN_LIMIT_BYTES` in `lib/catalog/files.ts` and the provider plan
+together, not just the app.
 
 **A false positive.** An admin cannot clear an infected verdict, by design.
 Ask the vendor to upload a new file (a new row, a new scan id, a new verdict), or
-have the scanner's signature set fixed if the signature is wrong. If the file
+ask Bouncer to review a detection it reported wrongly. If the file
 genuinely needs to ship, it needs a clean file, not an override.
 
 **A vendor is suspended by the threshold.** Two infected files within 30 days
@@ -263,7 +275,10 @@ the reason.
 | `SCANNER_SHARED_SECRET` | At least 32 characters. Sent as `Authorization: Bearer …` on every scan request. |
 | `SCANNER_CALLBACK_SECRET` | At least 32 characters. The HMAC key that signs every callback. |
 
-All three are read through `lib/env.ts` and validated lazily: importing the
+The scanner service itself also needs `BOUNCER_API_KEY`, the key it sends to the
+malware engine. It is not an app variable and the app never sees it.
+
+All three app variables are read through `lib/env.ts` and validated lazily: importing the
 module fails nothing, and a missing variable fails the job that needs it rather
 than the build. None of them is ever logged, returned in a response, or sent to
 the browser. The signed download URL the app gives the scanner is never logged

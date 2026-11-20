@@ -48,14 +48,16 @@ Request bodies over 8 KB are rejected.
 | 401 | `{"error":"unauthorized"}` | missing or wrong secret; no detail is ever returned |
 | 413 | `{"error":"payload_too_large"}` | body over 8 KB |
 | 429 | `{"error":"queue_full"}` + `Retry-After` | queue is full, try again later |
-| 503 | `{"error":"not_ready"}` | clamd is not answering or the signatures are older than 72 hours |
+| 503 | `{"error":"not_ready"}` | the engine is not ready (no Bouncer key is configured) |
 | 503 | `{"error":"shutting_down"}` | the service is stopping |
 
-`GET /healthz` answers `200` with `{"ok":true,"clamd":true,"signatureAgeHours":N}`
-only when clamd answers `PING` and the signature database is younger than 72
-hours. Otherwise it answers `503` with the same shape and `ok:false`
-(`signatureAgeHours` is `null` when there is no database). Every other path
-answers `404`.
+`GET /healthz` answers `200` with `{"ok":true,"engine":"bouncer"}` when the
+service is configured to scan. Otherwise it answers `503` with the same shape and
+`ok:false`. Every other path answers `404`.
+
+There is no signature age to report: Bouncer keeps its own detection data on its
+side, so `/healthz` does not return `clamd` or `signatureAgeHours` any more. The
+admin Security page says "Signature age: not applicable" for that reason.
 
 ## Self-test
 
@@ -74,10 +76,11 @@ Content-Type: application/json
 ```
 
 The self-test exists so an operator can prove the whole chain (storage, the
-service, ClamAV and the policies) without creating a product or a file record. It
-runs the **same pipeline** as `POST /scan` — download with the size cap, libmagic
-type detection, the MIME policy, the archive policy, ClamAV and the temporary
-file cleanup — and answers with the verdict instead of queueing and calling back.
+service, Bouncer and the policies) without creating a product or a file record.
+It runs the **same pipeline** as `POST /scan` — download with the size cap,
+libmagic type detection, the MIME policy, the archive policy, Bouncer and the
+temporary file cleanup — and answers with the verdict instead of queueing and
+calling back.
 It is one function in the service (`runScanPipeline`), so a passing self-test
 cannot come from a second implementation that a real scan never runs.
 
@@ -126,8 +129,8 @@ X-Scanner-Signature: <hex HMAC-SHA256 of `${timestamp}.${rawBody}`>
   "detail": "clean",
   "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
   "detectedMime": "application/pdf",
-  "engine": "clamav",
-  "signatureVersion": "28186",
+  "engine": "bouncer",
+  "signatureVersion": null,
   "scannedAt": "2026-11-18T05:00:00.000Z"
 }
 ```
@@ -137,8 +140,10 @@ X-Scanner-Signature: <hex HMAC-SHA256 of `${timestamp}.${rawBody}`>
 * `sha256` is the hex SHA-256 of the downloaded bytes, or `null` when the
   download never completed.
 * `detectedMime` is what libmagic reported, or `null`.
-* `engine` is always `"clamav"`.
-* `signatureVersion` is the ClamAV database version, or `null`.
+* `engine` is always `"bouncer"`.
+* `signatureVersion` is always `null`: Bouncer has no signature database the
+  service can read. The field stays in the payload so the app and the callback
+  shape do not change if a local engine returns.
 * `scannedAt` is an ISO 8601 timestamp.
 
 The app must answer `200 {"ok":true}`, including for a duplicate callback. On any
@@ -160,11 +165,11 @@ side fails a test instead of silently producing 401s in production.
 * body (exactly this byte sequence):
 
 ```
-{"scanId":"6af469de-05d7-4ae1-9d69-b68600000001","fileId":"6af469de-05d7-4ae1-9d69-b68600000002","verdict":"clean","detail":"clean","sha256":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08","detectedMime":"application/pdf","engine":"clamav","signatureVersion":"28186","scannedAt":"2026-11-18T05:00:00.000Z"}
+{"scanId":"6af469de-05d7-4ae1-9d69-b68600000001","fileId":"6af469de-05d7-4ae1-9d69-b68600000002","verdict":"clean","detail":"clean","sha256":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08","detectedMime":"application/pdf","engine":"bouncer","signatureVersion":null,"scannedAt":"2026-11-18T05:00:00.000Z"}
 ```
 
 * expected `X-Scanner-Signature`:
-  `731104f6dda6976ce558fc83e2a1238b50b89b06e2c36972671208d2f89a5ef2`
+  `5b741292c123770fe4eef48a838f64e37e2f7cc16f7748e3790935a57588c4b5`
 
 ## Verdicts and detail codes
 
@@ -174,23 +179,25 @@ decides:
 1. `size_mismatch` — the download did not match `expectedSizeBytes`
 2. type policy — what libmagic found does not match the extension
 3. archive policy — what `7z l -slt` lists inside the archive
-4. ClamAV
+4. Bouncer
 5. `clean`
 
 | Verdict | Detail | Cause |
 | --- | --- | --- |
-| `infected` | the signature name, e.g. `Eicar-Test-Signature` | ClamAV found malware |
+| `infected` | the threat name, e.g. `Eicar-Test-Signature` | Bouncer answered `malicious` |
 | `rejected` | `type_mismatch` | detected type is outside the set for that extension |
 | `rejected` | `executable_type` | detected type is executable, script or active content, for any extension |
-| `rejected` | `encrypted_archive` | an entry is encrypted, or ClamAV raised `Heuristics.Encrypted.*` |
-| `rejected` | `archive_limits` | entry count, total size, compression ratio or nesting depth over the limit, or ClamAV raised `Heuristics.ExceedsMax*` |
+| `rejected` | `encrypted_archive` | an entry in the archive is encrypted |
+| `rejected` | `archive_limits` | entry count, total size, compression ratio or nesting depth over the limit |
+| `rejected` | `provider_file_too_large` | the file is larger than the provider accepts (25 MB); the app should have refused it before uploading |
 | `rejected` | `path_traversal` | an entry escapes the extraction root (`../`, leading `/`, drive letter) |
 | `rejected` | `symlink` | an entry is a symbolic link |
 | `rejected` | `size_mismatch` | bytes on disk are not `expectedSizeBytes` |
 | `needs_review` | `archive_contains_executable` | an entry name ends in `exe`, `msi`, `bat`, `cmd`, `com`, `scr`, `vbs`, `ps1`, `jar`, `apk`, `dll`, `sh`, `app`, `dmg`, `js`, `so` or `pkg` |
 | `needs_review` | `archive_unlistable` | 7-Zip could not list the archive, for example a RAR5 file |
 | `error` | `download_failed` | the object could not be fetched |
-| `error` | `scanner_error` | ClamAV, 7-Zip or libmagic failed |
+| `needs_review` | the reason Bouncer gave | Bouncer answered `suspicious` |
+| `error` | `scanner_error` | Bouncer, 7-Zip or libmagic failed, or Bouncer answered with a verdict this service does not recognise |
 | `error` | `timeout` | the job exceeded its 20 minute budget or a stage timed out |
 
 Only `clean` may be treated as "safe to publish". `needs_review` must go to a
@@ -202,3 +209,48 @@ human, and everything else must block the file.
 * at most 8 GiB uncompressed in total
 * at most a 1000:1 overall compression ratio
 * at most three levels of archive nesting
+
+## Provider limit: 25 MB
+
+The engine is Bouncer, an external API, and it accepts at most **25 MB**
+(26,214,400 bytes) per file. That is the ceiling for one uploaded object, and it
+replaces the 2 GiB the local engine used to allow.
+
+* The service checks the size before it uploads anything and answers
+  `rejected` / `provider_file_too_large` rather than sending the bytes.
+* The app refuses the file earlier, at upload time, with `too_large`, so a
+  vendor never waits for a scan that cannot succeed.
+* The app's value is `PROVIDER_SCAN_LIMIT_BYTES` in `lib/catalog/files.ts`, and
+  `MAX_FILE_BYTES` is that constant. The service's value is
+  `BOUNCER_MAX_FILE_BYTES` in `services/scanner/src/bouncer.ts`. They must stay
+  equal: the app's is the one a vendor meets, the service's is the backstop.
+* `MAX_FILE_BYTES` is still validated by the service as an environment variable
+  and still defaults to the database ceiling; it is the download ceiling, not the
+  provider limit, so it does not raise what Bouncer will accept.
+* The `product_files.size_bytes` check in the database still allows up to
+  2,147,483,648 bytes. It is deliberately unchanged: it guards the column, not
+  the provider, and lowering it would need a migration.
+
+## Returning to ClamAV
+
+ClamAV is parked under `services/scanner/archive/clamav/`, with the module, its
+tests, `clamd.conf`, `freshclam.conf` and a README. To bring it back:
+
+1. Move `clamav.ts` and `clamav.test.ts` back to `services/scanner/src/`, and the
+   two config files back to `services/scanner/`.
+2. Re-add `"#clamav": "./src/clamav.ts"` to the `imports` map in
+   `services/scanner/package.json`.
+3. Point `PipelineDeps.scanFile` at `#clamav`'s `scanFile` in
+   `services/scanner/src/scan-runner.ts`, and set `buildPayload`'s `engine` to
+   `PAYLOAD_ENGINE` from `#clamav`.
+4. Install ClamAV in `services/scanner/Dockerfile`, start `clamd` from
+   `entrypoint.sh`, and give the host at least 2 GB of RAM and a persistent disk
+   at `/data` for the signature database.
+5. Restore `/healthz` to report `clamd` and `signatureAgeHours`, and the admin
+   Security page to show the signature age again.
+6. Raise the upload limit back in `lib/catalog/files.ts` if the local engine is
+   what makes a larger file acceptable again, and update this document, the
+   callback `engine` value, `services/scanner/README.md` and `docs/catalog.md`.
+
+`services/scanner/archive/clamav/README.md` has the same steps with the file
+paths.

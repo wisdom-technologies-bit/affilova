@@ -4,8 +4,9 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 
+import { BOUNCER_ENGINE } from "#bouncer"
+import type { BouncerOutcome } from "#bouncer"
 import type { CallbackPayload } from "#callback"
-import type { ClamavInfo, ClamavOutcome } from "#clamav"
 import { DownloadFailure } from "#download"
 import type { DownloadOptions, DownloadResult } from "#download"
 import type { CommandResult } from "#exec"
@@ -85,8 +86,6 @@ const JOB: ScanJob = {
   callbackUrl: "https://app.affilova.test/api/internal/scan-result",
 }
 
-const INFO: ClamavInfo = { engine: "1.4.6", signatureVersion: "28186" }
-
 const BODY = new TextEncoder().encode("hello world")
 
 const created: string[] = []
@@ -106,7 +105,7 @@ type HarnessOptions = {
   readonly detectedMime?: string
   readonly archiveListing?: string
   readonly archiveExitCode?: number
-  readonly clamav?: ClamavOutcome
+  readonly bouncer?: BouncerOutcome
   readonly download?: (options: DownloadOptions) => Promise<DownloadResult>
   readonly downloadThrows?: boolean
   readonly callbackThrows?: boolean
@@ -188,7 +187,7 @@ async function build(options: HarnessOptions = {}): Promise<Harness> {
 
       return commandResult({ code: 1, stderr: `unexpected command ${command}` })
     },
-    scanFile: async (): Promise<ClamavOutcome> => options.clamav ?? { kind: "clean" },
+    scanFile: async (): Promise<BouncerOutcome> => options.bouncer ?? { kind: "clean" },
     sendCallback: async (payload: CallbackPayload): Promise<CallbackDelivery> => {
       callbacks.push(payload)
 
@@ -198,7 +197,6 @@ async function build(options: HarnessOptions = {}): Promise<Harness> {
 
       return { delivered: true, attempts: 1 }
     },
-    readClamavInfo: async () => INFO,
     now: Date.now,
     log: createLogger((line: string) => {
       lines.push(line)
@@ -228,8 +226,8 @@ describe("runScan", () => {
     expect(payload.detail).toBe("clean")
     expect(payload.sha256).toBe(createHash("sha256").update(BODY).digest("hex"))
     expect(payload.detectedMime).toBe("application/pdf")
-    expect(payload.engine).toBe("clamav")
-    expect(payload.signatureVersion).toBe("28186")
+    expect(payload.engine).toBe(BOUNCER_ENGINE)
+    expect(payload.signatureVersion).toBeNull()
     expect(payload.scanId).toBe(JOB.scanId)
     expect(payload.fileId).toBe(JOB.fileId)
     expect(payload.scannedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
@@ -260,9 +258,9 @@ describe("runScan", () => {
     expect(harness.lines[0]).not.toContain(harness.workDir)
   })
 
-  it("reports an infection with the signature name", async () => {
+  it("reports an infection with the threat name Bouncer returned", async () => {
     const { harness, payload } = await scan({
-      clamav: { kind: "infected", signature: "Eicar-Test-Signature" },
+      bouncer: { kind: "infected", detail: "Eicar-Test-Signature" },
     })
 
     expect(payload.verdict).toBe("infected")
@@ -309,7 +307,7 @@ describe("runScan", () => {
     expect(payload.detail).toBe("executable_type")
   })
 
-  it("rejects an encrypted archive before ClamAV runs", async () => {
+  it("rejects an encrypted archive before Bouncer runs", async () => {
     const { harness, payload } = await scan({
       extension: "zip",
       detectedMime: "application/zip",
@@ -398,32 +396,44 @@ describe("runScan", () => {
     expect(await leftovers(harness.workDir)).toEqual([])
   })
 
-  it("reports a scanner error when clamd exits 2", async () => {
-    const { payload } = await scan({ clamav: { kind: "error", detail: "scanner_error" } })
+  it("reports a scanner error when Bouncer fails the scan", async () => {
+    const { payload } = await scan({ bouncer: { kind: "error", detail: "scanner_error" } })
 
     expect(payload.verdict).toBe("error")
     expect(payload.detail).toBe("scanner_error")
   })
 
-  it("reports a clamd timeout as a timeout", async () => {
-    const { payload } = await scan({ clamav: { kind: "error", detail: "timeout" } })
+  it("reports a Bouncer timeout as a timeout", async () => {
+    const { payload } = await scan({ bouncer: { kind: "error", detail: "timeout" } })
 
     expect(payload.verdict).toBe("error")
     expect(payload.detail).toBe("timeout")
   })
 
-  it("maps a clamd encrypted alert to a rejection", async () => {
-    const { payload } = await scan({ clamav: { kind: "rejected", detail: "encrypted_archive" } })
+  it("rejects a file over the provider limit", async () => {
+    const { harness, payload } = await scan({
+      bouncer: { kind: "rejected", detail: "provider_file_too_large" },
+    })
 
     expect(payload.verdict).toBe("rejected")
-    expect(payload.detail).toBe("encrypted_archive")
+    expect(payload.detail).toBe("provider_file_too_large")
+    expect(await leftovers(harness.workDir)).toEqual([])
   })
 
-  it("maps a clamd limit alert to a rejection", async () => {
-    const { payload } = await scan({ clamav: { kind: "rejected", detail: "archive_limits" } })
+  it("sends a suspicious verdict for review instead of calling it clean", async () => {
+    const { payload } = await scan({
+      bouncer: { kind: "needs_review", detail: "Bouncer classified this file as suspicious" },
+    })
 
-    expect(payload.verdict).toBe("rejected")
-    expect(payload.detail).toBe("archive_limits")
+    expect(payload.verdict).toBe("needs_review")
+    expect(payload.detail).toBe("Bouncer classified this file as suspicious")
+  })
+
+  it("keeps an unknown Bouncer verdict an error", async () => {
+    const { payload } = await scan({ bouncer: { kind: "error", detail: "scanner_error" } })
+
+    expect(payload.verdict).not.toBe("clean")
+    expect(payload.verdict).toBe("error")
   })
 
   it("reports a scanner error when the type probe fails", async () => {
@@ -491,18 +501,19 @@ describe("runScan", () => {
     expect(await leftovers(harness.workDir)).toEqual([])
   })
 
-  it("falls back to an unknown signature version when clamd info fails", async () => {
+  it("reports the bouncer engine and no signature version on every verdict", async () => {
     const harness = await build()
     const deps: ScanRunnerDeps = {
       ...harness.deps,
-      readClamavInfo: async () => {
-        throw new Error("clamdscan --version failed")
-      },
+      scanFile: async (): Promise<BouncerOutcome> => ({
+        kind: "infected",
+        detail: "Eicar-Test-Signature",
+      }),
     }
 
     const report = await runScan(harness.job, deps)
 
-    expect(report.payload.verdict).toBe("clean")
+    expect(report.payload.engine).toBe(BOUNCER_ENGINE)
     expect(report.payload.signatureVersion).toBeNull()
   })
 
@@ -511,7 +522,7 @@ describe("runScan", () => {
     const deps: ScanRunnerDeps = {
       ...harness.deps,
       scanFile: async () => {
-        throw new Error("spawn clamdscan ENOENT")
+        throw new Error("Bouncer request failed")
       },
     }
 

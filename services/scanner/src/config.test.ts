@@ -15,10 +15,13 @@ import type { ConfigEnv } from "#config"
 
 const SECRET = "0123456789abcdef0123456789abcdef"
 
+const BOUNCER_KEY = "bouncer-test-key"
+
 function validEnv(overrides: ConfigEnv = {}): ConfigEnv {
   return {
     SCANNER_SHARED_SECRET: `shared-${SECRET}`,
     SCANNER_CALLBACK_SECRET: `callback-${SECRET}`,
+    BOUNCER_API_KEY: BOUNCER_KEY,
     ALLOWED_CALLBACK_ORIGINS: "https://app.affilova.test",
     ...overrides,
   }
@@ -49,11 +52,13 @@ describe("loadConfig", () => {
     expect(config.queueLimit).toBe(DEFAULT_QUEUE_LIMIT)
     expect(config.allowedDownloadHostSuffix).toBe(DEFAULT_ALLOWED_DOWNLOAD_HOST_SUFFIX)
     expect(config.allowedCallbackOrigins).toEqual(["https://app.affilova.test"])
+    expect(config.bouncerApiKey).toBe(BOUNCER_KEY)
   })
 
   it.each([
     ["SCANNER_SHARED_SECRET"],
     ["SCANNER_CALLBACK_SECRET"],
+    ["BOUNCER_API_KEY"],
     ["ALLOWED_CALLBACK_ORIGINS"],
   ])("names %s when it is missing", (variable) => {
     const env: Record<string, string | undefined> = { ...validEnv() }
@@ -87,6 +92,19 @@ describe("loadConfig", () => {
     const config = loadConfig(validEnv({ SCANNER_SHARED_SECRET: "x".repeat(MIN_SECRET_LENGTH) }))
 
     expect(config.sharedSecret).toHaveLength(MIN_SECRET_LENGTH)
+  })
+
+  it("treats a blank BOUNCER_API_KEY as missing", () => {
+    const error = configErrorFrom(validEnv({ BOUNCER_API_KEY: "   " }))
+
+    expect(error.variable).toBe("BOUNCER_API_KEY")
+    expect(error.message).not.toContain("bouncer-test-key")
+  })
+
+  it("reads the Bouncer key without a length floor", () => {
+    const config = loadConfig(validEnv({ BOUNCER_API_KEY: "short-key" }))
+
+    expect(config.bouncerApiKey).toBe("short-key")
   })
 
   it("keeps secret whitespace intact", () => {

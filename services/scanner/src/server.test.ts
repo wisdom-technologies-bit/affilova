@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest"
 
-import type { Readiness } from "#clamav"
+import { BOUNCER_ENGINE } from "#bouncer"
 import { loadConfig } from "#config"
 import type { ScannerConfig } from "#config"
 import { createLogger } from "#log"
 import { MAX_REQUEST_BODY_BYTES, RETRY_AFTER_SECONDS, createScannerServer, validateScanRequest } from "#server"
-import type { Admission, ServerContext } from "#server"
+import type { Admission, ScannerReadiness, ServerContext } from "#server"
 import { runScanPipeline } from "#scan-runner"
 import type { PipelineDeps, PipelineReport, ScanJob } from "#scan-runner"
 import { createSelftestLock } from "#selftest"
@@ -15,8 +15,10 @@ const SHARED_SECRET = `shared-${"a".repeat(40)}`
 const CALLBACK_SECRET = `callback-${"b".repeat(40)}`
 const CALLBACK_ORIGIN = "https://app.affilova.test"
 
-const READY: Readiness = { ready: true, clamd: true, signatureAgeHours: 3 }
-const NOT_READY: Readiness = { ready: false, clamd: false, signatureAgeHours: null }
+const BOUNCER_KEY = "bouncer-test-key"
+
+const READY: ScannerReadiness = { ready: true, engine: BOUNCER_ENGINE }
+const NOT_READY: ScannerReadiness = { ready: false, engine: BOUNCER_ENGINE }
 
 const SCAN_ID = "6af469de-05d7-4ae1-9d69-b68600000001"
 const FILE_ID = "6af469de-05d7-4ae1-9d69-b68600000002"
@@ -27,6 +29,7 @@ function config(): ScannerConfig {
   return loadConfig({
     SCANNER_SHARED_SECRET: SHARED_SECRET,
     SCANNER_CALLBACK_SECRET: CALLBACK_SECRET,
+    BOUNCER_API_KEY: BOUNCER_KEY,
     ALLOWED_CALLBACK_ORIGINS: CALLBACK_ORIGIN,
   })
 }
@@ -54,7 +57,6 @@ const PIPELINE: PipelineDeps = {
   },
   runCommand: async () => ({ code: 0, stdout: "", stderr: "", timedOut: false }),
   scanFile: async () => ({ kind: "clean" }),
-  readClamavInfo: async () => ({ engine: "1.4.6", signatureVersion: "28186" }),
   now: () => 0,
   log: createLogger(() => undefined),
 }
@@ -85,7 +87,7 @@ afterEach(async () => {
 async function start(
   options: {
     readonly admission?: Admission
-    readonly readiness?: Readiness
+    readonly readiness?: ScannerReadiness
     readonly selftestRun?: SelftestRunner
   } = {},
 ): Promise<RunningServer> {
@@ -99,7 +101,7 @@ async function start(
 
       return options.admission ?? { accepted: true }
     },
-    readiness: async (): Promise<Readiness> => options.readiness ?? READY,
+    readiness: async (): Promise<ScannerReadiness> => options.readiness ?? READY,
     log: createLogger((line: string) => {
       logs.push(line)
     }),
@@ -278,7 +280,7 @@ describe("POST /scan", () => {
     expect(await response.json()).toEqual({ error: "shutting_down" })
   })
 
-  it("answers 503 when ClamAV is not ready", async () => {
+  it("answers 503 when the engine is not ready", async () => {
     const server = await start({ readiness: NOT_READY })
     const response = await postScan(server, validBody())
 
@@ -347,23 +349,22 @@ describe("GET /healthz", () => {
     const response = await fetch(`${server.baseUrl}/healthz`)
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ ok: true, clamd: true, signatureAgeHours: 3 })
+    expect(await response.json()).toEqual({ ok: true, engine: BOUNCER_ENGINE })
   })
 
-  it("answers 503 with the same shape when clamd is down", async () => {
+  it("answers 503 with the same shape when the engine is not ready", async () => {
     const server = await start({ readiness: NOT_READY })
     const response = await fetch(`${server.baseUrl}/healthz`)
 
     expect(response.status).toBe(503)
-    expect(await response.json()).toEqual({ ok: false, clamd: false, signatureAgeHours: null })
+    expect(await response.json()).toEqual({ ok: false, engine: BOUNCER_ENGINE })
   })
 
-  it("answers 503 when the signatures are stale but clamd is up", async () => {
-    const server = await start({ readiness: { ready: false, clamd: true, signatureAgeHours: 100 } })
-    const response = await fetch(`${server.baseUrl}/healthz`)
+  it("names Bouncer as the engine", async () => {
+    const server = await start({ readiness: READY })
+    const body = await (await fetch(`${server.baseUrl}/healthz`)).json()
 
-    expect(response.status).toBe(503)
-    expect(await response.json()).toEqual({ ok: false, clamd: true, signatureAgeHours: 100 })
+    expect(body.engine).toBe("bouncer")
   })
 
   it("needs no authorization", async () => {

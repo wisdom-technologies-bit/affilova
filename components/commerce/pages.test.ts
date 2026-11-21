@@ -109,10 +109,13 @@ describe("the product page", () => {
     expect(html).toContain('href="/privacy-policy"')
   })
 
-  it("states the payment partner and disables the button until verified", () => {
+  it("states the payment partner, agreement links and disables the button until verified", () => {
     const html = render(createElement(ProductView, { product: PRODUCT, testMode: false }))
+    const plain = html.replace(/<[^>]+>/g, "")
 
     expect(html).toContain("Payments are processed by Paystack")
+    expect(plain).toContain("By buying you agree to the Terms of Service and the Refund Policy.")
+    expect(html).toContain('href="/refund-policy"')
     expect(html).toMatch(/<button[^>]*disabled/)
     expect(html).toContain("Complete the verification challenge to continue.")
   })

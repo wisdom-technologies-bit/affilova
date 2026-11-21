@@ -2,7 +2,16 @@ import Link from "next/link"
 
 import GlobalFooter from "@/components/global-footer"
 import { Logo } from "@/components/brand/logo"
-import { PLATFORM_FEE_PERCENT } from "@/lib/site-config"
+import {
+  COMMISSION_HOLD_DAYS,
+  COMMISSION_RANGE_PERCENT,
+  MIN_REFUND_WINDOW_HOURS,
+  MIN_WITHDRAWAL_NAIRA,
+  PAYOUT_DAYS_TEXT,
+  PLATFORM_FEE_PERCENT,
+  WITHDRAWAL_FEE,
+  formatNairaWhole,
+} from "@/lib/site-config"
 
 // The public explanation of the product. Every statement here describes
 // something the app does today; nothing on this page promises a feature, a
@@ -54,13 +63,15 @@ const FAQ = [
   },
   {
     question: "Who sets the commission an affiliate earns?",
-    answer:
-      "The vendor, per product. The commission rate is set when the product is added and is shown on the product's listing page.",
+    answer: `The vendor, per product, from ${COMMISSION_RANGE_PERCENT.min}% to ${COMMISSION_RANGE_PERCENT.max}%. The commission rate is set when the product is added and is shown on the product's listing page.`,
   },
   {
     question: "How does an affiliate get paid?",
-    answer:
-      "From the dashboard, where a withdrawal is requested to a saved bank account. Each request is reviewed before it is paid out.",
+    answer: `Commissions are held for ${COMMISSION_HOLD_DAYS} days after a sale to cover refunds and disputes. Once available, withdrawals start at ${formatNairaWhole(MIN_WITHDRAWAL_NAIRA)} (with a ${WITHDRAWAL_FEE.percent}% transfer fee, minimum ${formatNairaWhole(WITHDRAWAL_FEE.minNaira)}, capped at ${formatNairaWhole(WITHDRAWAL_FEE.capNaira)}) and are processed ${PAYOUT_DAYS_TEXT} to a saved bank account.`,
+  },
+  {
+    question: "How do refunds work?",
+    answer: `Every product has a refund window of at least ${MIN_REFUND_WINDOW_HOURS} hours set by the vendor. Approved refunds are returned to the buyer and any associated commission is reversed.`,
   },
   {
     question: "Why does a product go through review?",
@@ -163,8 +174,13 @@ export default function HowItWorksClient() {
           </p>
           <p className="mt-4 text-sm leading-relaxed text-slate-600">
             Affilova takes the platform fee above from every completed sale. The affiliate commission is set by
-            the vendor separately for each product, so the rate is different from product to product. Both are
-            taken from the sale price, and the vendor keeps the rest.
+            the vendor separately for each product (between {COMMISSION_RANGE_PERCENT.min}% and{" "}
+            {COMMISSION_RANGE_PERCENT.max}%), so the rate is different from product to product. Both are taken
+            from the sale price, and the vendor keeps the rest. Commissions clear after a{" "}
+            {COMMISSION_HOLD_DAYS}-day hold period, and withdrawals start at{" "}
+            {formatNairaWhole(MIN_WITHDRAWAL_NAIRA)} with a {WITHDRAWAL_FEE.percent}% payout fee (minimum{" "}
+            {formatNairaWhole(WITHDRAWAL_FEE.minNaira)}, capped at {formatNairaWhole(WITHDRAWAL_FEE.capNaira)}),
+            processed {PAYOUT_DAYS_TEXT}.
           </p>
         </section>
 

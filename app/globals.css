@@ -110,3 +110,31 @@ a[href*="v0.app"] {
   visibility: hidden !important;
   opacity: 0 !important;
 }
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .legal-no-print {
+    display: none !important;
+  }
+
+  .legal-document-main {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .legal-section h2,
+  .legal-section h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .legal-section li,
+  .legal-section p {
+    orphans: 3;
+    widows: 3;
+  }
+}

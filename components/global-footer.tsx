@@ -24,8 +24,16 @@ export default function GlobalFooter({ className = "" }: FooterProps) {
       { name: "Promote on Affilova", href: "/auth/register?role=affiliate" },
     ],
     legal: [
-      { name: "Privacy Policy", href: "/privacy-policy" },
+      { name: "All Legal Policies", href: "/legal" },
       { name: "Terms of Service", href: "/terms-of-service" },
+      { name: "Privacy Policy", href: "/privacy-policy" },
+      { name: "Refund Policy", href: "/refund-policy" },
+      { name: "Acceptable Use Policy", href: "/acceptable-use" },
+      { name: "Vendor Agreement", href: "/vendor-agreement" },
+      { name: "Affiliate Agreement", href: "/affiliate-agreement" },
+      { name: "Cookie Policy", href: "/cookie-policy" },
+      { name: "Copyright Policy", href: "/copyright" },
+      { name: "Earnings Disclaimer", href: "/earnings-disclaimer" },
     ],
   }
 

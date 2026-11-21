@@ -3,17 +3,27 @@ import Link from "next/link"
 // The sentence both onboarding forms show above their submit button, and the
 // link-styled button the success state shows instead of the form.
 //
-// The policy text is the draft that /terms-of-service and /privacy-policy
-// currently publish; lib/identity/policies.ts records the version that a user
-// accepts, and it is not final.
+// Policy versions are kept in lib/site-config.ts and recorded through
+// record_policy_acceptance() when onboarding completes.
 
 const LINK =
   "rounded-sm font-medium text-brand-700 underline-offset-2 transition-colors duration-150 hover:text-brand-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
 
-export function TermsNotice() {
+export type OnboardingAgreementRole = "vendor" | "affiliate"
+
+export function TermsNotice({ role }: { role: OnboardingAgreementRole }) {
+  const roleAgreement =
+    role === "vendor"
+      ? { href: "/vendor-agreement", label: "Vendor Agreement" }
+      : { href: "/affiliate-agreement", label: "Affiliate Agreement" }
+
   return (
     <p className="text-xs leading-relaxed text-slate-600">
-      By continuing you agree to the{" "}
+      I have read and agree to the{" "}
+      <Link href={roleAgreement.href} className={LINK}>
+        {roleAgreement.label}
+      </Link>
+      ,{" "}
       <Link href="/terms-of-service" className={LINK}>
         Terms of Service
       </Link>{" "}

@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto"
+import { createElement } from "react"
+import { renderToString } from "react-dom/server"
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -6,6 +8,8 @@ import { headers } from "next/headers"
 
 import { getAuthUser } from "@/lib/identity/session"
 import { POLICY_VERSION } from "@/lib/identity/policies"
+import { POLICY_VERSIONS } from "@/lib/site-config"
+import { TermsNotice } from "@/app/start/_components/terms-notice"
 import { getSupabaseAdminClient } from "@/lib/supabase/admin"
 
 import { becomeAffiliateAction, becomeVendorAction } from "./actions"
@@ -23,14 +27,21 @@ const rpc = vi.fn()
 
 type RpcCall = { name: string; args: Record<string, unknown> }
 
-function lastRpcCall(): RpcCall {
-  const call = rpc.mock.calls.at(-1)
+function firstRpcCall(): RpcCall {
+  const call = rpc.mock.calls.at(0)
 
   if (call === undefined) {
     throw new Error("rpc was not called")
   }
 
   return { name: String(call[0]), args: call[1] as Record<string, unknown> }
+}
+
+function acceptanceCalls(): RpcCall[] {
+  return rpc.mock.calls.slice(1).map((call) => ({
+    name: String(call[0]),
+    args: call[1] as Record<string, unknown>,
+  }))
 }
 
 function respondWith(data: unknown, error: { code?: string; message?: string } | null = null): void {
@@ -71,7 +82,7 @@ describe("becomeVendorAction", () => {
 
     expect(result).toEqual({ ok: true, created: true })
 
-    const call = lastRpcCall()
+    const call = firstRpcCall()
 
     expect(call.name).toBe("become_vendor")
     expect(call.args).toEqual({
@@ -84,6 +95,37 @@ describe("becomeVendorAction", () => {
       p_terms_version: POLICY_VERSION,
       p_ip_hash: createHash("sha256").update(CLIENT_IP).digest("hex"),
     })
+
+    const ipHash = createHash("sha256").update(CLIENT_IP).digest("hex")
+    expect(acceptanceCalls()).toEqual([
+      {
+        name: "record_policy_acceptance",
+        args: {
+          p_user: USER_ID,
+          p_policy: "vendor_agreement",
+          p_version: POLICY_VERSIONS.vendor_agreement,
+          p_ip_hash: ipHash,
+        },
+      },
+      {
+        name: "record_policy_acceptance",
+        args: {
+          p_user: USER_ID,
+          p_policy: "terms_of_service",
+          p_version: POLICY_VERSIONS.terms_of_service,
+          p_ip_hash: ipHash,
+        },
+      },
+      {
+        name: "record_policy_acceptance",
+        args: {
+          p_user: USER_ID,
+          p_policy: "privacy_policy",
+          p_version: POLICY_VERSIONS.privacy_policy,
+          p_ip_hash: ipHash,
+        },
+      },
+    ])
   })
 
   it("sends the phone number when one was typed", async () => {
@@ -91,7 +133,7 @@ describe("becomeVendorAction", () => {
 
     await becomeVendorAction({ ...vendorInput, phone: " +234 801 234 5678 " })
 
-    expect(lastRpcCall().args.p_phone).toBe("+234 801 234 5678")
+    expect(firstRpcCall().args.p_phone).toBe("+234 801 234 5678")
   })
 
   it("normalises the handle and the email before sending them", async () => {
@@ -99,7 +141,7 @@ describe("becomeVendorAction", () => {
 
     await becomeVendorAction({ ...vendorInput, slug: " Shop-One ", supportEmail: "SHOP@Example.com" })
 
-    const call = lastRpcCall()
+    const call = firstRpcCall()
 
     expect(call.args.p_slug).toBe("shop-one")
     expect(call.args.p_support_email).toBe("shop@example.com")
@@ -116,7 +158,7 @@ describe("becomeVendorAction", () => {
 
     await becomeVendorAction(vendorInput)
 
-    const hash = lastRpcCall().args.p_ip_hash
+    const hash = firstRpcCall().args.p_ip_hash
 
     expect(typeof hash).toBe("string")
     expect(hash).not.toBe(CLIENT_IP)
@@ -131,7 +173,7 @@ describe("becomeVendorAction", () => {
 
     await becomeVendorAction(vendorInput)
 
-    expect(lastRpcCall().args.p_ip_hash).toBeNull()
+    expect(firstRpcCall().args.p_ip_hash).toBeNull()
   })
 
   it("maps a unique violation on the slug to a field error", async () => {
@@ -226,7 +268,7 @@ describe("becomeAffiliateAction", () => {
 
     expect(result).toEqual({ ok: true, created: true })
 
-    const call = lastRpcCall()
+    const call = firstRpcCall()
 
     expect(call.name).toBe("become_affiliate")
     expect(call.args).toEqual({
@@ -236,6 +278,51 @@ describe("becomeAffiliateAction", () => {
       p_country: "NG",
       p_terms_version: POLICY_VERSION,
       p_ip_hash: createHash("sha256").update(CLIENT_IP).digest("hex"),
+    })
+
+    const ipHash = createHash("sha256").update(CLIENT_IP).digest("hex")
+    expect(acceptanceCalls()).toEqual([
+      {
+        name: "record_policy_acceptance",
+        args: {
+          p_user: USER_ID,
+          p_policy: "affiliate_agreement",
+          p_version: POLICY_VERSIONS.affiliate_agreement,
+          p_ip_hash: ipHash,
+        },
+      },
+      {
+        name: "record_policy_acceptance",
+        args: {
+          p_user: USER_ID,
+          p_policy: "terms_of_service",
+          p_version: POLICY_VERSIONS.terms_of_service,
+          p_ip_hash: ipHash,
+        },
+      },
+      {
+        name: "record_policy_acceptance",
+        args: {
+          p_user: USER_ID,
+          p_policy: "privacy_policy",
+          p_version: POLICY_VERSIONS.privacy_policy,
+          p_ip_hash: ipHash,
+        },
+      },
+    ])
+  })
+
+  it("returns generic error if recording policy acceptance fails", async () => {
+    rpc
+      .mockResolvedValueOnce({ data: { created: true }, error: null })
+      .mockResolvedValueOnce({ data: null, error: { code: "42501", message: "denied" } })
+
+    const result = await becomeAffiliateAction(affiliateInput)
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Something went wrong. Please try again.",
+      fieldErrors: {},
     })
   })
 
@@ -299,5 +386,32 @@ describe("becomeAffiliateAction", () => {
 
     expect(result).toEqual({ ok: false, error: "Please sign in again.", fieldErrors: {} })
     expect(rpc).not.toHaveBeenCalled()
+  })
+})
+
+
+describe("TermsNotice", () => {
+  it("renders the vendor agreement notice with links", () => {
+    const html = renderToString(createElement(TermsNotice, { role: "vendor" }))
+    const plain = html.replace(/<[^>]+>/g, "")
+
+    expect(plain).toBe(
+      "I have read and agree to the Vendor Agreement, Terms of Service and Privacy Policy.",
+    )
+    expect(html).toContain('href="/vendor-agreement"')
+    expect(html).toContain('href="/terms-of-service"')
+    expect(html).toContain('href="/privacy-policy"')
+  })
+
+  it("renders the affiliate agreement notice with links", () => {
+    const html = renderToString(createElement(TermsNotice, { role: "affiliate" }))
+    const plain = html.replace(/<[^>]+>/g, "")
+
+    expect(plain).toBe(
+      "I have read and agree to the Affiliate Agreement, Terms of Service and Privacy Policy.",
+    )
+    expect(html).toContain('href="/affiliate-agreement"')
+    expect(html).toContain('href="/terms-of-service"')
+    expect(html).toContain('href="/privacy-policy"')
   })
 })

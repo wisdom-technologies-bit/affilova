@@ -154,7 +154,7 @@ export function AffiliateForm() {
           ) : null}
         </fieldset>
 
-        <TermsNotice />
+        <TermsNotice role="affiliate" />
 
         <SubmitButton pending={pending}>Create affiliate profile</SubmitButton>
       </form>

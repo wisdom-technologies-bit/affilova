@@ -1,11 +1,9 @@
-import TermsOfServiceClientPage from "./terms-of-service-client"
+import { LegalDocument } from "@/components/legal/legal-document"
+import { buildLegalMetadata } from "@/components/legal/metadata"
+import { termsOfServiceDocument } from "@/content/legal/terms-of-service"
 
-export const metadata = {
-  title: "Terms of Service - Affilova | Legal Agreement",
-  description:
-    "Read the Affilova Terms of Service to understand your rights and responsibilities as a user of our affiliate marketplace platform.",
-}
+export const metadata = buildLegalMetadata(termsOfServiceDocument)
 
 export default function TermsOfServicePage() {
-  return <TermsOfServiceClientPage />
+  return <LegalDocument document={termsOfServiceDocument} />
 }

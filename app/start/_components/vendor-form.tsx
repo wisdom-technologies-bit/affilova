@@ -141,7 +141,7 @@ export function VendorForm() {
           onChange={(event) => setPhone(event.target.value)}
         />
 
-        <TermsNotice />
+        <TermsNotice role="vendor" />
 
         <SubmitButton pending={pending}>Create store</SubmitButton>
       </form>

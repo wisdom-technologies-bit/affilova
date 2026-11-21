@@ -12,6 +12,7 @@ import {
   type VendorInput,
 } from "@/lib/identity/onboarding-schemas"
 import { POLICY_VERSION } from "@/lib/identity/policies"
+import { POLICY_VERSIONS, type PolicyKey } from "@/lib/site-config"
 import { getAuthUser } from "@/lib/identity/session"
 import { getSupabaseAdminClient } from "@/lib/supabase/admin"
 
@@ -93,6 +94,30 @@ function isDuplicate(error: RpcError): boolean {
   return error?.code === "23505"
 }
 
+
+async function recordRolePolicyAcceptances(
+  userId: string,
+  ipHash: string | null,
+  policies: readonly PolicyKey[],
+): Promise<RpcError> {
+  const admin = getSupabaseAdminClient()
+
+  for (const policy of policies) {
+    const acceptance: RpcResult = await admin.rpc("record_policy_acceptance", {
+      p_user: userId,
+      p_policy: policy,
+      p_version: POLICY_VERSIONS[policy],
+      p_ip_hash: ipHash,
+    })
+
+    if (acceptance.error !== null) {
+      return acceptance.error
+    }
+  }
+
+  return null
+}
+
 /**
  * Creates the vendor row for the signed-in user and grants the vendor role.
  *
@@ -118,6 +143,7 @@ export async function becomeVendorAction(input: VendorInput): Promise<Onboarding
   }
 
   const phone = parsed.data.phone === undefined ? "" : parsed.data.phone
+  const ipHash = await hashedClientIp()
 
   const result: RpcResult = await getSupabaseAdminClient().rpc("become_vendor", {
     p_user: user.id,
@@ -127,7 +153,7 @@ export async function becomeVendorAction(input: VendorInput): Promise<Onboarding
     p_phone: phone === "" ? null : phone,
     p_country: parsed.data.country,
     p_terms_version: POLICY_VERSION,
-    p_ip_hash: await hashedClientIp(),
+    p_ip_hash: ipHash,
   })
 
   if (result.error !== null) {
@@ -139,6 +165,16 @@ export async function becomeVendorAction(input: VendorInput): Promise<Onboarding
       }
     }
 
+    return { ok: false, error: MESSAGES.generic, fieldErrors: {} }
+  }
+
+  const acceptanceError = await recordRolePolicyAcceptances(user.id, ipHash, [
+    "vendor_agreement",
+    "terms_of_service",
+    "privacy_policy",
+  ])
+
+  if (acceptanceError !== null) {
     return { ok: false, error: MESSAGES.generic, fieldErrors: {} }
   }
 
@@ -167,13 +203,15 @@ export async function becomeAffiliateAction(input: AffiliateInput): Promise<Onbo
     return { ok: false, error: MESSAGES.signedOut, fieldErrors: {} }
   }
 
+  const ipHash = await hashedClientIp()
+
   const result: RpcResult = await getSupabaseAdminClient().rpc("become_affiliate", {
     p_user: user.id,
     p_username: parsed.data.username,
     p_promotion_channels: parsed.data.promotionChannels,
     p_country: parsed.data.country,
     p_terms_version: POLICY_VERSION,
-    p_ip_hash: await hashedClientIp(),
+    p_ip_hash: ipHash,
   })
 
   if (result.error !== null) {
@@ -185,6 +223,16 @@ export async function becomeAffiliateAction(input: AffiliateInput): Promise<Onbo
       }
     }
 
+    return { ok: false, error: MESSAGES.generic, fieldErrors: {} }
+  }
+
+  const acceptanceError = await recordRolePolicyAcceptances(user.id, ipHash, [
+    "affiliate_agreement",
+    "terms_of_service",
+    "privacy_policy",
+  ])
+
+  if (acceptanceError !== null) {
     return { ok: false, error: MESSAGES.generic, fieldErrors: {} }
   }
 

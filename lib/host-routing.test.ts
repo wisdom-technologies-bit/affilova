@@ -59,8 +59,16 @@ const SHARED_PATHS = [
   "/start/affiliate",
   "/monitoring",
   "/monitoring/tunnel",
+  "/legal",
   "/terms-of-service",
   "/privacy-policy",
+  "/refund-policy",
+  "/acceptable-use",
+  "/vendor-agreement",
+  "/affiliate-agreement",
+  "/cookie-policy",
+  "/copyright",
+  "/earnings-disclaimer",
 ]
 
 // Near misses matter as much as the list itself: these all start with a shared

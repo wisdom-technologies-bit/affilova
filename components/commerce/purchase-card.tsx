@@ -130,19 +130,19 @@ export function PurchaseCardView(props: PurchaseCardViewProps) {
       </form>
 
       <p className="mt-4 text-xs text-muted-foreground">
-        Payments are processed by Paystack. By paying you agree to our{" "}
+        Payments are processed by Paystack. By buying you agree to the{" "}
         <a
           href="/terms-of-service"
           className="font-medium text-brand-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
         >
-          terms of service
+          Terms of Service
         </a>{" "}
-        and{" "}
+        and the{" "}
         <a
-          href="/privacy-policy"
+          href="/refund-policy"
           className="font-medium text-brand-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
         >
-          privacy policy
+          Refund Policy
         </a>
         .
       </p>

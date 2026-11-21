@@ -60,12 +60,20 @@ export const ASSET_EXTENSIONS: readonly string[] = [
 const SHARED_PREFIXES = ["/api", "/auth", "/monitoring", "/start"] as const
 
 const SHARED_EXACT: readonly string[] = [
+  "/acceptable-use",
+  "/affiliate-agreement",
+  "/cookie-policy",
+  "/copyright",
+  "/earnings-disclaimer",
   "/forgot-password",
+  "/legal",
   "/privacy-policy",
+  "/refund-policy",
   "/reset-password",
   "/sign-in",
   "/sign-up",
   "/terms-of-service",
+  "/vendor-agreement",
 ]
 
 // The internal route tree the app shells live in. It is reached by rewrite,

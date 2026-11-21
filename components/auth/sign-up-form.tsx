@@ -200,13 +200,20 @@ export function SignUpForm() {
           className="underline underline-offset-2 transition-colors duration-150 hover:text-slate-900"
         >
           Terms of Service
-        </Link>{" "}
-        and{" "}
+        </Link>
+        ,{" "}
         <Link
           href="/privacy-policy"
           className="underline underline-offset-2 transition-colors duration-150 hover:text-slate-900"
         >
           Privacy Policy
+        </Link>{" "}
+        and{" "}
+        <Link
+          href="/cookie-policy"
+          className="underline underline-offset-2 transition-colors duration-150 hover:text-slate-900"
+        >
+          Cookie Policy
         </Link>
         .
       </p>

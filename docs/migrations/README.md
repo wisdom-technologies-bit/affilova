@@ -639,6 +639,24 @@ The commented block at the end of the migration drops the ten functions and the
 `revoke_affiliate_invite()` stay in `public.audit_log`, because they record a
 decision a person really made.
 
+## The policy acceptance function migration (20261121000100_policy_acceptance_fn)
+
+Run it after the roles and onboarding migration (`20261113000100_roles_onboarding`) has been applied. It adds no new table: it exposes one `SECURITY DEFINER` function so onboarding actions can record individual policy acceptances alongside the legacy onboarding calls.
+
+### What it creates
+
+- `public.record_policy_acceptance(p_user uuid, p_policy text, p_version text, p_ip_hash text)`: inserts `(p_user, p_policy, p_version, p_ip_hash)` into `public.policy_acceptances` with `ON CONFLICT (user_id, policy, version) DO NOTHING`. When a new acceptance row is inserted, it writes a `policy.accepted` row to `public.audit_log` with `entity_type = 'policy_acceptance'`.
+
+The function runs as `SECURITY DEFINER` with `SET search_path = ''` and is executable by `service_role` only (`PUBLIC`, `anon` and `authenticated` are revoked). Row level security remains enabled on `public.policy_acceptances`.
+
+### Checking it worked
+
+Run `supabase/verify/20261121000100_policy_acceptance_fn_verify.sql`. Every row must show `ok = t`. The behaviour (idempotent writes, single `policy.accepted` audit entry per new acceptance, distinct policy versions, `anon`/`authenticated` denial and the rollback block) is covered by `supabase/tests/policy_acceptance_fn_test.sh`.
+
+### Rollback
+
+The commented block at the end of the migration drops `public.record_policy_acceptance(uuid, text, text, text)` and removes the `20261121000100` row from `public.app_migrations`. Existing acceptance and audit rows stay in place.
+
 ## Never run SQL on production first
 
 Run every migration on **staging** and confirm every verification check is `t`

@@ -1,0 +1,12 @@
+{
+  "note": "Viewport measurements taken in headless Chrome through device emulation at both review sizes. scroll equals client on every page, so no screen overflows horizontally.",
+  "screens": {
+    "purchases": { "1440x900": { "inner": 1440, "scroll": 1440, "client": 1440 }, "390x844": { "inner": 390, "scroll": 390, "client": 390 } },
+    "purchase-detail": { "1440x900": { "inner": 1440, "scroll": 1425, "client": 1425 }, "390x844": { "inner": 390, "scroll": 390, "client": 390 } },
+    "receipt": { "1440x900": { "inner": 1440, "scroll": 1440, "client": 1440 }, "390x844": { "inner": 390, "scroll": 390, "client": 390 } },
+    "profile": { "1440x900": { "inner": 1440, "scroll": 1440, "client": 1440 }, "390x844": { "inner": 390, "scroll": 390, "client": 390 } },
+    "merchant-overview": { "1440x900": { "inner": 1440, "scroll": 1425, "client": 1425 }, "390x844": { "inner": 390, "scroll": 390, "client": 390 } },
+    "merchant-sales": { "1440x900": { "inner": 1440, "scroll": 1440, "client": 1440 }, "390x844": { "inner": 390, "scroll": 390, "client": 390 } },
+    "merchant-refund-requests": { "1440x900": { "inner": 1440, "scroll": 1440, "client": 1440 }, "390x844": { "inner": 390, "scroll": 390, "client": 390 } }
+  }
+}

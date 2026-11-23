@@ -1,0 +1,24 @@
+.sheet {
+  max-width: 42rem;
+}
+
+@media print {
+  .noPrint {
+    display: none !important;
+  }
+
+  .sheet {
+    max-width: 100%;
+    border: none;
+    padding: 0;
+  }
+
+  .sheet h2 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  @page {
+    margin: 18mm;
+  }
+}

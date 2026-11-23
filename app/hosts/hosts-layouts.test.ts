@@ -71,6 +71,26 @@ const affiliate = vi.hoisted(() => ({
 
 vi.mock("@/lib/affiliate/read-actions", () => affiliate)
 
+// The account and merchant screens read their first page on the server too.
+const account = vi.hoisted(() => ({
+  getMyOrdersAction: vi.fn(),
+  getMyOrderAction: vi.fn(),
+  downloadMyFileAction: vi.fn(),
+  requestMyRefundAction: vi.fn(),
+}))
+
+vi.mock("@/lib/account/actions", () => account)
+
+const merchant = vi.hoisted(() => ({
+  getVendorOverviewAction: vi.fn(),
+  getVendorDailySeriesAction: vi.fn(),
+  getVendorTopProductsAction: vi.fn(),
+  getVendorSalesAction: vi.fn(),
+  getVendorRefundRequestsAction: vi.fn(),
+}))
+
+vi.mock("@/lib/merchant/actions", () => merchant)
+
 vi.mock("@/app/auth/actions", () => ({
   signOutAction: vi.fn(async () => ({ ok: true })),
 }))
@@ -333,6 +353,36 @@ beforeEach(() => {
     data: { items: [], nextCursor: null },
   })
   affiliate.getInvitesAction.mockResolvedValue({ ok: true, data: [] })
+
+  account.getMyOrdersAction.mockResolvedValue({ ok: true, data: { items: [], nextCursor: null } })
+  account.getMyOrderAction.mockResolvedValue({ ok: false, error: "That order could not be found." })
+
+  merchant.getVendorOverviewAction.mockResolvedValue({
+    ok: true,
+    data: {
+      orders: 0,
+      grossKobo: 0,
+      vendorNetKobo: 0,
+      platformFeeKobo: 0,
+      affiliateCommissionKobo: 0,
+      affiliateOrders: 0,
+      refundsCount: 0,
+      refundsKobo: 0,
+      refundRateBps: 0,
+      pendingKobo: 0,
+      availableKobo: 0,
+    },
+  })
+  merchant.getVendorDailySeriesAction.mockResolvedValue({ ok: true, data: [] })
+  merchant.getVendorTopProductsAction.mockResolvedValue({ ok: true, data: [] })
+  merchant.getVendorSalesAction.mockResolvedValue({
+    ok: true,
+    data: { items: [], nextCursor: null },
+  })
+  merchant.getVendorRefundRequestsAction.mockResolvedValue({
+    ok: true,
+    data: { items: [], nextCursor: null },
+  })
 })
 
 describe("every page renders exactly one h1", () => {
@@ -412,7 +462,7 @@ describe("the shell frame", () => {
   })
 
   it("renders an honest empty state for an unbuilt section", async () => {
-    const html = await renderPage(MerchantSalesPage)
+    const html = await renderPage(MerchantStorePage)
 
     expect(html).toContain("This section is not available yet.")
   })
@@ -425,7 +475,7 @@ describe("the shell frame", () => {
   })
 
   it("shows the greeting, email and roles on the first page", async () => {
-    const html = await renderPage(MerchantPage)
+    const html = await renderPage(AdminPage)
 
     expect(html).toContain("Welcome, Ada Lovelace")
     expect(html).toContain("person@example.com")
@@ -442,7 +492,7 @@ describe("the shell frame", () => {
       roles: [],
     })
 
-    const html = await renderPage(MerchantPage)
+    const html = await renderPage(AdminPage)
 
     expect(html).toContain("Welcome")
     expect(html).not.toContain("Welcome,")

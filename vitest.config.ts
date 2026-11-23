@@ -19,6 +19,9 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // CSS modules keep their real class names in tests, so a render test can
+    // check the class that hides a control when the page is printed.
+    css: { modules: { classNameStrategy: "non-scoped" } },
     include: ["**/*.test.ts"],
     // services/scanner/archive holds the ClamAV engine and its tests. They are
     // parked, not deleted: ClamAV may return when it can be funded again. Until

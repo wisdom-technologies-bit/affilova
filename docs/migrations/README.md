@@ -657,6 +657,82 @@ Run `supabase/verify/20261121000100_policy_acceptance_fn_verify.sql`. Every row 
 
 The commented block at the end of the migration drops `public.record_policy_acceptance(uuid, text, text, text)` and removes the `20261121000100` row from `public.app_migrations`. Existing acceptance and audit rows stay in place.
 
+## The account and vendor read models migration (20261121000200_account_vendor_read_models)
+
+Run it after every earlier migration has been applied and every check in their
+verify files is `t`. It adds no table and no column: it is seven read models for
+the customer account screens and the merchant screens, plus the one write that
+links a guest order to the account that has now confirmed its email.
+
+### What it creates
+
+- `claim_guest_orders(p_user uuid) -> int`: the only write here. It links the
+  orders (and their file entitlements) that were bought with the account's email
+  to the account, but only when `auth.users.email_confirmed_at` is set **and**
+  the confirmed auth email equals the profile email. Otherwise it changes
+  nothing and returns 0. The match is case-insensitive and only touches rows
+  that have no buyer yet, so a second call is a no-op. When it does claim
+  something it writes one `guest_orders.claimed` row to `public.audit_log`. The
+  answer is the number of rows claimed (orders plus entitlements).
+- `account_orders(uuid, int, jsonb)`: one page of the buyer's own purchases,
+  newest first, with the product, its vendor and its cover image. Keyset
+  pagination on `(created_at, id)`.
+- `account_order_detail(uuid, uuid)`: one order the buyer owns: its items, its
+  tax lines, the end of its refund window, its refund request (status and
+  whether it was auto-approved) and its files. A file is described by its
+  original name, its size, how many downloads were used and whether it passed
+  the security scan. **No storage key is ever returned**: the only route to a
+  URL is `claim_download()`, which counts the download and re-checks the scan.
+- `vendor_overview(uuid, timestamptz, timestamptz)`: orders, gross, the vendor's
+  net after fees and commissions, the platform fee, affiliate commission,
+  refunds count and value, the refund rate in basis points, and the pending and
+  available ledger balance.
+- `vendor_daily_series(uuid, date, date)`: one row per Lagos day in the range,
+  including days with no sale.
+- `vendor_sales_list(uuid, text, int, jsonb)`: the vendor's orders, newest
+  first, filterable by status, with gross, net and a "via affiliate" flag. No
+  buyer name and no buyer email.
+- `vendor_refund_requests(uuid, text, int, jsonb)`: the refund requests on the
+  vendor's orders, filterable by status, with the reason, the amount and the
+  decision.
+- `vendor_top_products(uuid, date, date)`: the ten products that earned the
+  most in the range, with their orders and their refunds.
+
+Every function takes the actor as its first argument, is `SECURITY DEFINER` with
+an empty `search_path`, and is executable by `service_role` only. An account
+function filters on `buyer_user_id = the actor`, and a vendor function checks
+that the actor has an active vendor profile and joins the items to it, so one
+vendor can never see another vendor's sales and a vendor never sees who bought.
+
+A range is a range of whole Lagos days, and a range longer than 366 days is
+refused rather than silently shortened. A page cursor is opaque JSON that is
+parsed and checked, never trusted.
+
+### Checking it worked
+
+Run `supabase/verify/20261121000200_account_vendor_read_models_verify.sql`.
+Every row must show `passed = t`. It checks that the eight functions exist with
+their exact signatures, that each one is `SECURITY DEFINER` with an empty
+`search_path`, that the seven read models are `STABLE` and contain no write,
+that `claim_guest_orders` is the one `VOLATILE` function and does write, that
+`anon` and `authenticated` cannot execute any of them, that `service_role` can,
+that row level security is on for every table they read, and that the account
+read models never mention a storage key.
+
+The behaviour (guest claiming in every direction, the exact maths including a
+refunded order, zero days in the series, cursor pages without a gap or a repeat,
+ownership isolation, and the rollback) is covered by
+`supabase/tests/account_vendor_read_models_test.sh`, which needs a throwaway
+local database.
+
+### Rollback
+
+The commented block at the end of the migration drops the eight functions and
+the `app_migrations` row. The `buyer_user_id` values that
+`claim_guest_orders()` filled in are **left in place**: undoing them would take a
+buyer's own purchases away from their account. The audit rows it wrote stay in
+`public.audit_log` for the same reason.
+
 ## Never run SQL on production first
 
 Run every migration on **staging** and confirm every verification check is `t`

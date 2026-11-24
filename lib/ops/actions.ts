@@ -3,6 +3,7 @@
 import { webhookEventCounts } from "@/lib/commerce/db"
 import { getPaystackEnv, type PaystackMode } from "@/lib/env"
 import { logger } from "@/lib/logger"
+import { getPaystackTransfers } from "@/lib/paystack/transfers"
 import { can } from "@/lib/identity/permissions"
 import { getAuthUser, getUserRoles, type AppRole } from "@/lib/identity/session"
 import { catalogErrorMessage, GENERIC_ERROR } from "@/lib/catalog/errors"
@@ -39,6 +40,18 @@ const SCAN_STATUSES = [
   "rejected",
   "needs_review",
   "error",
+] as const
+
+/** The withdrawal statuses, in the order money moves through them. */
+const PAYOUT_STATUSES = [
+  "requested",
+  "approved",
+  "processing",
+  "paid",
+  "failed",
+  "reversed",
+  "rejected",
+  "cancelled",
 ] as const
 
 /** The job statuses the queue can hold. */
@@ -83,12 +96,29 @@ export interface PaymentOverview {
   windowHours: number
 }
 
+export interface PayoutOverview {
+  /** One count per withdrawal status, zeros included. */
+  counts: Readonly<Record<string, number>>
+  /** Failed and reversed withdrawals in the last 7 days. */
+  failedLast7d: number
+  /** How long the oldest request has been waiting, in minutes. */
+  oldestRequestedMinutes: number | null
+  /** The Paystack NGN balance in kobo, or null when it could not be read. */
+  paystackBalanceKobo: string | null
+  /**
+   * True when the balance cannot cover every approved and processing
+   * withdrawal. That is the state that stops payouts, so the page shows it.
+   */
+  lowBalance: boolean
+}
+
 export interface SecurityOverview {
   scanner: ScannerHealth
   scan: ScanOverview
   jobs: JobOverview
   events: readonly ScanEventRow[]
   payments: PaymentOverview
+  payouts: PayoutOverview
   /** The server's clock, so the page can say how old a heartbeat is. */
   fetchedAt: string
 }
@@ -310,6 +340,91 @@ async function paymentOverview(): Promise<PaymentOverview> {
   }
 }
 
+/**
+ * The payout half of the page: how many withdrawals are in each state, and
+ * whether the Paystack balance can still cover the ones already approved.
+ *
+ * Both halves fail soft. A Paystack outage must not blank the security page, and
+ * a balance we could not read is shown as unknown rather than as zero: zero
+ * would read as "out of money" when the truth is "we do not know".
+ */
+async function payoutOverview(actorId: string): Promise<PayoutOverview> {
+  const counts: Record<string, number> = {}
+  let failedLast7d = 0
+  let oldestRequestedMinutes: number | null = null
+  let approvedKobo = BigInt(0)
+  let processingKobo = BigInt(0)
+
+  try {
+    const { data, error } = await getSupabaseAdminClient().rpc("payout_overview", {
+      p_actor: actorId,
+    })
+
+    if (error !== null) {
+      throw new Error("payout_overview_failed")
+    }
+
+    const row = firstRecord(data)
+
+    for (const status of PAYOUT_STATUSES) {
+      counts[status] = readCount(row[status])
+    }
+
+    failedLast7d = readCount(row.failed_last_7d)
+    oldestRequestedMinutes =
+      typeof row.oldest_requested_minutes === "number" ? row.oldest_requested_minutes : null
+    approvedKobo = readKobo(row.approved_kobo)
+    processingKobo = readKobo(row.processing_kobo)
+  } catch {
+    logger.error("ops_payout_overview_failed", {})
+  }
+
+  let paystackBalanceKobo: string | null = null
+
+  try {
+    const balances = await getPaystackTransfers().getBalance()
+    const ngn = balances.find((entry) => entry.currency === "NGN")
+    paystackBalanceKobo = ngn === undefined ? null : String(ngn.balanceKobo)
+  } catch {
+    logger.error("ops_paystack_balance_failed", {})
+  }
+
+  const needed = approvedKobo + processingKobo
+
+  return {
+    counts,
+    failedLast7d,
+    oldestRequestedMinutes,
+    paystackBalanceKobo,
+    // Unknown balance is not low: it is unknown, and the page says so.
+    lowBalance: paystackBalanceKobo !== null && BigInt(paystackBalanceKobo) < needed,
+  }
+}
+
+/** The first row of an RPC answer, as a plain record. */
+function firstRecord(data: unknown): Record<string, unknown> {
+  const row = Array.isArray(data) ? data[0] : data
+
+  if (typeof row !== "object" || row === null) {
+    return {}
+  }
+
+  return row as Record<string, unknown>
+}
+
+/** A kobo total from an RPC answer. Postgres bigint arrives as a string. */
+function readKobo(value: unknown): bigint {
+  if (typeof value === "string" && /^[0-9]+$/.test(value)) {
+    return BigInt(value)
+  }
+
+  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) {
+    return BigInt(value)
+  }
+
+  return BigInt(0)
+}
+
 // ---------------------------------------------------------------------------
 // getSecurityOverviewAction
 // ---------------------------------------------------------------------------
@@ -332,12 +447,13 @@ export async function getSecurityOverviewAction(): Promise<SecurityOverviewResul
   try {
     const supabase = getSupabaseAdminClient()
 
-    const [health, scanAnswer, jobAnswer, eventAnswer, payments] = await Promise.all([
+    const [health, scanAnswer, jobAnswer, eventAnswer, payments, payouts] = await Promise.all([
       getScannerHealth(),
       supabase.rpc("scan_overview"),
       supabase.rpc("job_overview"),
       supabase.rpc("list_recent_scan_events", { p_limit: 20 }),
       paymentOverview(),
+      payoutOverview(guard.actor.userId),
     ])
 
     if (scanAnswer.error !== null || jobAnswer.error !== null || eventAnswer.error !== null) {
@@ -358,6 +474,7 @@ export async function getSecurityOverviewAction(): Promise<SecurityOverviewResul
         jobs: toJobOverview(jobAnswer.data),
         events: toScanEvents(eventAnswer.data),
         payments,
+        payouts,
         fetchedAt: new Date().toISOString(),
       },
     }

@@ -181,6 +181,19 @@ const paystackEnvSchema = z.object({
   // "true" turns the source IP allowlist on. Anything else, or nothing, leaves
   // it off and only logs a warning for an unexpected address.
   PAYSTACK_WEBHOOK_ENFORCE_IPS: optionalString,
+  // The secret path segment of the transfer approval URL. Paystack documents no
+  // signature on that request, so the URL itself is the credential: at least 32
+  // characters of randomness, compared in constant time. Optional here so a
+  // deployment that has not configured approval still builds; the route answers
+  // 404 for every token when it is absent.
+  PAYSTACK_TRANSFER_APPROVAL_TOKEN: z.preprocess(
+    present,
+    z
+      .string()
+      .min(32, "must be at least 32 characters long")
+      .regex(/^[A-Za-z0-9_-]+$/, "must be URL-safe: letters, digits, dash or underscore")
+      .optional(),
+  ),
 })
 
 export type PaystackMode = "test" | "live" | "invalid"
@@ -189,6 +202,8 @@ export interface PaystackEnv {
   PAYSTACK_SECRET_KEY: string
   NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY?: string
   PAYSTACK_WEBHOOK_SECRET?: string
+  /** The secret path segment of the transfer approval URL, when configured. */
+  PAYSTACK_TRANSFER_APPROVAL_TOKEN?: string
   /** test for sk_test_, live for sk_live_, invalid for anything else. */
   mode: PaystackMode
   /** Whether the webhook route refuses addresses outside Paystack's list. */
@@ -318,6 +333,9 @@ export function parsePaystackEnv(source: EnvSource): PaystackEnv {
     ...(result.data.PAYSTACK_WEBHOOK_SECRET === undefined
       ? {}
       : { PAYSTACK_WEBHOOK_SECRET: result.data.PAYSTACK_WEBHOOK_SECRET }),
+    ...(result.data.PAYSTACK_TRANSFER_APPROVAL_TOKEN === undefined
+      ? {}
+      : { PAYSTACK_TRANSFER_APPROVAL_TOKEN: result.data.PAYSTACK_TRANSFER_APPROVAL_TOKEN }),
     mode: paystackMode(result.data.PAYSTACK_SECRET_KEY),
     enforceWebhookIps: enforce === "true" || enforce === "1" || enforce === "yes",
   }
@@ -413,6 +431,7 @@ export function getPaystackEnv(): PaystackEnv {
     NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
     PAYSTACK_WEBHOOK_SECRET: process.env.PAYSTACK_WEBHOOK_SECRET,
     PAYSTACK_WEBHOOK_ENFORCE_IPS: process.env.PAYSTACK_WEBHOOK_ENFORCE_IPS,
+    PAYSTACK_TRANSFER_APPROVAL_TOKEN: process.env.PAYSTACK_TRANSFER_APPROVAL_TOKEN,
   })
 }
 

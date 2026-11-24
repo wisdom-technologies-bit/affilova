@@ -496,6 +496,79 @@ function PaymentsSection({ payments }: { payments: SecurityOverview["payments"] 
   )
 }
 
+/**
+ * The payout half: how many withdrawals are in each state, and whether the
+ * Paystack balance can still cover the ones already approved.
+ *
+ * The balance is shown as unknown when it could not be read, never as zero, and
+ * the low-balance warning only appears when there is a balance to compare.
+ */
+function PayoutsSection({ payouts }: { payouts: SecurityOverview["payouts"] }) {
+  const entries = Object.entries(payouts.counts)
+  const balance =
+    payouts.paystackBalanceKobo === null
+      ? null
+      : `₦${(Number(payouts.paystackBalanceKobo) / 100).toLocaleString("en-NG", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}`
+
+  return (
+    <Section
+      title="Payouts"
+      description="Withdrawals by state, the Paystack balance behind them, and how long the oldest request has been waiting."
+    >
+      <dl className="grid gap-4 text-sm lg:grid-cols-3">
+        <div>
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">Paystack balance</dt>
+          <dd className="mt-1 flex items-center gap-2">
+            <span className="text-lg font-semibold tabular-nums text-brand-ink">
+              {balance ?? "Unknown"}
+            </span>
+            {payouts.lowBalance ? <Badge tone="bad">Below approved payouts</Badge> : null}
+          </dd>
+        </div>
+
+        <div>
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+            Failed, last 7 days
+          </dt>
+          <dd className="mt-1 text-lg font-semibold tabular-nums text-brand-ink">
+            {payouts.failedLast7d}
+          </dd>
+        </div>
+
+        <div>
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+            Oldest request waiting
+          </dt>
+          <dd className="mt-1 text-lg font-semibold tabular-nums text-brand-ink">
+            {payouts.oldestRequestedMinutes === null
+              ? "Nothing waiting"
+              : `${payouts.oldestRequestedMinutes} min`}
+          </dd>
+        </div>
+      </dl>
+
+      <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {entries.map(([status, count]) => (
+          <div key={status} className="rounded-md border border-border p-3">
+            <dt className="text-xs capitalize text-muted-foreground">{status}</dt>
+            <dd className="mt-1 text-lg font-semibold tabular-nums text-brand-ink">{count}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {payouts.lowBalance ? (
+        <p className="mt-3 text-xs text-muted-foreground">
+          The balance cannot cover every approved and processing withdrawal, so the transfer job
+          puts its batch back and logs an error. Top the Paystack balance up.
+        </p>
+      ) : null}
+    </Section>
+  )
+}
+
 function SelfTestSection() {
   const [rows, setRows] = useState<readonly SelfTestRow[] | null>(null)
   const [summary, setSummary] = useState<string>("")
@@ -581,6 +654,7 @@ export function SecurityPanel({
           <PipelineSection scan={overview.scan} now={now} />
           <JobsSection jobs={overview.jobs} />
           <PaymentsSection payments={overview.payments} />
+          <PayoutsSection payouts={overview.payouts} />
           <EventsSection events={overview.events} now={now} />
         </>
       )}

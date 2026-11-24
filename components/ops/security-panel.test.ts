@@ -61,6 +61,22 @@ const OVERVIEW: SecurityOverview = {
     webhookEvents: { received: 0, processed: 12, ignored: 3, failed: 1 },
     windowHours: 24,
   },
+  payouts: {
+    counts: {
+      requested: 2,
+      approved: 1,
+      processing: 0,
+      paid: 8,
+      failed: 1,
+      reversed: 0,
+      rejected: 0,
+      cancelled: 0,
+    },
+    failedLast7d: 1,
+    oldestRequestedMinutes: 90,
+    paystackBalanceKobo: "25000000",
+    lowBalance: false,
+  },
   events: [
     {
       verdict: "clean",

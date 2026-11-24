@@ -37,8 +37,17 @@ detail. `CRON_SECRET` must be at least 32 characters; see `.env.example`.
 | `expire-orders`   | hourly        | Expires unpaid orders whose 24-hour window has passed.                  |
 | `rollups`         | hourly        | Recomputes affiliate daily stats for yesterday and today, Lagos time.   |
 | `risk-scan`       | hourly        | Flags click bursts and affiliates whose clicks never become sales.      |
+| `payout-run`      | 10:00 and 14:00, Monday to Friday (`0 10,14 * * 1-5`) | Requests an automatic withdrawal for every user who has it on, has at least the minimum available and has not withdrawn today. |
+| `payout-process`  | every 5 minutes, 08:00 to 17:55, Monday to Friday (`*/5 8-17 * * 1-5`) | Sends the approved withdrawals through Paystack, up to 20 per run. |
+| `payout-reconcile`| every 30 minutes (`*/30 * * * *`) | Asks Paystack about withdrawals still `processing` after 15 minutes and settles them. |
 
 Any other name is answered with `404 {"error":"not_found"}`.
+
+The three payout jobs are documented in `docs/payouts.md`: what they post, what a
+low balance does, and what to check when one of them reports an error. Each one
+keeps itself inside the 20 second limit: `payout-run` stops requesting after 18
+seconds and `payout-process` releases anything it has claimed but not sent after
+15 seconds, so the next run picks it up instead of the call being cut off.
 
 `cleanup` calls `public.cleanup_rate_limits()` and forgets every window that can
 no longer be counted against (the longest window the app uses is one hour, and

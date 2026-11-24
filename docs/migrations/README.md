@@ -733,6 +733,53 @@ the `app_migrations` row. The `buyer_user_id` values that
 buyer's own purchases away from their account. The audit rows it wrote stay in
 `public.audit_log` for the same reason.
 
+## The payout controls migration (20261123000100_payout_controls)
+
+Run it after the payouts migration (20261122000100) and after every check in
+the earlier verify files is `t`. It adds one table and five functions, all for
+the payout screens. Every function is `SECURITY DEFINER`, has an empty
+`search_path` and is executable by `service_role` only.
+
+### What it creates
+
+- `public.step_up_codes`: the emailed code that protects a bank change and a
+  withdrawal. Only an HMAC of the code is stored. Row level security is on, no
+  client has any privilege on it and there is no policy.
+- `create_step_up_code(user, purpose, code_hash, expires_in_seconds)`: issues a
+  code. At most one per 60 seconds and five per hour for each user and purpose;
+  a refused call returns `{ ok: false, retry_after_seconds }` and stores
+  nothing. Issuing a code voids every older unused code.
+- `verify_step_up_code(user, purpose, code_hash)`: true only for the newest
+  unused, unexpired code of that user and purpose. The code is single use, a
+  wrong guess counts, and the fifth wrong guess voids it.
+- `update_setting(actor, key, value)`: admin or finance only, for a fixed list
+  of eleven keys, with the type and range checked in the database. The minimum
+  fee may not exceed the cap and dual approval may not be below the auto approve
+  amount. Every change writes `settings_history` (with the actor) and
+  `audit_log` (before and after). Any other key is `setting_not_allowed`.
+- `list_blackout_dates(from, to)`: the blackout days in a range, with reasons.
+- `get_payout_screen_data(user)`: the account in safe form, the auto payout
+  value, balances, the next payout day, the blackout reason, the settings the
+  screen explains and the last 20 withdrawals. It never returns a recipient code,
+  a Paystack reference or an admin's private note.
+
+All time decisions read `public.payout_now()`, so the test harness can place the
+clock; production leaves the override unset.
+
+### Checking it worked
+
+Run `supabase/verify/20261123000100_payout_controls_verify.sql`. Every row must
+show `ok = t`. The behaviour (the exact cooldown and attempt rules, expiry, the
+whitelist and ranges, history and audit rows, privileges and the rollback) is
+covered by `supabase/tests/payout_controls_test.sh`, which needs a throwaway
+local database.
+
+### Rollback
+
+The commented block at the end of the migration drops the table, the five
+functions and the `app_migrations` row. Setting changes already made stay: they
+are rows in `settings`, `settings_history` and `audit_log`.
+
 ## Never run SQL on production first
 
 Run every migration on **staging** and confirm every verification check is `t`

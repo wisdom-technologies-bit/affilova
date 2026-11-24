@@ -3,8 +3,8 @@
 -- Target: Supabase Postgres. Run in the Supabase SQL Editor as the postgres role.
 -- Scope: step-up codes (a short code emailed before a bank change or a
 --        withdrawal), a validated update_setting for the payout and fee
---        settings, list_blackout_dates, and the one read model the payout
---        screens use. Database only.
+--        settings, list_blackout_dates, and the two read models the payout
+--        screens use (the user screen and the admin queue). Database only.
 -- Depends on: 20261112000100_foundation (settings, settings_history, audit_log,
 --        profiles, has_role), 20261116000200_commerce_core (commerce_setting*,
 --        payout_blackout_dates, is_payout_day, get_party_balance),
@@ -422,22 +422,122 @@ END;
 $$;
 
 -- ----------------------------------------------------------------------------
--- 7. Privileges: service_role only
+-- 7. public.admin_withdrawal_queue(uuid, text, int, jsonb)
+-- The admin queue with everything a decision needs in one page: the bank (name,
+-- last four, account name), whether it is the user's first withdrawal, an
+-- unresolved risk flag, and the approvals so far. Admin or finance only. The
+-- tab is one of needs_approval, processing, paid, closed.
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.admin_withdrawal_queue(
+  p_actor  uuid,
+  p_tab    text,
+  p_limit  int DEFAULT 50,
+  p_cursor jsonb DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_limit    int := least(greatest(1, coalesce(p_limit, 50)), 100);
+  v_statuses text[];
+  v_dual     bigint;
+  v_rows     jsonb;
+  v_next     jsonb;
+  v_ts       timestamptz;
+  v_id       uuid;
+BEGIN
+  IF p_actor IS NULL
+     OR NOT (public.has_role(p_actor, 'admin') OR public.has_role(p_actor, 'finance')) THEN
+    RAISE EXCEPTION 'forbidden';
+  END IF;
+
+  v_statuses := CASE p_tab
+    WHEN 'needs_approval' THEN ARRAY['requested']
+    WHEN 'processing'     THEN ARRAY['approved', 'processing']
+    WHEN 'paid'           THEN ARRAY['paid']
+    WHEN 'closed'         THEN ARRAY['failed', 'reversed', 'rejected', 'cancelled']
+    ELSE NULL
+  END;
+
+  IF v_statuses IS NULL THEN
+    RAISE EXCEPTION 'invalid_tab';
+  END IF;
+
+  v_dual := public.commerce_setting_bigint('payout_dual_approval_kobo', 50000000);
+
+  IF p_cursor IS NOT NULL AND pg_catalog.jsonb_typeof(p_cursor) = 'object' THEN
+    v_ts := nullif(p_cursor ->> 'requested_at', '')::timestamptz;
+    v_id := nullif(p_cursor ->> 'id', '')::uuid;
+  END IF;
+
+  WITH page AS (
+    SELECT w.id, w.user_id, w.kind, w.status, w.gross_kobo, w.fee_kobo, w.net_kobo,
+           w.requested_at, w.paid_at, w.failure_reason,
+           a.bank_name, a.account_last4, a.account_name,
+           NOT EXISTS (
+             SELECT 1 FROM public.withdrawals e
+              WHERE e.user_id = w.user_id
+                AND (e.requested_at, e.id) < (w.requested_at, w.id)
+           ) AS is_first,
+           EXISTS (
+             SELECT 1 FROM public.risk_flags f
+              WHERE f.affiliate_id = w.user_id AND f.resolved_at IS NULL
+           ) AS has_risk_flag,
+           (SELECT count(DISTINCT ap.approver)::int
+              FROM public.withdrawal_approvals ap
+             WHERE ap.withdrawal_id = w.id AND ap.decision = 'approved') AS approvals,
+           w.gross_kobo > v_dual AS needs_two_approvers,
+           w.status = 'requested' AND w.gross_kobo > v_dual
+             AND w.approved_by IS NOT NULL AND w.second_approver IS NULL AS needs_second_approver,
+           w.approved_by AS first_approver
+      FROM public.withdrawals w
+      JOIN public.payout_accounts a ON a.id = w.payout_account_id
+     WHERE w.status = ANY (v_statuses)
+       AND (
+         v_ts IS NULL
+         OR w.requested_at < v_ts
+         OR (w.requested_at = v_ts AND w.id < v_id)
+       )
+     ORDER BY w.requested_at DESC, w.id DESC
+     LIMIT v_limit
+  )
+  SELECT coalesce(pg_catalog.jsonb_agg(pg_catalog.to_jsonb(page) ORDER BY page.requested_at DESC, page.id DESC), '[]'::jsonb),
+         CASE WHEN pg_catalog.count(*) = v_limit
+              THEN pg_catalog.jsonb_build_object(
+                     'requested_at', pg_catalog.min(page.requested_at),
+                     'id', pg_catalog.min(page.id::text)
+                   )
+              ELSE NULL
+         END
+    INTO v_rows, v_next
+    FROM page;
+
+  RETURN pg_catalog.jsonb_build_object('rows', v_rows, 'next_cursor', v_next);
+END;
+$$;
+
+-- ----------------------------------------------------------------------------
+-- 8. Privileges: service_role only
 -- ----------------------------------------------------------------------------
 REVOKE ALL ON FUNCTION public.create_step_up_code(uuid, text, text, int) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.verify_step_up_code(uuid, text, text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.update_setting(uuid, text, jsonb) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.list_blackout_dates(date, date) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.get_payout_screen_data(uuid) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.admin_withdrawal_queue(uuid, text, int, jsonb) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.create_step_up_code(uuid, text, text, int) TO service_role;
 GRANT EXECUTE ON FUNCTION public.verify_step_up_code(uuid, text, text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.update_setting(uuid, text, jsonb) TO service_role;
 GRANT EXECUTE ON FUNCTION public.list_blackout_dates(date, date) TO service_role;
 GRANT EXECUTE ON FUNCTION public.get_payout_screen_data(uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.admin_withdrawal_queue(uuid, text, int, jsonb) TO service_role;
 
 -- ----------------------------------------------------------------------------
--- 8. Record the migration
+-- 9. Record the migration
 -- ----------------------------------------------------------------------------
 INSERT INTO public.app_migrations (version, name)
 VALUES ('20261123000100', 'payout_controls')
@@ -458,6 +558,7 @@ COMMIT;
 --
 -- BEGIN;
 --
+-- DROP FUNCTION IF EXISTS public.admin_withdrawal_queue(uuid, text, int, jsonb);
 -- DROP FUNCTION IF EXISTS public.get_payout_screen_data(uuid);
 -- DROP FUNCTION IF EXISTS public.list_blackout_dates(date, date);
 -- DROP FUNCTION IF EXISTS public.update_setting(uuid, text, jsonb);

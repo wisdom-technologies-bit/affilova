@@ -9,7 +9,7 @@
 #   3. verify_step_up_code: newest code only, single use, five wrong guesses,
 #      expiry, another user cannot verify, purposes do not mix
 #   4. update_setting: roles, whitelist, types, ranges, pairs, history, audit
-#   5. list_blackout_dates and get_payout_screen_data
+#   5. list_blackout_dates, get_payout_screen_data and admin_withdrawal_queue
 #   6. privileges, row level security
 #   7. the commented rollback block, then re-applying the migration
 #
@@ -551,10 +551,82 @@ e=$(qx "SELECT public.get_payout_screen_data('00000000-0000-4000-8000-0000000000
 contains "an unknown user is refused" "invalid_user" "$e"
 
 # ============================================================================
+step "admin_withdrawal_queue"
+e=$(qx "SELECT public.admin_withdrawal_queue('$PLAIN', 'paid', 10, NULL)")
+contains "a user without a staff role is forbidden" "forbidden" "$e"
+e=$(qx "SELECT public.admin_withdrawal_queue(NULL, 'paid', 10, NULL)")
+contains "a null actor is forbidden" "forbidden" "$e"
+e=$(qx "SELECT public.admin_withdrawal_queue('$ADMIN', 'everything', 10, NULL)")
+contains "an unknown tab is refused" "invalid_tab" "$e"
+e=$(qx "SELECT public.admin_withdrawal_queue('$ADMIN', NULL, 10, NULL)")
+contains "a null tab is refused" "invalid_tab" "$e"
+
+r=$(q "SELECT jsonb_array_length(public.admin_withdrawal_queue('$FIN', 'paid', 100, NULL) -> 'rows')")
+expect "finance may read the paid tab (24 paid rows seeded)" "24" "$r"
+r=$(q "SELECT jsonb_array_length(public.admin_withdrawal_queue('$ADMIN', 'closed', 100, NULL) -> 'rows')")
+expect "the closed tab holds the rejected withdrawal" "1" "$r"
+r=$(q "SELECT jsonb_array_length(public.admin_withdrawal_queue('$ADMIN', 'needs_approval', 100, NULL) -> 'rows')")
+expect "nothing needs approval yet" "0" "$r"
+
+r=$(q "SELECT (x ->> 'bank_name') || '|' || (x ->> 'account_last4') || '|' || (x ->> 'account_name')
+        FROM (SELECT public.admin_withdrawal_queue('$ADMIN', 'paid', 1, NULL) -> 'rows' -> 0 AS x) y")
+expect "a row carries the bank name, last four and account name" "GTBank|4321|SD USER" "$r"
+d=$(q "SELECT public.admin_withdrawal_queue('$ADMIN', 'paid', 100, NULL)::text")
+case "$d" in *RCP_SECRET*|*recipient*|*wd_screendata*|*reference*) fail "the queue never carries a recipient code or a reference" ;; *) pass "the queue never carries a recipient code or a reference" ;; esac
+
+r=$(q "SELECT (public.admin_withdrawal_queue('$ADMIN', 'paid', 100, NULL) -> 'rows' -> 0 ->> 'is_first') || '|' || (public.admin_withdrawal_queue('$ADMIN', 'paid', 100, NULL) -> 'rows' -> 23 ->> 'is_first')")
+expect "only the user's oldest withdrawal is the first" "false|true" "$r"
+
+# Paging: 10 per page, 24 rows, no gap and no repeat.
+p1=$(q "SELECT public.admin_withdrawal_queue('$ADMIN', 'paid', 10, NULL)::text")
+cur=$(q "SELECT public.admin_withdrawal_queue('$ADMIN', 'paid', 10, NULL) -> 'next_cursor'")
+p2=$(q "SELECT public.admin_withdrawal_queue('$ADMIN', 'paid', 10, '$cur'::jsonb)::text")
+cur2=$(q "SELECT public.admin_withdrawal_queue('$ADMIN', 'paid', 10, '$cur'::jsonb) -> 'next_cursor'")
+p3=$(q "SELECT jsonb_array_length(public.admin_withdrawal_queue('$ADMIN', 'paid', 10, '$cur2'::jsonb) -> 'rows')")
+expect "the third page holds the last four rows" "4" "$p3"
+ids=$(q "SELECT count(DISTINCT id) FROM (
+           SELECT x ->> 'id' AS id FROM jsonb_array_elements(public.admin_withdrawal_queue('$ADMIN', 'paid', 10, NULL) -> 'rows') x
+           UNION ALL
+           SELECT x ->> 'id' FROM jsonb_array_elements(public.admin_withdrawal_queue('$ADMIN', 'paid', 10, '$cur'::jsonb) -> 'rows') x
+           UNION ALL
+           SELECT x ->> 'id' FROM jsonb_array_elements(public.admin_withdrawal_queue('$ADMIN', 'paid', 10, '$cur2'::jsonb) -> 'rows') x
+         ) z")
+expect "the three pages hold 24 different withdrawals" "24" "$ids"
+
+# A dual-approval withdrawal with one approval so far, and a risk flag.
+TW=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa
+seed_user "$TW" tw@example.com 0 30
+q "SELECT public.set_payout_account('$TW', '058', 'GTBank', '5555', 'TW USER', 'RCP_SECRET_TW', true)" >/dev/null
+q "UPDATE public.payout_accounts SET frozen_until = NULL WHERE user_id = '$TW'" >/dev/null
+q "INSERT INTO public.withdrawals (user_id, payout_account_id, kind, status, gross_kobo, fee_kobo, net_kobo, reference, approved_by)
+   SELECT '$TW', a.id, 'manual', 'requested', 60000000, 200000, 59800000, 'wd_dualapproval0000001', '$ADMIN'
+     FROM public.payout_accounts a WHERE a.user_id = '$TW' AND a.status = 'active'" >/dev/null
+q "INSERT INTO public.withdrawal_approvals (withdrawal_id, approver, decision)
+   SELECT id, '$ADMIN', 'approved' FROM public.withdrawals WHERE reference = 'wd_dualapproval0000001'" >/dev/null
+r=$(q "SELECT (x ->> 'approvals') || '|' || (x ->> 'needs_two_approvers') || '|' || (x ->> 'needs_second_approver') || '|' || (x ->> 'is_first') || '|' || (x ->> 'has_risk_flag') || '|' || (x ->> 'first_approver')
+        FROM (SELECT public.admin_withdrawal_queue('$FIN', 'needs_approval', 10, NULL) -> 'rows' -> 0 AS x) y")
+expect "one approval so far, two approvers needed, a second is needed, first withdrawal, no risk flag" "1|true|true|true|false|$ADMIN" "$r"
+
+q "INSERT INTO public.affiliate_profiles (user_id, username) VALUES ('$TW', 'twuser') ON CONFLICT DO NOTHING" >/dev/null
+q "INSERT INTO public.risk_flags (affiliate_id, kind) VALUES ('$TW', 'click_burst')" >/dev/null
+r=$(q "SELECT public.admin_withdrawal_queue('$FIN', 'needs_approval', 10, NULL) -> 'rows' -> 0 ->> 'has_risk_flag'")
+expect "an unresolved risk flag is shown" "true" "$r"
+q "UPDATE public.risk_flags SET resolved_at = now() WHERE affiliate_id = '$TW'" >/dev/null
+r=$(q "SELECT public.admin_withdrawal_queue('$FIN', 'needs_approval', 10, NULL) -> 'rows' -> 0 ->> 'has_risk_flag'")
+expect "a resolved risk flag is not shown" "false" "$r"
+
+q "UPDATE public.withdrawals SET status = 'processing' WHERE reference = 'wd_dualapproval0000001'" >/dev/null
+r=$(q "SELECT jsonb_array_length(public.admin_withdrawal_queue('$ADMIN', 'processing', 10, NULL) -> 'rows')")
+expect "a processing withdrawal is in the processing tab" "1" "$r"
+r=$(q "SELECT public.admin_withdrawal_queue('$ADMIN', 'processing', 10, NULL) -> 'rows' -> 0 ->> 'needs_second_approver'")
+expect "a processing withdrawal no longer needs a second approver" "false" "$r"
+q "UPDATE public.withdrawals SET status = 'requested' WHERE reference = 'wd_dualapproval0000001'" >/dev/null
+
+# ============================================================================
 step "Privileges and row level security"
 for fn in "create_step_up_code('$U1', 'withdrawal', '$HASH_A', 600)" "verify_step_up_code('$U1', 'withdrawal', '$HASH_A')" \
           "update_setting('$ADMIN', 'withdrawal_fee_bps', '200'::jsonb)" "list_blackout_dates('2026-12-01', '2026-12-31')" \
-          "get_payout_screen_data('$U1')"; do
+          "get_payout_screen_data('$U1')" "admin_withdrawal_queue('$ADMIN', 'paid', 10, NULL)"; do
   name="${fn%%(*}"
   e=$(qx "SET ROLE anon; SELECT public.$fn")
   contains "anon cannot execute $name" "permission denied" "$e"
@@ -587,8 +659,8 @@ rm -f "$ROLLBACK_SQL"
 tbl=$(q "SELECT count(*) FROM pg_class WHERE relname = 'step_up_codes' AND relnamespace = 'public'::regnamespace")
 expect "rollback dropped step_up_codes" "0" "$tbl"
 fns=$(q "SELECT count(*) FROM pg_proc WHERE pronamespace = 'public'::regnamespace
-          AND proname IN ('create_step_up_code', 'verify_step_up_code', 'update_setting', 'list_blackout_dates', 'get_payout_screen_data')")
-expect "rollback dropped the five functions" "0" "$fns"
+          AND proname IN ('create_step_up_code', 'verify_step_up_code', 'update_setting', 'list_blackout_dates', 'get_payout_screen_data', 'admin_withdrawal_queue')")
+expect "rollback dropped the six functions" "0" "$fns"
 mig=$(q "SELECT count(*) FROM public.app_migrations WHERE version = '20261123000100'")
 expect "rollback removed the migration row" "0" "$mig"
 pay=$(q "SELECT count(*) FROM public.app_migrations WHERE version = '20261122000100'")

@@ -14,19 +14,19 @@ SELECT 'clients have no privileges on step_up_codes',
        AND NOT has_table_privilege('authenticated', 'public.step_up_codes', 'SELECT')
        AND NOT has_table_privilege('authenticated', 'public.step_up_codes', 'INSERT')
 UNION ALL
-SELECT 'all five functions exist',
-       (SELECT count(*) = 5
+SELECT 'all six functions exist',
+       (SELECT count(*) = 6
           FROM pg_proc p
          WHERE p.pronamespace = 'public'::regnamespace
            AND p.proname IN ('create_step_up_code', 'verify_step_up_code', 'update_setting',
-                             'list_blackout_dates', 'get_payout_screen_data'))
+                             'list_blackout_dates', 'get_payout_screen_data', 'admin_withdrawal_queue'))
 UNION ALL
 SELECT 'every function is security definer with an empty search_path',
        (SELECT bool_and(p.prosecdef AND p.proconfig @> ARRAY['search_path=""'])
           FROM pg_proc p
          WHERE p.pronamespace = 'public'::regnamespace
            AND p.proname IN ('create_step_up_code', 'verify_step_up_code', 'update_setting',
-                             'list_blackout_dates', 'get_payout_screen_data'))
+                             'list_blackout_dates', 'get_payout_screen_data', 'admin_withdrawal_queue'))
 UNION ALL
 SELECT 'only service_role may execute them',
        (SELECT bool_and(
@@ -36,7 +36,7 @@ SELECT 'only service_role may execute them',
           FROM pg_proc p
          WHERE p.pronamespace = 'public'::regnamespace
            AND p.proname IN ('create_step_up_code', 'verify_step_up_code', 'update_setting',
-                             'list_blackout_dates', 'get_payout_screen_data'))
+                             'list_blackout_dates', 'get_payout_screen_data', 'admin_withdrawal_queue'))
 UNION ALL
 SELECT 'the purpose column is constrained',
        EXISTS (

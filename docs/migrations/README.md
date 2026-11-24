@@ -736,7 +736,7 @@ buyer's own purchases away from their account. The audit rows it wrote stay in
 ## The payout controls migration (20261123000100_payout_controls)
 
 Run it after the payouts migration (20261122000100) and after every check in
-the earlier verify files is `t`. It adds one table and five functions, all for
+the earlier verify files is `t`. It adds one table and six functions, all for
 the payout screens. Every function is `SECURITY DEFINER`, has an empty
 `search_path` and is executable by `service_role` only.
 
@@ -758,6 +758,11 @@ the payout screens. Every function is `SECURITY DEFINER`, has an empty
   amount. Every change writes `settings_history` (with the actor) and
   `audit_log` (before and after). Any other key is `setting_not_allowed`.
 - `list_blackout_dates(from, to)`: the blackout days in a range, with reasons.
+- `admin_withdrawal_queue(actor, tab, limit, cursor)`: the admin queue for one
+  tab (`needs_approval`, `processing`, `paid`, `closed`), with the bank name, last
+  four digits and account name, whether it is the user's first withdrawal, an
+  unresolved risk flag, and the approvals so far. Admin or finance only. It never
+  returns a recipient code or a reference.
 - `get_payout_screen_data(user)`: the account in safe form, the auto payout
   value, balances, the next payout day, the blackout reason, the settings the
   screen explains and the last 20 withdrawals. It never returns a recipient code,
@@ -776,7 +781,7 @@ local database.
 
 ### Rollback
 
-The commented block at the end of the migration drops the table, the five
+The commented block at the end of the migration drops the table, the six
 functions and the `app_migrations` row. Setting changes already made stay: they
 are rows in `settings`, `settings_history` and `audit_log`.
 

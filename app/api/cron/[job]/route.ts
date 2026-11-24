@@ -27,6 +27,7 @@ import {
   releaseJob,
 } from "@/lib/jobs/queue"
 import { runProcessQueue } from "@/lib/jobs/runner"
+import { getPayoutService } from "@/lib/payouts/run"
 import { verifyTransaction } from "@/lib/paystack/client"
 import { getSupabaseAdminClient } from "@/lib/supabase/admin"
 
@@ -43,6 +44,9 @@ const RECONCILE_JOB = "reconcile-pending"
 const EXPIRE_JOB = "expire-orders"
 const ROLLUPS_JOB = "rollups"
 const RISK_SCAN_JOB = "risk-scan"
+const PAYOUT_RUN_JOB = "payout-run"
+const PAYOUT_PROCESS_JOB = "payout-process"
+const PAYOUT_RECONCILE_JOB = "payout-reconcile"
 
 // The endpoint only accepts these names.
 const ALLOWED_JOBS = [
@@ -54,6 +58,9 @@ const ALLOWED_JOBS = [
   EXPIRE_JOB,
   ROLLUPS_JOB,
   RISK_SCAN_JOB,
+  PAYOUT_RUN_JOB,
+  PAYOUT_PROCESS_JOB,
+  PAYOUT_RECONCILE_JOB,
 ]
 
 // How long a webhook delivery is remembered for duplicate detection. Paystack's
@@ -342,6 +349,56 @@ export async function POST(request: Request, context: RouteContext): Promise<Nex
     } catch (error) {
       await recordHeartbeatSafely(ROLLUPS_JOB, "error", startedAt, shortMessage(error))
       logger.error("cron_job_failed", { job: ROLLUPS_JOB, reason: shortMessage(error) })
+
+      return json({ ok: false }, 500)
+    }
+  }
+
+  if (job === PAYOUT_RUN_JOB) {
+    try {
+      // Requests automatic withdrawals for every candidate. Inside the time
+      // budget the service stops itself and reports what it did.
+      const summary = await getPayoutService().runAutoPayouts()
+
+      await recordHeartbeatSafely(PAYOUT_RUN_JOB, "ok", startedAt)
+
+      return json({ ok: true, ...summary }, 200)
+    } catch (error) {
+      await recordHeartbeatSafely(PAYOUT_RUN_JOB, "error", startedAt, shortMessage(error))
+      logger.error("cron_job_failed", { job: PAYOUT_RUN_JOB, reason: shortMessage(error) })
+
+      return json({ ok: false }, 500)
+    }
+  }
+
+  if (job === PAYOUT_PROCESS_JOB) {
+    try {
+      // Sends the approved withdrawals. A low balance releases the batch and is
+      // logged as an error, which is what alerts a human.
+      const summary = await getPayoutService().processApprovedWithdrawals()
+
+      await recordHeartbeatSafely(PAYOUT_PROCESS_JOB, "ok", startedAt)
+
+      return json({ ok: true, ...summary }, 200)
+    } catch (error) {
+      await recordHeartbeatSafely(PAYOUT_PROCESS_JOB, "error", startedAt, shortMessage(error))
+      logger.error("cron_job_failed", { job: PAYOUT_PROCESS_JOB, reason: shortMessage(error) })
+
+      return json({ ok: false }, 500)
+    }
+  }
+
+  if (job === PAYOUT_RECONCILE_JOB) {
+    try {
+      // Asks Paystack what happened to anything still processing.
+      const summary = await getPayoutService().reconcileStuck()
+
+      await recordHeartbeatSafely(PAYOUT_RECONCILE_JOB, "ok", startedAt)
+
+      return json({ ok: true, ...summary }, 200)
+    } catch (error) {
+      await recordHeartbeatSafely(PAYOUT_RECONCILE_JOB, "error", startedAt, shortMessage(error))
+      logger.error("cron_job_failed", { job: PAYOUT_RECONCILE_JOB, reason: shortMessage(error) })
 
       return json({ ok: false }, 500)
     }

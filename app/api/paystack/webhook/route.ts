@@ -8,6 +8,7 @@ import { getPaystackEnv } from "@/lib/env"
 import { enqueueJob } from "@/lib/jobs/queue"
 import { REFUND_NOTICE_JOB, refundNoticeDedupeKey } from "@/lib/jobs/order-email"
 import { logger } from "@/lib/logger"
+import * as payoutDb from "@/lib/payouts/db"
 import { PaystackError, verifyTransaction, type VerifiedTransaction } from "@/lib/paystack/client"
 import {
   isPaystackSourceIp,
@@ -49,6 +50,16 @@ const chargeDataSchema = z.object({
   reference: z.string().min(1),
 })
 
+// A transfer event. Only the identity and the fee are read: the amount in the
+// body is never used for money, because our own row holds what we sent. The
+// recipient object is deliberately not parsed, so its full account number is
+// never even looked at.
+const transferDataSchema = z.object({
+  reference: z.string().min(1),
+  transfer_code: z.string().min(1).nullish(),
+  fee_charged: z.number().int().nonnegative().nullish(),
+})
+
 export interface WebhookDeps {
   secretKey: string
   webhookSecret?: string | undefined
@@ -64,6 +75,18 @@ export interface WebhookDeps {
   getOrderByReference: typeof db.getOrderByReference
   openDispute: typeof db.openDispute
   resolveDispute: typeof db.resolveDispute
+  /**
+   * The payout result writer. Optional so every existing caller and test keeps
+   * compiling; without it a transfer event is logged and ignored rather than
+   * retried forever.
+   */
+  recordTransferResult?: (call: {
+    reference: string
+    event: "success" | "failed" | "reversed"
+    transferCode: string | null
+    reason: string | null
+    feeKobo: bigint | null
+  }) => Promise<{ status: string; applied: boolean }>
   log: {
     info: (event: string, fields?: Record<string, unknown>) => void
     warn: (event: string, fields?: Record<string, unknown>) => void
@@ -448,6 +471,71 @@ async function handleDisputeResolve(data: unknown, deps: WebhookDeps): Promise<O
   }
 }
 
+/**
+ * transfer.success, transfer.failed and transfer.reversed.
+ *
+ * The body says which reference to settle and what Paystack charged. It is never
+ * trusted for the amount: record_transfer_result compares the reference and the
+ * transfer code with the withdrawal we wrote, and posts from our own numbers. The
+ * recipient block carries a full account number, so it is not read, not logged
+ * and not stored.
+ */
+async function handleTransferEvent(
+  event: string,
+  data: unknown,
+  deps: WebhookDeps,
+): Promise<Outcome> {
+  const parsed = transferDataSchema.safeParse(data)
+
+  if (!parsed.success) {
+    return failed("missing_reference")
+  }
+
+  const reference = parsed.data.reference
+  const outcome =
+    event === "transfer.success" ? "success" : event === "transfer.failed" ? "failed" : "reversed"
+
+  if (deps.recordTransferResult === undefined) {
+    // No payout writer in this deployment: the event is not handled here, and
+    // saying so keeps it in the same bucket as any other event we do not act on.
+    deps.log.error("paystack_transfer_handler_missing", { reference, event })
+
+    return ignored("unhandled_event")
+  }
+
+  const fee = parsed.data.fee_charged
+
+  try {
+    const result = await deps.recordTransferResult({
+      reference,
+      event: outcome,
+      transferCode: parsed.data.transfer_code ?? null,
+      reason: outcome === "success" ? null : `paystack_${event.split(".")[1] ?? outcome}`,
+      // fee_charged is the real fee. Zero or missing falls back to the bands.
+      feeKobo: typeof fee === "number" && fee > 0 ? BigInt(fee) : null,
+    })
+
+    if (result.status === "not_found") {
+      deps.log.warn("paystack_transfer_withdrawal_not_found", { reference, event })
+
+      return ignored("withdrawal_not_found")
+    }
+
+    if (result.status === "mismatch") {
+      // Our row holds a different transfer code for this reference. Never post.
+      deps.log.error("paystack_transfer_mismatch", { reference, event })
+
+      return ignored("transfer_mismatch")
+    }
+
+    return OK
+  } catch (error) {
+    deps.log.error("paystack_transfer_result_failed", { reference, event, error })
+
+    return transient("database_unavailable")
+  }
+}
+
 async function dispatch(event: string, data: unknown, deps: WebhookDeps): Promise<Outcome> {
   switch (event) {
     case "charge.success":
@@ -469,6 +557,11 @@ async function dispatch(event: string, data: unknown, deps: WebhookDeps): Promis
 
     case "charge.dispute.resolve":
       return handleDisputeResolve(data, deps)
+
+    case "transfer.success":
+    case "transfer.failed":
+    case "transfer.reversed":
+      return handleTransferEvent(event, data, deps)
 
     default:
       // charge.dispute.remind and everything else: recorded, nothing done.
@@ -611,6 +704,7 @@ function configuredDeps(): WebhookDeps | null {
       getOrderByReference: db.getOrderByReference,
       openDispute: db.openDispute,
       resolveDispute: db.resolveDispute,
+      recordTransferResult: payoutDb.recordTransferResult,
       log: logger,
     }
   } catch {

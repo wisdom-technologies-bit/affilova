@@ -26,6 +26,12 @@ import {
   runRefundNoticeJob,
 } from "./order-email"
 import { runStorageCleanupJob } from "./storage-cleanup"
+import {
+  WITHDRAWAL_NOTICE_JOB,
+  readWithdrawalForNotice,
+  runWithdrawalNoticeJob,
+  withdrawalNoticeLog,
+} from "./withdrawal-notice"
 import type { Job } from "./types"
 
 /** A unit of work for one job type. Throwing means the job failed. */
@@ -118,4 +124,18 @@ registerHandler(ORDER_PAID_JOB, async (job) => {
 // handler is the same shape as order_paid, with its own dedupe kind.
 registerHandler(REFUND_NOTICE_JOB, async (job) => {
   await runRefundNoticeJob(job.payload, orderEmailDeps())
+})
+
+// Tell a user their withdrawal was paid, failed, was reversed or was rejected.
+// Claimed in public.email_log per withdrawal, so a retry sends nothing twice.
+registerHandler(WITHDRAWAL_NOTICE_JOB, async (job) => {
+  await runWithdrawalNoticeJob(job.payload, {
+    read: readWithdrawalForNotice,
+    send: sendEmail,
+    log: withdrawalNoticeLog,
+    branding: {
+      siteUrl: appUrl("public", "/"),
+      contactUrl: appUrl("public", "/contact"),
+    },
+  })
 })

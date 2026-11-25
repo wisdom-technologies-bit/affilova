@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 import { createElement, type ReactNode } from "react"
@@ -330,19 +330,18 @@ function writeScreen(name: string, title: string, body: string): void {
   writeFileSync(join(OUTPUT, `${name}.html`), html)
 }
 
+/** Every stylesheet the build emitted, in one file the review pages can link. */
 function css(): string {
-  const files = [
-    "105_4yyzwmmij.css",
-  ]
+  let names: string[] = []
 
-  return files
-    .map((file) => {
-      try {
-        return readFileSync(join(CSS_DIR, file), "utf8")
-      } catch {
-        return ""
-      }
-    })
+  try {
+    names = readdirSync(CSS_DIR).filter((name) => name.endsWith(".css"))
+  } catch {
+    return ""
+  }
+
+  return names
+    .map((name) => readFileSync(join(CSS_DIR, name), "utf8"))
     .join("\n")
 }
 

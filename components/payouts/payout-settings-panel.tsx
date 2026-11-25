@@ -4,10 +4,16 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 import { formatLagosDateTime } from "@/lib/catalog/format"
-import { formatNaira, nairaToKobo } from "@/lib/catalog/money"
 import { updatePayoutSettingAction } from "@/lib/payouts/actions"
-import { bpsToPercent, bpsToPercentInput, percentToBps } from "@/lib/payouts/format"
 import type { PayoutSettingKey, PayoutSettingsSnapshot } from "@/lib/payouts/screen-types"
+import {
+  changedFields,
+  initialValues,
+  invalidFields,
+  settingDescribe,
+  settingShown,
+  settingToValue,
+} from "@/lib/payouts/setting-values"
 import { SETTING_GROUPS, type SettingField, type SettingGroup } from "@/lib/payouts/setting-groups"
 
 import { AlertLine, BUTTON_PRIMARY, BUTTON_SECONDARY, INPUT_CLASS, Section, StatusLine } from "./ui"
@@ -17,73 +23,17 @@ import { AlertLine, BUTTON_PRIMARY, BUTTON_SECONDARY, INPUT_CLASS, Section, Stat
 // asks for one confirmation that lists exactly what will change. The database
 // checks every range and writes the history; the changes below come from it.
 
-function shown(field: SettingField, value: boolean | bigint | undefined): string {
-  if (value === undefined) {
-    return field.kind === "switch" ? "false" : ""
-  }
-
-  if (typeof value === "boolean") {
-    return value ? "true" : "false"
-  }
-
-  if (field.kind === "naira") {
-    return (Number(value) / 100).toString()
-  }
-
-  if (field.kind === "percent") {
-    return bpsToPercentInput(Number(value))
-  }
-
-  return value.toString()
-}
-
-function describe(field: SettingField, text: string): string {
-  if (field.kind === "switch") {
-    return text === "true" ? "On" : "Off"
-  }
-
-  if (field.kind === "naira") {
-    const kobo = nairaToKobo(text)
-
-    return kobo === null ? text : formatNaira(kobo)
-  }
-
-  if (field.kind === "percent") {
-    const bps = percentToBps(text)
-
-    return bps === null ? text : bpsToPercent(bps)
-  }
-
-  return `${text} ${text === "1" ? "day" : "days"}`
-}
-
-function toValue(field: SettingField, text: string): boolean | number | null {
-  if (field.kind === "switch") {
-    return text === "true"
-  }
-
-  if (field.kind === "naira") {
-    return nairaToKobo(text)
-  }
-
-  if (field.kind === "percent") {
-    return percentToBps(text)
-  }
-
-  return /^[0-9]{1,3}$/.test(text.trim()) ? Number(text) : null
-}
-
 function GroupForm({ group, snapshot }: { group: SettingGroup; snapshot: PayoutSettingsSnapshot }) {
   const router = useRouter()
-  const initial = Object.fromEntries(group.fields.map((field) => [field.key, shown(field, snapshot.values[field.key])]))
+  const initial = initialValues(group, snapshot.values)
   const [values, setValues] = useState<Record<string, string>>(initial)
   const [confirming, setConfirming] = useState(false)
   const [working, setWorking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
-  const changed = group.fields.filter((field) => values[field.key] !== initial[field.key])
-  const invalid = changed.filter((field) => toValue(field, values[field.key] ?? "") === null)
+  const changed = changedFields(group, values, initial)
+  const invalid = invalidFields(changed, values)
 
   async function save(): Promise<void> {
     setWorking(true)
@@ -93,7 +43,7 @@ function GroupForm({ group, snapshot }: { group: SettingGroup; snapshot: PayoutS
     // One key at a time: the database checks related keys (minimum and cap)
     // against what is already saved, so the first refusal stops the rest.
     for (const field of changed) {
-      const value = toValue(field, values[field.key] ?? "")
+      const value = settingToValue(field, values[field.key] ?? "")
 
       if (value === null) {
         setError(`Check the value for ${field.label}.`)
@@ -170,7 +120,7 @@ function GroupForm({ group, snapshot }: { group: SettingGroup; snapshot: PayoutS
                 </>
               )}
               <p id={`${id}-help`} className="mt-1 text-sm text-muted-foreground">
-                {field.help} Now: {describe(field, shown(field, snapshot.values[field.key]))}.
+                {field.help} Now: {settingDescribe(field, settingShown(field, snapshot.values[field.key]))}.
               </p>
             </div>
           )
@@ -182,7 +132,7 @@ function GroupForm({ group, snapshot }: { group: SettingGroup; snapshot: PayoutS
             <ul className="list-disc space-y-1 pl-5 text-sm">
               {changed.map((field) => (
                 <li key={field.key}>
-                  {field.label}: {describe(field, initial[field.key] ?? "")} to {describe(field, values[field.key] ?? "")}
+                  {field.label}: {settingDescribe(field, initial[field.key] ?? "")} to {settingDescribe(field, values[field.key] ?? "")}
                 </li>
               ))}
             </ul>
@@ -225,7 +175,7 @@ function historyValue(key: string, value: boolean | bigint | null): string {
     return "not set"
   }
 
-  return describe(field, shown(field, value))
+  return settingDescribe(field, settingShown(field, value))
 }
 
 export function PayoutSettingsPanel({

@@ -1,11 +1,13 @@
-import { EmptyState } from "@/components/app-shell/empty-state"
-import { PageHeader } from "@/components/app-shell/page-header"
+import { PayoutDetailsPage } from "@/components/payouts/payout-pages"
 
-export default function MerchantPayoutDetailsPage() {
-  return (
-    <>
-      <PageHeader title="Payout details" />
-      <EmptyState />
-    </>
-  )
+export const dynamic = "force-dynamic"
+
+// The merchant navigation has no Withdrawals entry, so the balance, the withdraw
+// form and the history are shown below the payout account on this page.
+export default async function MerchantPayoutDetailsPage() {
+  return await PayoutDetailsPage({
+    withdrawalsHref: null,
+    payoutDetailsHref: "/payout-details",
+    includeWithdrawals: true,
+  })
 }

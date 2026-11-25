@@ -490,7 +490,7 @@ describe("earnings", () => {
     expect(words).toContain("Available")
     expect(words).toContain("₦150")
     expect(words).toContain("Commission is held for 14 days")
-    expect(words).toContain("Withdrawals are not available yet.")
+    expect(words).toContain("Withdraw your available balance")
     expect(words).toContain("AF-1001")
     expect(words).toContain("25 Nov 2026")
   })

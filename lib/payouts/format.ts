@@ -75,3 +75,30 @@ export function requestOutcomeText(status: string, needsApproval: boolean): stri
 
   return needsApproval ? "Waiting for admin approval" : "Requested"
 }
+
+/** True when a YYYY-MM-DD Lagos day is a Saturday or a Sunday. */
+export function isWeekendDay(day: string): boolean {
+  if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(day)) {
+    return false
+  }
+
+  const weekday = new Date(`${day}T12:00:00Z`).getUTCDay()
+
+  return weekday === 0 || weekday === 6
+}
+
+/** "2.5" or "2" percent as basis points, or null when it is not a number with at most two decimals. */
+export function percentToBps(input: string): number | null {
+  const text = input.trim().replace(/%$/, "").trim()
+
+  if (!/^[0-9]{1,3}(\.[0-9]{1,2})?$/.test(text)) {
+    return null
+  }
+
+  return Math.round(Number(text) * 100)
+}
+
+/** Basis points as the text of a percent field: 250 is "2.5". */
+export function bpsToPercentInput(bps: number): string {
+  return (bps / 100).toString()
+}

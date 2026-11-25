@@ -418,3 +418,61 @@ export function withdrawalNoticeEmail(input: WithdrawalNoticeInput): EmailConten
     ]),
   }
 }
+
+// ---------------------------------------------------------------------------
+// Staff: the VAT reminder
+// ---------------------------------------------------------------------------
+
+export interface VatReminderInput {
+  /** The month the return is for, already written for a person: "September 2026". */
+  periodLabel: string
+  /** The day it is due, already written in Lagos time. */
+  dueDate: string
+  netPayableKobo: number | bigint
+  reminder: "due_soon" | "overdue"
+  /** The absolute address of the VAT screen on the admin host. */
+  vatUrl: string
+  branding: BrandingUrls
+}
+
+export function vatReminderEmail(input: VatReminderInput): EmailContent {
+  const amount = formatNaira(input.netPayableKobo)
+  const overdue = input.reminder === "overdue"
+  const heading = overdue ? "A VAT return is overdue" : "A VAT return is due soon"
+  const subject = overdue
+    ? `VAT for ${input.periodLabel} is overdue`
+    : `VAT for ${input.periodLabel} is due on ${input.dueDate}`
+
+  const paragraphs = [
+    `The VAT return for <strong>${escapeHtml(input.periodLabel)}</strong> is due on <strong>${escapeHtml(input.dueDate)}</strong>.`,
+    `Net payable: <strong>${escapeHtml(amount)}</strong>`,
+    overdue
+      ? "The due date has passed. File and pay as soon as you can, then record the payment reference on the VAT screen."
+      : "Export the month from the VAT screen, file it with the tax authority, pay, then record the payment reference.",
+    "This reminder is only sent to finance and admin accounts, and only once for each month and each reminder.",
+  ]
+
+  return {
+    subject,
+    html: layout({
+      branding: input.branding,
+      heading,
+      paragraphs,
+      button: { label: "Open the VAT screen", url: input.vatUrl },
+      footnote: "You are receiving this because your account has the finance or admin role.",
+    }),
+    text: textLines([
+      heading,
+      "",
+      `Period: ${input.periodLabel}`,
+      `Due date: ${input.dueDate}`,
+      `Net payable: ${amount}`,
+      "",
+      overdue
+        ? "The due date has passed. File and pay as soon as you can, then record the payment reference on the VAT screen."
+        : "Export the month from the VAT screen, file it with the tax authority, pay, then record the payment reference.",
+      "",
+      `Open the VAT screen: ${input.vatUrl}`,
+    ]),
+  }
+}

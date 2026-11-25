@@ -1801,6 +1801,50 @@ END;
 $$;
 
 -- ----------------------------------------------------------------------------
+-- 9b. email_log can hold a VAT reminder
+--
+-- A reminder is claimed in the same table as the order emails, so a cron that
+-- runs twice in a day, or a retry after a restart, sends one email and not two.
+-- The claim has neither an order nor a withdrawal, so the one-subject check is
+-- widened to allow a VAT period instead, and the kind is allowed to be longer:
+-- the reminder key names the period, the reminder and the recipient, and a
+-- recipient is never stored in clear (it is the same sha256 hash the order
+-- emails use).
+--
+-- Existing rows all have an order or a withdrawal and are untouched.
+-- ----------------------------------------------------------------------------
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conrelid = 'public.email_log'::regclass AND conname = 'email_log_kind_check'
+  ) THEN
+    ALTER TABLE public.email_log DROP CONSTRAINT email_log_kind_check;
+  END IF;
+END $$;
+
+ALTER TABLE public.email_log
+  DROP CONSTRAINT IF EXISTS email_log_kind_length;
+
+ALTER TABLE public.email_log
+  ADD CONSTRAINT email_log_kind_length CHECK (char_length(kind) BETWEEN 1 AND 200);
+
+ALTER TABLE public.email_log
+  ADD COLUMN IF NOT EXISTS vat_period date;
+
+ALTER TABLE public.email_log DROP CONSTRAINT IF EXISTS email_log_one_subject;
+
+ALTER TABLE public.email_log
+  ADD CONSTRAINT email_log_one_subject
+  CHECK (num_nonnulls(order_id, withdrawal_id, vat_period) = 1);
+
+-- The kind already names the period and the recipient hash, so one row per kind
+-- is the whole rule. The period column is what makes the row legible in a query.
+CREATE UNIQUE INDEX IF NOT EXISTS email_log_vat_one_per_recipient
+  ON public.email_log (kind, vat_period)
+  WHERE vat_period IS NOT NULL;
+
+-- ----------------------------------------------------------------------------
 -- 10. Row level security
 --
 -- reconciliation_runs is new and service role only: RLS on, no policy, so a
@@ -1883,6 +1927,17 @@ COMMIT;
 -- ============================================================================
 --
 -- BEGIN;
+--
+-- DROP INDEX IF EXISTS public.email_log_vat_one_per_recipient;
+-- ALTER TABLE public.email_log DROP CONSTRAINT IF EXISTS email_log_one_subject;
+-- ALTER TABLE public.email_log
+--   ADD CONSTRAINT email_log_one_subject
+--   CHECK (num_nonnulls(order_id, withdrawal_id) = 1);
+-- DELETE FROM public.email_log WHERE vat_period IS NOT NULL;
+-- ALTER TABLE public.email_log DROP COLUMN IF EXISTS vat_period;
+-- ALTER TABLE public.email_log DROP CONSTRAINT IF EXISTS email_log_kind_length;
+-- ALTER TABLE public.email_log
+--   ADD CONSTRAINT email_log_kind_length CHECK (char_length(kind) BETWEEN 1 AND 40);
 --
 -- DROP FUNCTION IF EXISTS public.vat_reminder_targets(date);
 -- DROP FUNCTION IF EXISTS public.vat_export_rows(uuid, date);

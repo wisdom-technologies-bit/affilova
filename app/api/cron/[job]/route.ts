@@ -13,6 +13,7 @@ import {
   processPaidOrder,
   purgeOldWebhookEvents,
 } from "@/lib/commerce/db"
+import { runReconcileCron, runVatReminderCron } from "@/lib/admin/cron"
 import { runReconcilePending } from "@/lib/commerce/reconcile"
 import { getServerEnv } from "@/lib/env"
 import { logger } from "@/lib/logger"
@@ -46,6 +47,8 @@ const ROLLUPS_JOB = "rollups"
 const RISK_SCAN_JOB = "risk-scan"
 const PAYOUT_RUN_JOB = "payout-run"
 const PAYOUT_PROCESS_JOB = "payout-process"
+const RECONCILE_DAILY_JOB = "reconcile-daily"
+const VAT_REMINDERS_JOB = "vat-reminders"
 const PAYOUT_RECONCILE_JOB = "payout-reconcile"
 
 // The endpoint only accepts these names.
@@ -399,6 +402,42 @@ export async function POST(request: Request, context: RouteContext): Promise<Nex
     } catch (error) {
       await recordHeartbeatSafely(PAYOUT_RECONCILE_JOB, "error", startedAt, shortMessage(error))
       logger.error("cron_job_failed", { job: PAYOUT_RECONCILE_JOB, reason: shortMessage(error) })
+
+      return json({ ok: false }, 500)
+    }
+  }
+
+  if (job === RECONCILE_DAILY_JOB) {
+    try {
+      // The ledger against Paystack's own balance, once a day at 02:00 Lagos.
+      // A difference is stored and, above the threshold, logged at error level
+      // so Sentry sees it. A difference never fails this job: it is information,
+      // and a 500 here would only store the same row again on the retry.
+      const outcome = await runReconcileCron()
+
+      await recordHeartbeatSafely(RECONCILE_DAILY_JOB, "ok", startedAt)
+
+      return json({ ok: true, ...outcome }, 200)
+    } catch (error) {
+      await recordHeartbeatSafely(RECONCILE_DAILY_JOB, "error", startedAt, shortMessage(error))
+      logger.error("cron_job_failed", { job: RECONCILE_DAILY_JOB, reason: shortMessage(error) })
+
+      return json({ ok: false }, 500)
+    }
+  }
+
+  if (job === VAT_REMINDERS_JOB) {
+    try {
+      // One reminder per finance or admin account, claimed in email_log so a
+      // second run in the same day sends nothing.
+      const summary = await runVatReminderCron(new Date())
+
+      await recordHeartbeatSafely(VAT_REMINDERS_JOB, "ok", startedAt)
+
+      return json({ ok: true, ...summary }, 200)
+    } catch (error) {
+      await recordHeartbeatSafely(VAT_REMINDERS_JOB, "error", startedAt, shortMessage(error))
+      logger.error("cron_job_failed", { job: VAT_REMINDERS_JOB, reason: shortMessage(error) })
 
       return json({ ok: false }, 500)
     }

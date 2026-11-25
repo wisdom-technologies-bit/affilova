@@ -40,6 +40,17 @@ const MESSAGES: Readonly<Record<string, string>> = {
   reason_required: "Give a reason of at least 10 characters.",
   self_review: "You cannot review your own product.",
 
+  // Admin finance
+  invalid_range: "That date range cannot be used. Check the dates and try again.",
+  invalid_cursor: "That page has expired. Start again from the first page.",
+  invalid_year: "Choose a year between 2000 and 2100.",
+  invalid_period: "Choose a VAT month.",
+  invalid_amount: "Enter an amount.",
+  invalid_resolution: "Choose what Paystack decided.",
+  no_open_dispute: "There is no open dispute on that order.",
+  period_closed: "This month is remitted. Record a correction as an adjustment instead.",
+  invalid_account: "Choose one of the accounts.",
+
   // Scanning
   bad_verdict: "The scanner sent a result that could not be read.",
   scan_not_reviewable: "Only a file under manual review, or one whose scan failed, can be decided here.",

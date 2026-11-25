@@ -981,6 +981,17 @@ assert_value "a month with no VAT activity is not chased" "" <<SQL
 SELECT coalesce(public.vat_reminder_targets('$(date -u -d "$MONTH_FIRST -3 months" +%Y-%m-14)')::text, '');
 SQL
 
+assert_value "a reminder claim is one row per kind and period" "1|1" <<SQL
+INSERT INTO public.email_log (kind, vat_period, recipient_hash, status)
+VALUES ('vat_reminder:$VAT_MONTH:due_soon:hash1', '$VAT_MONTH', 'hash1', 'pending')
+ON CONFLICT DO NOTHING;
+INSERT INTO public.email_log (kind, vat_period, recipient_hash, status)
+VALUES ('vat_reminder:$VAT_MONTH:due_soon:hash1', '$VAT_MONTH', 'hash1', 'pending')
+ON CONFLICT DO NOTHING;
+SELECT count(*) || '|' || (SELECT count(*) FROM public.email_log WHERE vat_period = '$VAT_MONTH')
+FROM public.email_log WHERE kind = 'vat_reminder:$VAT_MONTH:due_soon:hash1';
+SQL
+
 step "VAT workflow"
 
 q "SELECT public.set_vat_period_status('$FINANCE', '$VAT_MONTH', 'filed', NULL, NULL, NULL, NULL);" >/dev/null

@@ -192,3 +192,18 @@ SELECT 'the dispute decision index is partial, so it stays small',
             AND indexname = 'order_disputes_needs_decision_idx'
             AND indexdef LIKE '%WHERE needs_decision%'
        )
+UNION ALL
+SELECT 'email_log can hold a VAT reminder claim',
+       (SELECT count(*) = 2
+          FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = 'email_log'
+           AND column_name IN ('vat_period', 'kind'))
+UNION ALL
+SELECT 'a VAT reminder is claimed once per kind and period',
+       EXISTS (
+         SELECT 1 FROM pg_indexes
+          WHERE schemaname = 'public'
+            AND tablename = 'email_log'
+            AND indexname = 'email_log_vat_one_per_recipient'
+       )

@@ -31,7 +31,7 @@ interface Fakes {
     enqueue: { type: string; payload: Record<string, unknown>; dedupeKey: string | undefined }[]
     markRefundFailed: { requestId: string; reason: string }[]
     openDispute: { reference: string; note: string }[]
-    resolveDispute: { orderId: string; outcome: string }[]
+    recordDisputeProviderOutcome: { reference: string; resolution: string; note: string }[]
     verify: string[]
   }
   log: { info: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> }
@@ -61,7 +61,7 @@ function makeFakes(overrides: Partial<WebhookDeps> = {}): Fakes {
     enqueue: [],
     markRefundFailed: [],
     openDispute: [],
-    resolveDispute: [],
+    recordDisputeProviderOutcome: [],
     verify: [],
   }
 
@@ -119,10 +119,10 @@ function makeFakes(overrides: Partial<WebhookDeps> = {}): Fakes {
 
       return { status: "disputed" }
     },
-    resolveDispute: async (orderId, outcome) => {
-      calls.resolveDispute.push({ orderId, outcome })
+    recordDisputeProviderOutcome: async (reference, resolution, note) => {
+      calls.recordDisputeProviderOutcome.push({ reference, resolution, note })
 
-      return { status: outcome }
+      return { status: "recorded", needsDecision: true }
     },
     log,
     ...overrides,
@@ -555,7 +555,7 @@ describe("dispute events", () => {
     expect(fakes.calls.finish[0]?.status).toBe("ignored")
   })
 
-  it("maps merchant-accepted to a lost dispute", async () => {
+  it("records merchant-accepted and leaves the decision to a person", async () => {
     const response = await handlePaystackWebhook(
       request(
         body("charge.dispute.resolve", {
@@ -568,10 +568,12 @@ describe("dispute events", () => {
     )
 
     expect(response.status).toBe(200)
-    expect(fakes.calls.resolveDispute).toEqual([{ orderId: ORDER_ID, outcome: "lost" }])
+    expect(fakes.calls.recordDisputeProviderOutcome).toEqual([
+      { reference: "afv_abc123", resolution: "merchant-accepted", note: "Paystack dispute 624" },
+    ])
   })
 
-  it("maps declined to a won dispute", async () => {
+  it("records declined and leaves the decision to a person", async () => {
     const response = await handlePaystackWebhook(
       request(
         body("charge.dispute.resolve", {
@@ -584,7 +586,9 @@ describe("dispute events", () => {
     )
 
     expect(response.status).toBe(200)
-    expect(fakes.calls.resolveDispute).toEqual([{ orderId: ORDER_ID, outcome: "won" }])
+    expect(fakes.calls.recordDisputeProviderOutcome).toEqual([
+      { reference: "afv_abc123", resolution: "declined", note: "Paystack dispute 624" },
+    ])
   })
 
   it("ignores a resolution it does not recognise rather than guessing", async () => {
@@ -600,12 +604,16 @@ describe("dispute events", () => {
     )
 
     expect(response.status).toBe(200)
-    expect(fakes.calls.resolveDispute).toHaveLength(0)
+    expect(fakes.calls.recordDisputeProviderOutcome).toHaveLength(0)
     expect(fakes.calls.finish[0]).toEqual({ id: "event-1", status: "ignored", error: "resolution_unknown" })
   })
 
   it("ignores a resolve for an order we do not have", async () => {
-    fakes = makeFakes({ getOrderByReference: async () => null })
+    fakes = makeFakes({
+      recordDisputeProviderOutcome: async () => {
+        throw new Error("not_found")
+      },
+    })
 
     const response = await handlePaystackWebhook(
       request(

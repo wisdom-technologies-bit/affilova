@@ -529,8 +529,10 @@ $$;
 ALTER TABLE public.email_log ALTER COLUMN order_id DROP NOT NULL;
 
 ALTER TABLE public.email_log
-  ADD COLUMN IF NOT EXISTS withdrawal_id uuid
-  REFERENCES public.withdrawals (id) ON DELETE CASCADE;
+  ADD COLUMN IF NOT EXISTS withdrawal_id uuid;
+-- No foreign key on purpose: the payouts migration's own rollback drops the
+-- withdrawals table, and a key from here would block it. A claim for a withdrawal
+-- that no longer exists is harmless.
 
 DO $$
 BEGIN

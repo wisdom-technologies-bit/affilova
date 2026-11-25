@@ -26,3 +26,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# The rendered review pages: only the screenshots are kept.
+docs/design-review/*/html/

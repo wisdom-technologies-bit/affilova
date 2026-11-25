@@ -187,6 +187,8 @@ d() { date -u -d "$TODAY - $1 days" +%F; }
 dplus() { date -u -d "$TODAY + $1 days" +%F; }
 MONTH_FIRST=$(date -u -d "$TODAY" +%Y-%m-01)
 VAT_MONTH=$(date -u -d "$MONTH_FIRST -2 months" +%Y-%m-01)
+# A 64 character hex hash, the same shape the app writes into email_log.
+HASH1=$(printf 'a%.0s' $(seq 1 64))
 NEXT_MONTH=$(date -u -d "$VAT_MONTH +1 month" +%Y-%m-01)
 LAST_OF_VAT=$(date -u -d "$NEXT_MONTH -1 day" +%F)
 VAT_DUE=$(date -u -d "$NEXT_MONTH +20 days" +%F)
@@ -982,14 +984,15 @@ SELECT coalesce(public.vat_reminder_targets('$(date -u -d "$MONTH_FIRST -3 month
 SQL
 
 assert_value "a reminder claim is one row per kind and period" "1|1" <<SQL
+-- The hash is the same shape the app writes: a sha256 of the address in hex.
 INSERT INTO public.email_log (kind, vat_period, recipient_hash, status)
-VALUES ('vat_reminder:$VAT_MONTH:due_soon:hash1', '$VAT_MONTH', 'hash1', 'pending')
+VALUES ('vat_reminder:$VAT_MONTH:due_soon:${HASH1}', '$VAT_MONTH', '${HASH1}', 'pending')
 ON CONFLICT DO NOTHING;
 INSERT INTO public.email_log (kind, vat_period, recipient_hash, status)
-VALUES ('vat_reminder:$VAT_MONTH:due_soon:hash1', '$VAT_MONTH', 'hash1', 'pending')
+VALUES ('vat_reminder:$VAT_MONTH:due_soon:${HASH1}', '$VAT_MONTH', '${HASH1}', 'pending')
 ON CONFLICT DO NOTHING;
 SELECT count(*) || '|' || (SELECT count(*) FROM public.email_log WHERE vat_period = '$VAT_MONTH')
-FROM public.email_log WHERE kind = 'vat_reminder:$VAT_MONTH:due_soon:hash1';
+FROM public.email_log WHERE kind = 'vat_reminder:$VAT_MONTH:due_soon:${HASH1}';
 SQL
 
 step "VAT workflow"

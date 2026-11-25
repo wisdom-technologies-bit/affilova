@@ -1,11 +1,7 @@
-import { EmptyState } from "@/components/app-shell/empty-state"
-import { PageHeader } from "@/components/app-shell/page-header"
+import { WithdrawalsPage } from "@/components/payouts/payout-pages"
 
-export default function AffiliateWithdrawalsPage() {
-  return (
-    <>
-      <PageHeader title="Withdrawals" />
-      <EmptyState />
-    </>
-  )
+export const dynamic = "force-dynamic"
+
+export default async function AffiliateWithdrawalsPage() {
+  return await WithdrawalsPage({ payoutDetailsHref: "/payout-details" })
 }

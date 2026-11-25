@@ -7,6 +7,7 @@ import {
   getTrackingEnv,
   parseCloudinaryEnv,
   parseOrderAccessSecret,
+  parseStepUpSecret,
   parsePublicEnv,
   parseR2Env,
   parseScannerEnv,
@@ -283,6 +284,30 @@ describe("parseOrderAccessSecret", () => {
     expect(() => parseOrderAccessSecret({ ORDER_ACCESS_SECRET: "   " })).toThrow(
       /ORDER_ACCESS_SECRET/,
     )
+  })
+})
+
+describe("parseStepUpSecret", () => {
+  it("accepts a secret of at least 32 characters", () => {
+    expect(parseStepUpSecret({ STEP_UP_SECRET: "0123456789abcdef0123456789abcdef" })).toBe(
+      "0123456789abcdef0123456789abcdef",
+    )
+  })
+
+  it("refuses a missing, blank or short secret, and names the variable", () => {
+    expect(() => parseStepUpSecret({})).toThrow(/STEP_UP_SECRET/)
+    expect(() => parseStepUpSecret({ STEP_UP_SECRET: "   " })).toThrow(/STEP_UP_SECRET/)
+    expect(() => parseStepUpSecret({ STEP_UP_SECRET: "short" })).toThrow(/at least 32 characters/)
+  })
+
+  it("does not echo the secret in the error", () => {
+    expect(() => parseStepUpSecret({ STEP_UP_SECRET: "short-secret-value" })).not.toThrow(
+      /short-secret-value/,
+    )
+  })
+
+  it("is optional in the server schema, so a build without payouts still works", () => {
+    expect(() => parseServerEnv(validServerSource)).not.toThrow()
   })
 })
 

@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 
 import { DataTable, type Column } from "@/components/affiliate/data-table"
@@ -14,7 +15,7 @@ import { formatNaira } from "@/lib/catalog/money"
 // Earnings: what is held, what has cleared, and every commission behind them.
 //
 // The hold is explained with the number of days the platform actually stores,
-// not a number this page chose. Withdrawals are not built yet, and the page says
+// not a number this page chose. Withdrawals have their own pages, and this page links to them and says
 // so plainly instead of showing a button that cannot work.
 
 export function BalanceSummary({ balance }: { balance: Balance }) {
@@ -141,7 +142,17 @@ export function CommissionsPanel({
           Commission is held for {formatCount(holdDays)} {holdDays === 1 ? "day" : "days"} after an
           order is paid, then it moves from pending to available.
         </p>
-        <p className="mt-2 text-muted-foreground">Withdrawals are not available yet.</p>
+        <p className="mt-2 text-muted-foreground">
+          Ready to cash out?{" "}
+          <Link href="/withdrawals" className="font-medium text-brand-700 underline-offset-4 hover:underline">
+            Withdraw your available balance
+          </Link>{" "}
+          or{" "}
+          <Link href="/payout-details" className="font-medium text-brand-700 underline-offset-4 hover:underline">
+            set up your payout account
+          </Link>
+          .
+        </p>
       </div>
 
       {error === null ? null : <ErrorNotice message={error} />}

@@ -1,3 +1,5 @@
+import Link from "next/link"
+
 import { DataTable, type Column } from "@/components/affiliate/data-table"
 import { DateRangePicker } from "@/components/affiliate/date-range-picker"
 import { KpiCard } from "@/components/affiliate/kpi-card"
@@ -80,8 +82,11 @@ export function MerchantOverviewPanel({
           </dl>
 
           <p className="rounded-md border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-            {WITHDRAWALS_NOTE} Your available balance is what you will be able to withdraw once
-            payouts are switched on.
+            {WITHDRAWALS_NOTE} Your available balance is what you can withdraw.{" "}
+            <Link href="/payout-details" className="font-medium text-brand-700 underline-offset-4 hover:underline">
+              Open payout details
+            </Link>
+            .
           </p>
 
           {overview.orders === 0 ? (

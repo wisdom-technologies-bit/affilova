@@ -290,3 +290,131 @@ export function refundNoticeEmail(input: RefundNoticeInput): EmailContent {
     ]),
   }
 }
+
+// ---------------------------------------------------------------------------
+// Payouts: the step-up code and the withdrawal notices
+// ---------------------------------------------------------------------------
+
+export interface StepUpCodeInput {
+  /** Six digits. Rendered as given: the caller has already validated it. */
+  code: string
+  purpose: "bank_change" | "withdrawal"
+  expiresInMinutes: number
+  branding: BrandingUrls
+}
+
+const STEP_UP_ACTION: Readonly<Record<StepUpCodeInput["purpose"], string>> = {
+  bank_change: "change your payout account",
+  withdrawal: "request a withdrawal",
+}
+
+export function stepUpCodeEmail(input: StepUpCodeInput): EmailContent {
+  const action = STEP_UP_ACTION[input.purpose]
+  const minutes = `${input.expiresInMinutes} minutes`
+
+  return {
+    subject: "Your Affilova confirmation code",
+    html: layout({
+      branding: input.branding,
+      heading: "Your confirmation code",
+      paragraphs: [
+        `Use this code to ${escapeHtml(action)}:`,
+        `<span style="display:inline-block;font-size:28px;letter-spacing:6px;font-weight:700;font-family:'Courier New',monospace;">${escapeHtml(input.code)}</span>`,
+        `It expires in ${escapeHtml(minutes)} and works once. We will never ask you to read it out to anyone.`,
+      ],
+      footnote: "If you did not request this, change your password and contact us.",
+    }),
+    text: textLines([
+      "Your confirmation code",
+      "",
+      `Use this code to ${action}:`,
+      input.code,
+      "",
+      `It expires in ${minutes} and works once. We will never ask you to read it out to anyone.`,
+      "",
+      "If you did not request this, change your password and contact us.",
+      input.branding.contactUrl,
+    ]),
+  }
+}
+
+export type WithdrawalNoticeStatus = "paid" | "failed" | "reversed" | "rejected"
+
+export interface WithdrawalNoticeInput {
+  status: WithdrawalNoticeStatus
+  grossKobo: number | bigint
+  feeKobo: number | bigint
+  netKobo: number | bigint
+  /** For a rejection: the reason written for the user. Escaped like any text. */
+  reason?: string | null
+  branding: BrandingUrls
+}
+
+const NOTICE_COPY: Readonly<
+  Record<WithdrawalNoticeStatus, { subject: string; heading: string; lead: string; closing: string }>
+> = {
+  paid: {
+    subject: "Your withdrawal was paid",
+    heading: "Your withdrawal was paid",
+    lead: "The transfer to your payout account has been sent.",
+    closing: "How soon it shows in your account depends on your bank.",
+  },
+  failed: {
+    subject: "Your withdrawal did not go through",
+    heading: "Your withdrawal did not go through",
+    lead: "The transfer could not be completed.",
+    closing: "The full amount is back in your available balance. You can request it again.",
+  },
+  reversed: {
+    subject: "Your withdrawal was reversed",
+    heading: "Your withdrawal was reversed",
+    lead: "The transfer was sent back before it reached your account.",
+    closing: "The full amount is back in your available balance. You can request it again.",
+  },
+  rejected: {
+    subject: "Your withdrawal was not approved",
+    heading: "Your withdrawal was not approved",
+    lead: "We reviewed this request and did not approve it.",
+    closing: "The full amount is back in your available balance.",
+  },
+}
+
+export function withdrawalNoticeEmail(input: WithdrawalNoticeInput): EmailContent {
+  const copy = NOTICE_COPY[input.status]
+  const gross = formatNaira(input.grossKobo)
+  const fee = formatNaira(input.feeKobo)
+  const net = formatNaira(input.netKobo)
+  const reason = input.status === "rejected" && input.reason ? input.reason.trim() : ""
+
+  const paragraphs = [
+    copy.lead,
+    `Amount: <strong>${escapeHtml(gross)}</strong><br>Fee: <strong>${escapeHtml(fee)}</strong><br>You receive: <strong>${escapeHtml(net)}</strong>`,
+    ...(reason === "" ? [] : [`Reason: ${escapeHtml(reason)}`]),
+    copy.closing,
+  ]
+
+  return {
+    subject: copy.subject,
+    html: layout({
+      branding: input.branding,
+      heading: copy.heading,
+      paragraphs,
+      footnote: "Your account number is never included in our emails.",
+    }),
+    text: textLines([
+      copy.heading,
+      "",
+      copy.lead,
+      "",
+      `Amount: ${gross}`,
+      `Fee: ${fee}`,
+      `You receive: ${net}`,
+      ...(reason === "" ? [] : ["", `Reason: ${reason}`]),
+      "",
+      copy.closing,
+      "",
+      "Questions? Contact us through our contact page:",
+      input.branding.contactUrl,
+    ]),
+  }
+}

@@ -31,6 +31,7 @@ import { PurchasesScreen } from "./purchases-screen"
 import { Receipt } from "./receipt"
 import { ReceiptsList } from "./receipts-list"
 import type { OrderDetail, OrderSummary } from "@/lib/account/types"
+import { LEGAL } from "@/lib/site-config"
 
 const ORDER: OrderSummary = {
   orderId: "33333333-3333-4333-8333-333333333333",
@@ -302,10 +303,12 @@ describe("Receipt", () => {
     expect(html).toContain("noPrint")
   })
 
-  it("prints no legal identity line when none is configured", () => {
+  it("prints the configured legal entity and registration number, and no address while it is empty", () => {
     const html = render(createElement(Receipt, { detail: DETAIL }))
 
-    expect(html).not.toContain("Registration")
+    expect(html).toContain("WISDOM TECHNOLOGIES LIMITED")
+    expect(html).toContain("Registration RC 9107303")
+    expect(LEGAL.registeredAddress).toBe("")
   })
 })
 

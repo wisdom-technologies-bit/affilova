@@ -55,5 +55,5 @@ export const VENDOR_METRIC_LIST: readonly MetricDefinition[] = [
   VENDOR_METRICS.available,
 ]
 
-/** The note that keeps the screen honest until payouts exist. */
-export const WITHDRAWALS_NOTE = "Withdrawals are not available yet."
+/** Where the Overview sends a vendor who wants to cash out. */
+export const WITHDRAWALS_NOTE = "Withdrawals are on your payout details page."

@@ -134,7 +134,7 @@ describe("MerchantOverviewPanel", () => {
     expect(html).toContain("How these are calculated")
   })
 
-  it("says withdrawals are not available yet", () => {
+  it("points to the payout details page for withdrawals", () => {
     const html = render(
       createElement(MerchantOverviewPanel, {
         range,
@@ -145,7 +145,8 @@ describe("MerchantOverviewPanel", () => {
       }),
     )
 
-    expect(html).toContain("Withdrawals are not available yet.")
+    expect(html).toContain("Withdrawals are on your payout details page.")
+    expect(html).toContain('href="/payout-details"')
   })
 
   it("draws the chart with a text alternative and a daily table", () => {

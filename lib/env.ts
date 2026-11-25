@@ -87,6 +87,9 @@ const serverEnvSchema = z.object({
   // Optional here so a deployment that never sends an access link still builds;
   // required, at least 32 characters, by getOrderAccessSecret().
   ORDER_ACCESS_SECRET: optionalString,
+  // Optional here so a deployment without payouts still builds; required, at
+  // least 32 characters, by getStepUpSecret().
+  STEP_UP_SECRET: optionalString,
   R2_ACCOUNT_ID: optionalString,
   R2_ACCESS_KEY_ID: optionalString,
   R2_SECRET_ACCESS_KEY: optionalString,
@@ -214,6 +217,17 @@ export interface PaystackEnv {
 // every other secret: rotating it invalidates links and nothing else.
 const orderAccessSecretSchema = z.object({
   ORDER_ACCESS_SECRET: z.preprocess(
+    present,
+    z
+      .string({ required_error: "is required" })
+      .min(32, "must be at least 32 characters long"),
+  ),
+})
+
+// The secret that keys the HMAC of a step-up code. Deliberately separate from
+// every other secret: rotating it voids unused codes and nothing else.
+const stepUpSecretSchema = z.object({
+  STEP_UP_SECRET: z.preprocess(
     present,
     z
       .string({ required_error: "is required" })
@@ -351,6 +365,16 @@ export function parseOrderAccessSecret(source: EnvSource): string {
   return result.data.ORDER_ACCESS_SECRET
 }
 
+export function parseStepUpSecret(source: EnvSource): string {
+  const result = stepUpSecretSchema.safeParse(source)
+
+  if (!result.success) {
+    throw new Error(formatIssues("step-up code", result.error))
+  }
+
+  return result.data.STEP_UP_SECRET
+}
+
 let serverEnvCache: ServerEnv | undefined
 let publicEnvCache: PublicEnv | undefined
 
@@ -440,5 +464,13 @@ export function getPaystackEnv(): PaystackEnv {
 export function getOrderAccessSecret(): string {
   return parseOrderAccessSecret({
     ORDER_ACCESS_SECRET: process.env.ORDER_ACCESS_SECRET,
+  })
+}
+
+// The step-up secret, read only when a code is made or checked, and never at
+// import time. A missing or short secret is an error, not a default.
+export function getStepUpSecret(): string {
+  return parseStepUpSecret({
+    STEP_UP_SECRET: process.env.STEP_UP_SECRET,
   })
 }

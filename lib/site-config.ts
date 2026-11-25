@@ -14,12 +14,12 @@ export interface LegalConfig {
 }
 
 export const LEGAL: LegalConfig = {
-  entityName: "",
+  entityName: "WISDOM TECHNOLOGIES LIMITED",
   registeredAddress: "",
-  registrationNumber: "",
+  registrationNumber: "RC 9107303",
   contactPath: "/contact",
-  dataProtectionContact: "",
-  supportEmail: "",
+  dataProtectionContact: "Data Protection Officer, hello@affilova.com",
+  supportEmail: "hello@affilova.com",
 }
 
 export type PolicyStatus = "draft" | "final"

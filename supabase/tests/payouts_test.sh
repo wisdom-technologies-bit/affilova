@@ -71,7 +71,7 @@ seed_user() { # id email kobo age_days
      INSERT INTO public.ledger_entries (txn_id, account_id, party_id, debit_kobo, credit_kobo)
        SELECT id, 1, NULL, $3, 0 FROM public.ledger_transactions WHERE idempotency_key = 'seed:$1';
      INSERT INTO public.ledger_entries (txn_id, account_id, party_id, debit_kobo, credit_kobo, available_at)
-       SELECT id, 3, '$1', 0, $3, now() - interval '1 day'
+       SELECT id, 3, '$1', 0, $3, '2026-11-16 00:00:00+00'::timestamptz
          FROM public.ledger_transactions WHERE idempotency_key = 'seed:$1';
      COMMIT;" >/dev/null
 }
@@ -86,10 +86,10 @@ seed_split_user() { # id email vendor_kobo affiliate_kobo
        SELECT id, 1, NULL, $3::bigint + $4::bigint, 0
          FROM public.ledger_transactions WHERE idempotency_key = 'seed:$1';
      INSERT INTO public.ledger_entries (txn_id, account_id, party_id, debit_kobo, credit_kobo, available_at)
-       SELECT id, 3, '$1', 0, $3, now() - interval '1 day'
+       SELECT id, 3, '$1', 0, $3, '2026-11-16 00:00:00+00'::timestamptz
          FROM public.ledger_transactions WHERE idempotency_key = 'seed:$1';
      INSERT INTO public.ledger_entries (txn_id, account_id, party_id, debit_kobo, credit_kobo, available_at)
-       SELECT id, 4, '$1', 0, $4, now() - interval '1 day'
+       SELECT id, 4, '$1', 0, $4, '2026-11-16 00:00:00+00'::timestamptz
          FROM public.ledger_transactions WHERE idempotency_key = 'seed:$1';
      COMMIT;" >/dev/null
 }

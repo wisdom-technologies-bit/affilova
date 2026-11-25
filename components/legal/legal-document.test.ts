@@ -73,7 +73,7 @@ describe("LegalDocument", () => {
       }),
     )
 
-    expect(emptyHtml).not.toContain("Affilova is operated by")
+    expect(emptyHtml).not.toContain("Example Tech Ltd")
     expect(setHtml).toContain("Affilova is operated by Example Tech Ltd, Lagos (registration no. RC-999)")
   })
 })

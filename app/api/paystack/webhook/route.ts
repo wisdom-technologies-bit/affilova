@@ -9,6 +9,7 @@ import { enqueueJob } from "@/lib/jobs/queue"
 import { REFUND_NOTICE_JOB, refundNoticeDedupeKey } from "@/lib/jobs/order-email"
 import { logger } from "@/lib/logger"
 import * as payoutDb from "@/lib/payouts/db"
+import { enqueueWithdrawalNotice } from "@/lib/payouts/notices"
 import { PaystackError, verifyTransaction, type VerifiedTransaction } from "@/lib/paystack/client"
 import {
   isPaystackSourceIp,
@@ -526,6 +527,12 @@ async function handleTransferEvent(
       deps.log.error("paystack_transfer_mismatch", { reference, event })
 
       return ignored("transfer_mismatch")
+    }
+
+    if (result.applied) {
+      // Tell the user. A queue failure is logged inside and never retried here:
+      // the result is already posted, and a retry would be answered as a duplicate.
+      await enqueueWithdrawalNotice(deps.enqueueJob, { reference }, result.status, deps.log)
     }
 
     return OK

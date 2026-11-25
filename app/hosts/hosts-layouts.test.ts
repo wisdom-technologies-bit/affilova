@@ -71,6 +71,54 @@ const affiliate = vi.hoisted(() => ({
 
 vi.mock("@/lib/affiliate/read-actions", () => affiliate)
 
+// The payout screens read the signed-in person's own payout data on the server.
+// The actions answer with an honest empty state so no render test reaches a database.
+const payouts = vi.hoisted(() => ({
+  screen: {
+    account: null,
+    autoPayout: false,
+    availableKobo: BigInt(0),
+    pendingKobo: BigInt(0),
+    totalKobo: BigInt(0),
+    today: "2026-11-24",
+    nextPayoutDay: "2026-11-25",
+    todayIsPayoutDay: true,
+    blackoutReason: null,
+    settings: {
+      minWithdrawalKobo: BigInt(100000),
+      feeBps: 100,
+      feeMinKobo: BigInt(5000),
+      feeCapKobo: BigInt(50000),
+      holdDays: 14,
+    },
+    withdrawals: [],
+  },
+}))
+
+vi.mock("@/lib/identity/session", () => ({
+  getAuthUser: async () => ({ id: "admin-1", email: "ada@example.com" }),
+}))
+
+vi.mock("@/lib/payouts/actions", () => ({
+  getPayoutScreenAction: async () => ({ ok: true, data: payouts.screen }),
+  listBanksAction: async () => ({ ok: true, data: [{ name: "Test Bank", code: "058" }] }),
+  listWithdrawalsAction: async () => ({ ok: true, data: { rows: [], nextCursor: null } }),
+  getPayoutSettingsAction: async () => ({ ok: true, data: { values: {}, changes: [] } }),
+  listBlackoutDatesAction: async () => ({ ok: true, data: [] }),
+  resolveAccountAction: vi.fn(),
+  requestStepUpCodeAction: vi.fn(),
+  savePayoutAccountAction: vi.fn(),
+  setAutoPayoutAction: vi.fn(),
+  previewWithdrawalAction: vi.fn(),
+  requestWithdrawalAction: vi.fn(),
+  cancelWithdrawalAction: vi.fn(),
+  approveWithdrawalAction: vi.fn(),
+  rejectWithdrawalAction: vi.fn(),
+  addBlackoutDateAction: vi.fn(),
+  removeBlackoutDateAction: vi.fn(),
+  updatePayoutSettingAction: vi.fn(),
+}))
+
 // The account and merchant screens read their first page on the server too.
 const account = vi.hoisted(() => ({
   getMyOrdersAction: vi.fn(),

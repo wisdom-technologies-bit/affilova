@@ -141,6 +141,11 @@ export interface PayoutServiceDeps {
   now?: () => number
   /** Injected so a test can make references predictable. */
   newReference?: () => string
+  /**
+   * Called after a transfer result was recorded here (a definite refusal or a
+   * reconcile), so the user can be told. A failure in it never undoes the result.
+   */
+  onSettled?: (call: { reference: string; status: string; applied: boolean }) => Promise<void>
 }
 
 export interface PayoutService {
@@ -230,6 +235,18 @@ function safeReason(error: unknown): string {
 export function createPayoutService(deps: PayoutServiceDeps): PayoutService {
   const now = deps.now ?? (() => Date.now())
   const newReference = deps.newReference ?? (() => payoutReference())
+
+  async function notifySettled(reference: string, outcome: { status: string; applied: boolean }): Promise<void> {
+    if (deps.onSettled === undefined) {
+      return
+    }
+
+    try {
+      await deps.onSettled({ reference, status: outcome.status, applied: outcome.applied })
+    } catch {
+      deps.log.warn("payout_settled_hook_failed", { reference })
+    }
+  }
 
   return {
     async prepareAccount(input) {
@@ -447,13 +464,15 @@ export function createPayoutService(deps: PayoutServiceDeps): PayoutService {
             // user now rather than after a reconcile pass.
             summary.failed += 1
 
-            await deps.store.recordTransferResult({
+            const outcome = await deps.store.recordTransferResult({
               reference: item.reference,
               event: "failed",
               transferCode: null,
               reason: safeReason(error),
               feeKobo: null,
             })
+
+            await notifySettled(item.reference, outcome)
 
             deps.log.warn("payout_transfer_rejected", {
               reference: item.reference,
@@ -497,13 +516,15 @@ export function createPayoutService(deps: PayoutServiceDeps): PayoutService {
             continue
           }
 
-          await deps.store.recordTransferResult({
+          const outcome = await deps.store.recordTransferResult({
             reference: item.reference,
             event,
             transferCode: transfer.transferCode === "" ? null : transfer.transferCode,
             reason: event === "success" ? null : `paystack_${transfer.status}`,
             feeKobo: transfer.feeKobo === null ? null : BigInt(transfer.feeKobo),
           })
+
+          await notifySettled(item.reference, outcome)
 
           summary.settled += 1
         } catch (error) {

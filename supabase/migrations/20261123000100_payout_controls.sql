@@ -520,6 +520,35 @@ END;
 $$;
 
 -- ----------------------------------------------------------------------------
+-- 7b. email_log can now hold a withdrawal notice
+-- A withdrawal notice (paid, failed, reversed, rejected) is claimed in the same
+-- table as the order emails so a retried job can never send it twice. The row
+-- points at a withdrawal instead of an order: exactly one of the two is set.
+-- Existing rows all have an order and are untouched.
+-- ----------------------------------------------------------------------------
+ALTER TABLE public.email_log ALTER COLUMN order_id DROP NOT NULL;
+
+ALTER TABLE public.email_log
+  ADD COLUMN IF NOT EXISTS withdrawal_id uuid
+  REFERENCES public.withdrawals (id) ON DELETE CASCADE;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conrelid = 'public.email_log'::regclass AND conname = 'email_log_one_subject'
+  ) THEN
+    ALTER TABLE public.email_log
+      ADD CONSTRAINT email_log_one_subject
+      CHECK (num_nonnulls(order_id, withdrawal_id) = 1);
+  END IF;
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS email_log_withdrawal_one_per_recipient
+  ON public.email_log (kind, withdrawal_id, recipient_hash)
+  WHERE withdrawal_id IS NOT NULL;
+
+-- ----------------------------------------------------------------------------
 -- 8. Privileges: service_role only
 -- ----------------------------------------------------------------------------
 REVOKE ALL ON FUNCTION public.create_step_up_code(uuid, text, text, int) FROM PUBLIC, anon, authenticated;
@@ -552,11 +581,17 @@ COMMIT;
 -- "BEGIN;" line below through the final "COMMIT;" line, then delete the leading
 -- "--" (and the space) from every one of those lines. It becomes runnable SQL.
 --
--- Warning: this drops every step-up code. Settings changes already made through
+-- Warning: this drops every step-up code and every withdrawal notice claim. Settings changes already made through
 -- update_setting stay (they are rows in settings, settings_history, audit_log).
 -- ============================================================================
 --
 -- BEGIN;
+--
+-- DELETE FROM public.email_log WHERE withdrawal_id IS NOT NULL;
+-- DROP INDEX IF EXISTS public.email_log_withdrawal_one_per_recipient;
+-- ALTER TABLE public.email_log DROP CONSTRAINT IF EXISTS email_log_one_subject;
+-- ALTER TABLE public.email_log DROP COLUMN IF EXISTS withdrawal_id;
+-- ALTER TABLE public.email_log ALTER COLUMN order_id SET NOT NULL;
 --
 -- DROP FUNCTION IF EXISTS public.admin_withdrawal_queue(uuid, text, int, jsonb);
 -- DROP FUNCTION IF EXISTS public.get_payout_screen_data(uuid);

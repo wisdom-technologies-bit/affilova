@@ -623,6 +623,28 @@ expect "a processing withdrawal no longer needs a second approver" "false" "$r"
 q "UPDATE public.withdrawals SET status = 'requested' WHERE reference = 'wd_dualapproval0000001'" >/dev/null
 
 # ============================================================================
+step "email_log holds withdrawal notices"
+WID=$(q "SELECT id FROM public.withdrawals LIMIT 1")
+H="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+r=$(qx "INSERT INTO public.email_log (kind, withdrawal_id, recipient_hash) VALUES ('withdrawal_paid', '$WID', '$H')")
+expect "a withdrawal notice can be claimed" "" "$r"
+e=$(qx "INSERT INTO public.email_log (kind, withdrawal_id, recipient_hash) VALUES ('withdrawal_paid', '$WID', '$H')")
+contains "the same notice cannot be claimed twice" "duplicate key" "$e"
+r=$(qx "INSERT INTO public.email_log (kind, withdrawal_id, recipient_hash) VALUES ('withdrawal_failed', '$WID', '$H')")
+expect "another status of the same withdrawal is a separate notice" "" "$r"
+expect "both notices are stored" "2" "$(q "SELECT count(*) FROM public.email_log WHERE withdrawal_id IS NOT NULL")"
+e=$(qx "INSERT INTO public.email_log (kind, recipient_hash) VALUES ('withdrawal_paid', '$H')")
+contains "a row must point at an order or a withdrawal" "email_log_one_subject" "$e"
+ORD=$(q "SELECT id FROM public.orders LIMIT 1")
+if [ -n "$ORD" ]; then
+  e=$(qx "INSERT INTO public.email_log (kind, order_id, withdrawal_id, recipient_hash) VALUES ('x', '$ORD', '$WID', '$H')")
+  contains "a row cannot point at both" "email_log_one_subject" "$e"
+fi
+e=$(qx "SET ROLE authenticated; SELECT count(*) FROM public.email_log")
+contains "authenticated still cannot read email_log" "permission denied" "$e"
+q "DELETE FROM public.email_log WHERE withdrawal_id IS NOT NULL" >/dev/null
+
+# ============================================================================
 step "Privileges and row level security"
 for fn in "create_step_up_code('$U1', 'withdrawal', '$HASH_A', 600)" "verify_step_up_code('$U1', 'withdrawal', '$HASH_A')" \
           "update_setting('$ADMIN', 'withdrawal_fee_bps', '200'::jsonb)" "list_blackout_dates('2026-12-01', '2026-12-31')" \

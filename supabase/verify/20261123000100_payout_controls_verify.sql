@@ -44,4 +44,12 @@ SELECT 'the purpose column is constrained',
           WHERE conrelid = 'public.step_up_codes'::regclass AND contype = 'c'
             AND pg_get_constraintdef(oid) LIKE '%bank_change%'
             AND pg_get_constraintdef(oid) LIKE '%withdrawal%'
-       );
+       )
+UNION ALL
+SELECT 'email_log can hold a withdrawal notice: one subject, unique per recipient',
+       EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'email_log' AND column_name = 'withdrawal_id')
+       AND EXISTS (SELECT 1 FROM pg_constraint
+                    WHERE conrelid = 'public.email_log'::regclass AND conname = 'email_log_one_subject')
+       AND EXISTS (SELECT 1 FROM pg_indexes
+                    WHERE schemaname = 'public' AND indexname = 'email_log_withdrawal_one_per_recipient');

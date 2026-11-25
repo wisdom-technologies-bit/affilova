@@ -42,6 +42,37 @@ SUPER_USER="${SUPER_USER:-postgres}"
 MIGRATION="$ROOT/supabase/migrations/20261119000100_affiliate_read_models.sql"
 VERIFY="$ROOT/supabase/verify/20261119000100_affiliate_read_models_verify.sql"
 
+# ---------------------------------------------------------------------------
+# The seed's timeline
+#
+# Every seeded moment is an offset from the day this harness calls "today"
+# (D0), which is yesterday in UTC. Fixed dates made the harness a time bomb: a
+# commission paid seven days before the fixed date is inside its hold on the day
+# it was written and past it a week later, so the same seed produced different
+# balances. With relative dates the hold, the daily series and the rollup window
+# behave identically whenever the harness runs, and no assertion is weakened.
+#
+#   D0  the day the seed calls today      Dn  n days before D0
+#   DHOLD  the end of D2's seven day hold
+#   DRANGE_END  the last day of the seeded range
+# ---------------------------------------------------------------------------
+D0=$(date -u -d 'yesterday' +%F)
+D1=$(date -u -d "$D0 - 1 day" +%F)
+D2=$(date -u -d "$D0 - 2 days" +%F)
+D3=$(date -u -d "$D0 - 3 days" +%F)
+D4=$(date -u -d "$D0 - 4 days" +%F)
+D7=$(date -u -d "$D0 - 7 days" +%F)
+D9=$(date -u -d "$D0 - 9 days" +%F)
+D14=$(date -u -d "$D0 - 14 days" +%F)
+D18=$(date -u -d "$D0 - 18 days" +%F)
+D48=$(date -u -d "$D0 - 48 days" +%F)
+D49=$(date -u -d "$D0 - 49 days" +%F)
+D78=$(date -u -d "$D0 - 78 days" +%F)
+D79=$(date -u -d "$D0 - 79 days" +%F)
+DFAR=$(date -u -d "$D0 - 400 days" +%F)
+DHOLD=$(date -u -d "$D2 + 7 days" +%F)
+DRANGE_END=$(date -u -d "$D0 + 11 days" +%F)
+
 FAILED=0
 PASSED=0
 pass() { PASSED=$((PASSED + 1)); printf '  ok   %s\n' "$1"; }
@@ -214,23 +245,23 @@ UPDATE public.affiliate_profiles SET status = 'suspended' WHERE user_id = '$A_SU
 INSERT INTO public.products
   (id, vendor_id, category_id, title, slug, short_description, description, price_kobo, commission_bps, status, affiliate_approval, published_at)
 VALUES
-  ('$P_OPEN',     '$V1', 1, 'Open Product',      'open-product',      'A short description here', 'Long description', 500000,  2000, 'live',    'open',     '2026-11-01T09:00:00Z'),
-  ('$P_APPROVAL', '$V1', 1, 'Approval Product',  'approval-product',  'A short description here', 'Long description', 900000,  3000, 'live',    'approval', '2026-11-10T09:00:00Z'),
-  ('$P_INVITE',   '$V1', 1, 'Invite Product',    'invite-product',    'A short description here', 'Long description', 700000,  2500, 'live',    'invite',   '2026-11-15T09:00:00Z'),
+  ('$P_OPEN',     '$V1', 1, 'Open Product',      'open-product',      'A short description here', 'Long description', 500000,  2000, 'live',    'open',     '${D18}T09:00:00Z'),
+  ('$P_APPROVAL', '$V1', 1, 'Approval Product',  'approval-product',  'A short description here', 'Long description', 900000,  3000, 'live',    'approval', '${D9}T09:00:00Z'),
+  ('$P_INVITE',   '$V1', 1, 'Invite Product',    'invite-product',    'A short description here', 'Long description', 700000,  2500, 'live',    'invite',   '${D4}T09:00:00Z'),
   ('$P_DRAFT',    '$V1', 1, 'Draft Product',     'draft-product',     'A short description here', 'Long description', 500000,  2000, 'draft',   'open',     NULL),
-  ('$P_PAUSED',   '$V1', 1, 'Paused Product',    'paused-product',    'A short description here', 'Long description', 500000,  2000, 'paused',  'open',     '2026-11-05T09:00:00Z'),
-  ('$P_V2',       '$V2', 2, 'Other Store',       'other-store',       'A short description here', 'Long description', 1200000, 4000, 'live',    'open',     '2026-11-18T09:00:00Z'),
-  ('$P_OPEN2',    '$V1', 1, 'Second Open',       'second-open',       'A short description here', 'Long description', 300000,  3500, 'live',    'open',     '2026-11-12T09:00:00Z');
+  ('$P_PAUSED',   '$V1', 1, 'Paused Product',    'paused-product',    'A short description here', 'Long description', 500000,  2000, 'paused',  'open',     '${D14}T09:00:00Z'),
+  ('$P_V2',       '$V2', 2, 'Other Store',       'other-store',       'A short description here', 'Long description', 1200000, 4000, 'live',    'open',     '${D1}T09:00:00Z'),
+  ('$P_OPEN2',    '$V1', 1, 'Second Open',       'second-open',       'A short description here', 'Long description', 300000,  3500, 'live',    'open',     '${D7}T09:00:00Z');
 
 INSERT INTO public.product_images (product_id, cloudinary_public_id, alt_text, is_cover) VALUES
   ('$P_OPEN', 'affilova/products/cover-one', 'Cover one', true),
   ('$P_OPEN', 'affilova/products/extra-one', 'Extra one', false);
 
 INSERT INTO public.affiliate_product_access (affiliate_id, product_id, status, note, requested_at) VALUES
-  ('$A1','$P_APPROVAL','pending','Please let me promote this.','2026-11-19T09:00:00Z'),
-  ('$A2','$P_APPROVAL','approved','Thank you.','2026-11-18T09:00:00Z'),
-  ('$A1','$P_INVITE','approved','Invited.','2026-11-16T09:00:00Z'),
-  ('$A2','$P_OPEN','blocked','Repeated refunds.','2026-11-17T09:00:00Z');
+  ('$A1','$P_APPROVAL','pending','Please let me promote this.','${D0}T09:00:00Z'),
+  ('$A2','$P_APPROVAL','approved','Thank you.','${D1}T09:00:00Z'),
+  ('$A1','$P_INVITE','approved','Invited.','${D3}T09:00:00Z'),
+  ('$A2','$P_OPEN','blocked','Repeated refunds.','${D2}T09:00:00Z');
 SQL
 pass "seed inserted"
 
@@ -240,7 +271,7 @@ INSERT INTO public.products
   (vendor_id, category_id, title, slug, short_description, description, price_kobo, commission_bps, status, affiliate_approval, published_at)
 SELECT '$V1', 3, 'Bulk Product ' || lpad(i::text, 2, '0'), 'bulk-product-' || i,
        'A short description here', 'Long description', 100000 + i, 1000, 'live', 'open',
-       '2026-10-01T09:00:00Z'::timestamptz + (i || ' hours')::interval
+       '${D49}T09:00:00Z'::timestamptz + (i || ' hours')::interval
 FROM generate_series(1, 35) AS i;
 SQL
 
@@ -257,17 +288,17 @@ L_SECOND=$(q "select id from public.affiliate_links where affiliate_id = '$A1' a
 L_INVITE=$(q "select id from public.affiliate_links where affiliate_id = '$A1' and label = 'invited'")
 L_A2=$(q "select id from public.affiliate_links where affiliate_id = '$A2' and label = 'other'")
 
-# Clicks. The 23:30 UTC click on 18 November is 00:30 on 19 November in Lagos.
+# Clicks. The 23:30 UTC click on D1 is 00:30 on D0 in Lagos.
 run_sql >/dev/null <<SQL
 INSERT INTO public.affiliate_clicks
   (id, link_id, affiliate_id, product_id, created_at, ip_hash, ua_hash, is_unique, sub1, utm_source)
 VALUES
-  ('66666666-6666-4666-8666-666666666601','$L_MAIN','$A1','$P_OPEN','2026-11-16T09:00:00Z','ip1','ua1',true,NULL,'whatsapp'),
-  ('66666666-6666-4666-8666-666666666602','$L_MAIN','$A1','$P_OPEN','2026-11-17T10:00:00Z','ip2','ua2',true,'campaign-a','whatsapp'),
-  ('66666666-6666-4666-8666-666666666603','$L_MAIN','$A1','$P_OPEN','2026-11-17T10:05:00Z','ip3','ua3',true,'campaign-a','whatsapp'),
-  ('66666666-6666-4666-8666-666666666604','$L_MAIN','$A1','$P_OPEN','2026-11-18T23:30:00Z','ip4','ua4',true,'campaign-b','x'),
-  ('66666666-6666-4666-8666-666666666605','$L_SECOND','$A1','$P_OPEN','2026-11-19T08:00:00Z','ip5','ua5',true,'campaign-b','facebook'),
-  ('66666666-6666-4666-8666-666666666606','$L_A2','$A2','$P_OPEN2','2026-11-17T11:00:00Z','ip6','ua6',true,'other-campaign','facebook');
+  ('66666666-6666-4666-8666-666666666601','$L_MAIN','$A1','$P_OPEN','${D3}T09:00:00Z','ip1','ua1',true,NULL,'whatsapp'),
+  ('66666666-6666-4666-8666-666666666602','$L_MAIN','$A1','$P_OPEN','${D2}T10:00:00Z','ip2','ua2',true,'campaign-a','whatsapp'),
+  ('66666666-6666-4666-8666-666666666603','$L_MAIN','$A1','$P_OPEN','${D2}T10:05:00Z','ip3','ua3',true,'campaign-a','whatsapp'),
+  ('66666666-6666-4666-8666-666666666604','$L_MAIN','$A1','$P_OPEN','${D1}T23:30:00Z','ip4','ua4',true,'campaign-b','x'),
+  ('66666666-6666-4666-8666-666666666605','$L_SECOND','$A1','$P_OPEN','${D0}T08:00:00Z','ip5','ua5',true,'campaign-b','facebook'),
+  ('66666666-6666-4666-8666-666666666606','$L_A2','$A2','$P_OPEN2','${D2}T11:00:00Z','ip6','ua6',true,'other-campaign','facebook');
 SQL
 
 # Orders: two for A1 that stay paid, one for A2, and one for A1 that is refunded.
@@ -287,10 +318,10 @@ SELECT public.create_order('$BUYER','buyer@example.com','Buyer','$P_OPEN','$A1',
 SQL
 
 run_sql >/dev/null <<SQL
-SELECT public.process_paid_order('ref-a1-1', 1001, 500000, 'NGN', 7500, 'card', '2026-11-17T12:00:00Z');
-SELECT public.process_paid_order('ref-a1-2', 1002, 500000, 'NGN', 7500, 'card', '2026-11-19T09:00:00Z');
-SELECT public.process_paid_order('ref-a2-1', 1003, 300000, 'NGN', 4500, 'card', '2026-11-18T12:00:00Z');
-SELECT public.process_paid_order('ref-a1-3', 1004, 500000, 'NGN', 7500, 'card', '2026-11-19T10:00:00Z');
+SELECT public.process_paid_order('ref-a1-1', 1001, 500000, 'NGN', 7500, 'card', '${D2}T12:00:00Z');
+SELECT public.process_paid_order('ref-a1-2', 1002, 500000, 'NGN', 7500, 'card', '${D0}T09:00:00Z');
+SELECT public.process_paid_order('ref-a2-1', 1003, 300000, 'NGN', 4500, 'card', '${D1}T12:00:00Z');
+SELECT public.process_paid_order('ref-a1-3', 1004, 500000, 'NGN', 7500, 'card', '${D0}T10:00:00Z');
 SQL
 
 REFUND_ORDER=$(q "select id from public.orders where paystack_reference = 'ref-a1-3'")
@@ -312,7 +343,7 @@ SELECT id, 5, NULL, 0, 100000 FROM txn;
 SQL
 
 run_sql >/dev/null <<SQL
-SELECT public.rollup_affiliate_stats('2026-11-01', '2026-11-30');
+SELECT public.rollup_affiliate_stats('${D18}', '${DRANGE_END}');
 SQL
 pass "links, clicks, paid orders, a refund and the rollup are in place"
 
@@ -452,8 +483,8 @@ SQL
 # ---------------------------------------------------------------------------
 step "Overview"
 
-FROM_TS='2026-11-17T00:00:00Z'
-TO_TS='2026-11-19T23:59:59Z'
+FROM_TS="${D2}T00:00:00Z"
+TO_TS="${D0}T23:59:59Z"
 
 assert_value "clicks in range" "4" <<SQL
 SELECT public.affiliate_overview('$A1', '$FROM_TS', '$TO_TS') ->> 'clicks';
@@ -487,7 +518,7 @@ assert_value "an empty range is zero, not null" "0|0|0|0|0|0|0" <<SQL
 SELECT (o ->> 'clicks') || '|' || (o ->> 'unique_clicks') || '|' || (o ->> 'orders') || '|' ||
        (o ->> 'revenue_kobo') || '|' || (o ->> 'commission_kobo') || '|' ||
        (o ->> 'conversion_bps') || '|' || (o ->> 'epc_kobo_per_100_clicks')
-FROM (SELECT public.affiliate_overview('$A1', '2026-10-01T00:00:00Z', '2026-10-02T00:00:00Z') AS o) x;
+FROM (SELECT public.affiliate_overview('$A1', '${D49}T00:00:00Z', '${D48}T00:00:00Z') AS o) x;
 SQL
 
 assert_error "a backwards range is refused" "invalid_range" <<SQL
@@ -495,7 +526,7 @@ SELECT public.affiliate_overview('$A1', '$TO_TS', '$FROM_TS');
 SQL
 
 assert_error "a range over 366 days is refused" "invalid_range" <<SQL
-SELECT public.affiliate_overview('$A1', '2025-01-01T00:00:00Z', '2026-11-19T00:00:00Z');
+SELECT public.affiliate_overview('$A1', '${DFAR}T00:00:00Z', '${D0}T00:00:00Z');
 SQL
 
 assert_error "another person's affiliate id is refused for a user without the role" "forbidden" <<SQL
@@ -508,26 +539,26 @@ SQL
 step "Daily series"
 
 assert_value "one row per day, zero days included" "4" <<SQL
-SELECT count(*) FROM public.affiliate_daily_series('$A1', '2026-11-16', '2026-11-19');
+SELECT count(*) FROM public.affiliate_daily_series('$A1', '${D3}', '${D0}');
 SQL
 
-assert_value "the series in order, with zeros" "2026-11-16|1|2026-11-17|2|2026-11-18|0|2026-11-19|2" <<SQL
+assert_value "the series in order, with zeros" "${D3}|1|${D2}|2|${D1}|0|${D0}|2" <<SQL
 SELECT string_agg(day || '|' || clicks, '|' ORDER BY day)
-FROM public.affiliate_daily_series('$A1', '2026-11-16', '2026-11-19');
+FROM public.affiliate_daily_series('$A1', '${D3}', '${D0}');
 SQL
 
-assert_value "the 23:30 UTC click belongs to 19 November in Lagos" "2" <<SQL
-SELECT clicks FROM public.affiliate_daily_series('$A1', '2026-11-19', '2026-11-19');
+assert_value "the 23:30 UTC click belongs to the next Lagos day" "2" <<SQL
+SELECT clicks FROM public.affiliate_daily_series('$A1', '${D0}', '${D0}');
 SQL
 
-assert_value "the series carries orders and commission" "2026-11-17|1|100000|2026-11-19|1|100000" <<SQL
+assert_value "the series carries orders and commission" "${D2}|1|100000|${D0}|1|100000" <<SQL
 SELECT string_agg(day || '|' || orders || '|' || commission_kobo, '|' ORDER BY day)
-FROM public.affiliate_daily_series('$A1', '2026-11-17', '2026-11-19')
+FROM public.affiliate_daily_series('$A1', '${D2}', '${D0}')
 WHERE orders > 0;
 SQL
 
 assert_error "the series refuses a backwards range" "invalid_range" <<SQL
-SELECT * FROM public.affiliate_daily_series('$A1', '2026-11-19', '2026-11-17');
+SELECT * FROM public.affiliate_daily_series('$A1', '${D0}', '${D2}');
 SQL
 
 # ---------------------------------------------------------------------------
@@ -536,33 +567,33 @@ SQL
 step "Link statistics"
 
 assert_value "only this affiliate's links" "3" <<SQL
-SELECT jsonb_array_length(public.affiliate_link_stats('$A1', '2026-11-17', '2026-11-19', 10, NULL) -> 'items');
+SELECT jsonb_array_length(public.affiliate_link_stats('$A1', '${D2}', '${D0}', 10, NULL) -> 'items');
 SQL
 
 assert_value "the busiest link first, with its numbers" "main|3|3|1|100000|active" <<SQL
 SELECT (x ->> 'label') || '|' || (x ->> 'clicks') || '|' || (x ->> 'unique_clicks') || '|' ||
        (x ->> 'orders') || '|' || (x ->> 'commission_kobo') || '|' || (x ->> 'status')
-FROM jsonb_array_elements(public.affiliate_link_stats('$A1', '2026-11-17', '2026-11-19', 10, NULL) -> 'items') x
+FROM jsonb_array_elements(public.affiliate_link_stats('$A1', '${D2}', '${D0}', 10, NULL) -> 'items') x
 LIMIT 1;
 SQL
 
 assert_value "a link with no activity is still listed with zeros" "invited|0" <<SQL
 SELECT (x ->> 'label') || '|' || (x ->> 'clicks')
-FROM jsonb_array_elements(public.affiliate_link_stats('$A1', '2026-11-17', '2026-11-19', 10, NULL) -> 'items') x
+FROM jsonb_array_elements(public.affiliate_link_stats('$A1', '${D2}', '${D0}', 10, NULL) -> 'items') x
 WHERE x ->> 'label' = 'invited';
 SQL
 
 assert_value "the code and alias are both returned" "ada-deals" <<SQL
 SELECT x ->> 'alias'
-FROM jsonb_array_elements(public.affiliate_link_stats('$A1', '2026-11-17', '2026-11-19', 10, NULL) -> 'items') x
+FROM jsonb_array_elements(public.affiliate_link_stats('$A1', '${D2}', '${D0}', 10, NULL) -> 'items') x
 WHERE x ->> 'label' = 'main';
 SQL
 
 assert_value "link pagination walks every link once" "3|3" <<SQL
 WITH RECURSIVE walk AS (
-  SELECT public.affiliate_link_stats('$A1', '2026-11-17', '2026-11-19', 1, NULL) AS page
+  SELECT public.affiliate_link_stats('$A1', '${D2}', '${D0}', 1, NULL) AS page
   UNION ALL
-  SELECT public.affiliate_link_stats('$A1', '2026-11-17', '2026-11-19', 1, walk.page -> 'next_cursor')
+  SELECT public.affiliate_link_stats('$A1', '${D2}', '${D0}', 1, walk.page -> 'next_cursor')
   FROM walk
   WHERE walk.page -> 'next_cursor' <> 'null'::jsonb
 ), ids AS (
@@ -572,40 +603,40 @@ SELECT (SELECT count(*) FROM ids) || '|' || (SELECT count(DISTINCT id) FROM ids)
 SQL
 
 assert_value "A2 sees only their own link" "1" <<SQL
-SELECT jsonb_array_length(public.affiliate_link_stats('$A2', '2026-11-17', '2026-11-19', 10, NULL) -> 'items');
+SELECT jsonb_array_length(public.affiliate_link_stats('$A2', '${D2}', '${D0}', 10, NULL) -> 'items');
 SQL
 
 step "Breakdown"
 
 assert_value "by campaign label, orders attributed through the click" "campaign-a|2|1|100000|campaign-b|2|1|100000" <<SQL
 SELECT string_agg(label || '|' || clicks || '|' || orders || '|' || commission_kobo, '|' ORDER BY label)
-FROM public.affiliate_breakdown('$A1', '2026-11-16', '2026-11-19', 'sub1')
+FROM public.affiliate_breakdown('$A1', '${D3}', '${D0}', 'sub1')
 WHERE label <> 'Not set';
 SQL
 
 assert_value "a click with no label is grouped as Not set" "Not set|1|0|0" <<SQL
 SELECT label || '|' || clicks || '|' || orders || '|' || commission_kobo
-FROM public.affiliate_breakdown('$A1', '2026-11-16', '2026-11-19', 'sub1')
+FROM public.affiliate_breakdown('$A1', '${D3}', '${D0}', 'sub1')
 WHERE label = 'Not set';
 SQL
 
 assert_value "by utm_source" "facebook|1|1|100000|whatsapp|2|1|100000|x|1|0|0" <<SQL
 SELECT string_agg(label || '|' || clicks || '|' || orders || '|' || commission_kobo, '|' ORDER BY label)
-FROM public.affiliate_breakdown('$A1', '2026-11-17', '2026-11-19', 'utm_source');
+FROM public.affiliate_breakdown('$A1', '${D2}', '${D0}', 'utm_source');
 SQL
 
 assert_value "by product uses the product title" "Open Product|4|4|2|200000" <<SQL
 SELECT label || '|' || clicks || '|' || unique_clicks || '|' || orders || '|' || commission_kobo
-FROM public.affiliate_breakdown('$A1', '2026-11-17', '2026-11-19', 'product');
+FROM public.affiliate_breakdown('$A1', '${D2}', '${D0}', 'product');
 SQL
 
 assert_value "another affiliate's campaign is not in this list" "0" <<SQL
-SELECT count(*) FROM public.affiliate_breakdown('$A1', '2026-11-17', '2026-11-19', 'sub1')
+SELECT count(*) FROM public.affiliate_breakdown('$A1', '${D2}', '${D0}', 'sub1')
 WHERE label = 'other-campaign';
 SQL
 
 assert_error "an unknown dimension is refused" "invalid_dimension" <<SQL
-SELECT * FROM public.affiliate_breakdown('$A1', '2026-11-17', '2026-11-19', 'country');
+SELECT * FROM public.affiliate_breakdown('$A1', '${D2}', '${D0}', 'country');
 SQL
 
 # ---------------------------------------------------------------------------
@@ -625,7 +656,7 @@ SQL
 
 ORDER1=$(q "select number from public.orders where paystack_reference = 'ref-a1-1'")
 
-assert_value "available_at is the hold end from the ledger" "2026-11-24T12:00:00+00:00" <<SQL
+assert_value "available_at is the hold end from the ledger" "${DHOLD}T12:00:00+00:00" <<SQL
 SELECT x ->> 'available_at'
 FROM jsonb_array_elements(public.affiliate_commission_list('$A1', 10, NULL) -> 'items') x
 WHERE x ->> 'order_number' = '$ORDER1';
@@ -705,22 +736,22 @@ assert_value "ordered by revenue, highest first" "affiliate_one|4|2|1000000|2000
 SELECT string_agg(
          (x ->> 'username') || '|' || (x ->> 'clicks') || '|' || (x ->> 'orders') || '|' ||
          (x ->> 'revenue_kobo') || '|' || (x ->> 'commission_kobo'), '|' ORDER BY (x ->> 'revenue_kobo')::bigint DESC)
-FROM jsonb_array_elements(public.vendor_affiliate_stats('$V1', '2026-11-17', '2026-11-19', 10, NULL) -> 'items') x;
+FROM jsonb_array_elements(public.vendor_affiliate_stats('$V1', '${D2}', '${D0}', 10, NULL) -> 'items') x;
 SQL
 
 assert_value "another vendor sees nothing of this one" "0" <<SQL
-SELECT jsonb_array_length(public.vendor_affiliate_stats('$V2', '2026-11-17', '2026-11-19', 10, NULL) -> 'items');
+SELECT jsonb_array_length(public.vendor_affiliate_stats('$V2', '${D2}', '${D0}', 10, NULL) -> 'items');
 SQL
 
 assert_value "a range with no activity is an empty list" "0" <<SQL
-SELECT jsonb_array_length(public.vendor_affiliate_stats('$V1', '2026-10-01', '2026-10-02', 10, NULL) -> 'items');
+SELECT jsonb_array_length(public.vendor_affiliate_stats('$V1', '${D49}', '${D48}', 10, NULL) -> 'items');
 SQL
 
 assert_value "vendor stats pagination walks every affiliate once" "2|2" <<SQL
 WITH RECURSIVE walk AS (
-  SELECT public.vendor_affiliate_stats('$V1', '2026-11-17', '2026-11-19', 1, NULL) AS page
+  SELECT public.vendor_affiliate_stats('$V1', '${D2}', '${D0}', 1, NULL) AS page
   UNION ALL
-  SELECT public.vendor_affiliate_stats('$V1', '2026-11-17', '2026-11-19', 1, walk.page -> 'next_cursor')
+  SELECT public.vendor_affiliate_stats('$V1', '${D2}', '${D0}', 1, walk.page -> 'next_cursor')
   FROM walk
   WHERE walk.page -> 'next_cursor' <> 'null'::jsonb
 ), rows AS (
@@ -823,7 +854,7 @@ SQL
 
 assert_error "a signed-in person cannot call the overview" "permission denied" <<SQL
 SET ROLE authenticated;
-SELECT public.affiliate_overview('$A1', '2026-11-17T00:00:00Z', '2026-11-19T00:00:00Z');
+SELECT public.affiliate_overview('$A1', '${D2}T00:00:00Z', '${D0}T00:00:00Z');
 SQL
 
 assert_error "a signed-in person cannot revoke an invite" "permission denied" <<SQL
@@ -833,7 +864,7 @@ SQL
 
 assert_value "the service role can call the daily series" "1" <<SQL
 SET ROLE service_role;
-SELECT count(*) FROM public.affiliate_daily_series('$A1', '2026-11-19', '2026-11-19');
+SELECT count(*) FROM public.affiliate_daily_series('$A1', '${D0}', '${D0}');
 SQL
 
 # ---------------------------------------------------------------------------
@@ -849,7 +880,7 @@ SELECT
   '$L_MAIN',
   '$A1',
   '$P_OPEN',
-  '2026-09-01T00:00:00Z'::timestamptz + (i || ' minutes')::interval,
+  '${D79}T00:00:00Z'::timestamptz + (i || ' minutes')::interval,
   md5('ip-' || i),
   md5('ua-' || i),
   (i % 3) = 0,
@@ -875,7 +906,7 @@ FROM generate_series(1, 2000) AS i;
 INSERT INTO public.affiliate_daily_stats
   (day, affiliate_id, product_id, link_id, clicks, unique_clicks, orders, order_revenue_kobo, commission_kobo)
 SELECT
-  '2026-09-01'::date + (d % 50),
+  '${D79}'::date + (d % 50),
   md5('bulk-user-' || a)::uuid,
   '$P_OPEN',
   NULL,
@@ -894,14 +925,14 @@ ANALYZE public.affiliate_clicks;
 ANALYZE public.affiliate_daily_stats;
 SQL
 
-CLICK_PLAN=$(q "explain (format text) select sub1, count(*) from public.affiliate_clicks where affiliate_id = '$A1' and created_at >= '2026-09-01T00:00:00Z' and created_at < '2026-09-02T00:00:00Z' group by 1")
+CLICK_PLAN=$(q "explain (format text) select sub1, count(*) from public.affiliate_clicks where affiliate_id = '$A1' and created_at >= '${D79}T00:00:00Z' and created_at < '${D78}T00:00:00Z' group by 1")
 if printf '%s' "$CLICK_PLAN" | grep -q "affiliate_clicks_affiliate_created_idx"; then
   pass "the click query uses the affiliate/created index"
 else
   fail "the click query uses the affiliate/created index" "$(printf '%s' "$CLICK_PLAN" | tr '\n' ' ' | cut -c1-300)"
 fi
 
-STATS_PLAN=$(q "explain (format text) select sum(clicks) from public.affiliate_daily_stats where affiliate_id = '$A1' and day between '2026-11-17' and '2026-11-19'")
+STATS_PLAN=$(q "explain (format text) select sum(clicks) from public.affiliate_daily_stats where affiliate_id = '$A1' and day between '${D2}' and '${D0}'")
 if printf '%s' "$STATS_PLAN" | grep -q "affiliate_daily_stats_affiliate_day_idx"; then
   pass "the stats query uses the affiliate/day index"
 else

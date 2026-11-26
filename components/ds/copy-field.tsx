@@ -1,6 +1,9 @@
 "use client"
 
-import { Check, Copy } from "lucide-react"
+import {
+  Check,
+  Copy,
+} from "@/components/ds/icons"
 import { useEffect, useRef, useState } from "react"
 
 import { cn } from "@/lib/utils"
@@ -89,7 +92,7 @@ export function CopyField({
           }}
           className="focus-ring inline-flex h-control-md shrink-0 items-center gap-1.5 rounded-md border border-border-control bg-background px-3 text-small font-medium text-foreground transition-colors duration-150 hover:bg-surface-muted"
         >
-          <Icon aria-hidden="true" className="h-4 w-4" />
+          <Icon aria-hidden="true" size="sm" />
           {buttonText}
         </button>
       </div>

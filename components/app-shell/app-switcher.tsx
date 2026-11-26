@@ -1,6 +1,9 @@
 "use client"
 
-import { ChevronDown, ExternalLink } from "lucide-react"
+import {
+  CaretDown,
+  ArrowSquareOut,
+} from "@/components/ds/icons"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -36,7 +39,7 @@ export function AppSwitcher({ apps }: { apps: readonly SwitcherApp[] }) {
           className="h-control-md gap-2 px-3"
         >
           Apps
-          <ChevronDown className="h-4 w-4" aria-hidden="true" />
+          <CaretDown className="h-4 w-4" aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
@@ -49,7 +52,7 @@ export function AppSwitcher({ apps }: { apps: readonly SwitcherApp[] }) {
               className="focus-ring flex min-h-control-md items-center justify-between gap-2"
             >
               <span>{app.label}</span>
-              <ExternalLink className="h-4 w-4 text-text-subtle" aria-hidden="true" />
+              <ArrowSquareOut className="h-4 w-4 text-text-subtle" aria-hidden="true" />
             </a>
           </DropdownMenuItem>
         ))}

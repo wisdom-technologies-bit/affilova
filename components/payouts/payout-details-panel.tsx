@@ -1,6 +1,6 @@
 "use client"
 
-import { Landmark } from "lucide-react"
+import { Bank } from "@/components/ds/icons"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
@@ -185,7 +185,7 @@ export function PayoutDetailsPanel({
           </p>
         ) : (
           <div className="flex items-start gap-3 rounded-md border border-border px-4 py-3">
-            <Landmark aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-brand-700" />
+            <Bank aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-brand-700" />
             <div className="min-w-0">
               <p className="font-medium text-foreground">{account.accountName}</p>
               <p className="text-dense text-text-muted">

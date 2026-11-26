@@ -1,6 +1,6 @@
 "use client"
 
-import { QrCode } from "lucide-react"
+import { QrCode } from "@/components/ds/icons"
 import { useState } from "react"
 
 import { CopyButton } from "@/components/affiliate/copy-button"

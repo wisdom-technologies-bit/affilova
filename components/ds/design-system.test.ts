@@ -1,4 +1,7 @@
-import { CircleAlert, CircleCheck } from "lucide-react"
+import {
+  WarningCircle,
+  CheckCircle,
+} from "@/components/ds/icons"
 import { createElement, Fragment, type ElementType, type ReactElement, type ReactNode } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
@@ -45,8 +48,8 @@ const COLUMNS: readonly DataColumn<Row>[] = [
 ]
 
 const STATUS: StatusMap<"paid" | "failed"> = {
-  paid: { tone: "success", label: "Paid", icon: CircleCheck },
-  failed: { tone: "danger", label: "Failed", icon: CircleAlert },
+  paid: { tone: "success", label: "Paid", icon: CheckCircle },
+  failed: { tone: "danger", label: "Failed", icon: WarningCircle },
 }
 
 // These trees are built by hand, so the element factory is used with the props

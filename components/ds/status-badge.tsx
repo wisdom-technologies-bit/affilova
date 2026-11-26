@@ -1,13 +1,13 @@
 import {
   Archive,
-  Ban,
-  CircleCheck,
+  Prohibit,
+  CheckCircle,
   CircleDashed,
-  CircleSlash,
-  Clock3,
-  RotateCcw,
-  type LucideIcon,
-} from "lucide-react"
+  ProhibitInset,
+  Clock,
+  ArrowCounterClockwise,
+  type IconComponent,
+} from "@/components/ds/icons"
 
 import { cn } from "@/lib/utils"
 
@@ -32,7 +32,7 @@ export interface StatusDescriptor {
   /** The word a person reads. Sentence case, short: "Paid", "On hold". */
   label: string
   /** The icon. Decorative: the label carries the meaning. */
-  icon: LucideIcon
+  icon: IconComponent
   /** A sentence explaining the status, for a title attribute or a doc row. */
   description?: string
 }
@@ -98,20 +98,20 @@ export function StatusBadge<Status extends string>({
       )}
       title={descriptor.description}
     >
-      <Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+      <Icon aria-hidden="true" size="sm" className="shrink-0" />
       {label ?? descriptor.label}
     </span>
   )
 }
 
 // The icons the built-in maps use, re-exported so a screen can build its own map
-// without importing from lucide-react twice.
+// without importing the icon module twice.
 export const STATUS_ICONS = {
-  complete: CircleCheck,
-  pending: Clock3,
-  stopped: CircleSlash,
-  blocked: Ban,
-  reversed: RotateCcw,
+  complete: CheckCircle,
+  pending: Clock,
+  stopped: ProhibitInset,
+  blocked: Prohibit,
+  reversed: ArrowCounterClockwise,
   archived: Archive,
   unknown: CircleDashed,
 } as const

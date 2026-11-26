@@ -1,4 +1,10 @@
-import { CircleAlert, CircleCheck, Info, TriangleAlert, type LucideIcon } from "lucide-react"
+import {
+  WarningCircle,
+  CheckCircle,
+  Info,
+  Warning,
+  type IconComponent,
+} from "@/components/ds/icons"
 import type { ReactNode } from "react"
 
 import { cn } from "@/lib/utils"
@@ -17,19 +23,19 @@ import { cn } from "@/lib/utils"
 
 export type AlertTone = "info" | "success" | "warning" | "danger"
 
-const TONE: Record<AlertTone, { icon: LucideIcon; className: string; role: "status" | "alert" }> = {
+const TONE: Record<AlertTone, { icon: IconComponent; className: string; role: "status" | "alert" }> = {
   info: { icon: Info, className: "border-info/40 bg-info-subtle text-info", role: "status" },
   success: {
-    icon: CircleCheck,
+    icon: CheckCircle,
     className: "border-success/40 bg-success-subtle text-success",
     role: "status",
   },
   warning: {
-    icon: TriangleAlert,
+    icon: Warning,
     className: "border-warning/40 bg-warning-subtle text-warning",
     role: "alert",
   },
-  danger: { icon: CircleAlert, className: "border-danger/40 bg-danger-subtle text-danger", role: "alert" },
+  danger: { icon: WarningCircle, className: "border-danger/40 bg-danger-subtle text-danger", role: "alert" },
 }
 
 export interface InlineAlertProps {
@@ -51,7 +57,7 @@ export function InlineAlert({ tone, children, title, action, className }: Inline
       role={role}
       className={cn("flex items-start gap-2 rounded-md border px-3 py-2.5 text-dense", toneClass, className)}
     >
-      <Icon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+      <Icon aria-hidden="true" size="sm" className="mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1">
         {title === undefined ? null : <p className="font-medium">{title}</p>}
         <div className={title === undefined ? undefined : "mt-0.5 opacity-90"}>{children}</div>

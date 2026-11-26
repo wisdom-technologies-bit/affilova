@@ -2,7 +2,16 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Users, TrendingUp, Shield, Zap, Target, Award, Globe, Heart } from "lucide-react"
+import {
+  Users,
+  TrendUp,
+  Shield,
+  Lightning,
+  Target,
+  Medal,
+  Globe,
+  Heart,
+} from "@/components/ds/icons"
 import { Logo } from "@/components/brand/logo"
 
 export default function AboutPage() {
@@ -124,7 +133,7 @@ export default function AboutPage() {
 
           <Card className="text-center border-0 shadow-lg">
             <CardHeader>
-              <Zap className="w-12 h-12 text-yellow-600 mx-auto mb-4" />
+              <Lightning className="w-12 h-12 text-yellow-600 mx-auto mb-4" />
               <CardTitle>Innovation</CardTitle>
             </CardHeader>
             <CardContent>
@@ -136,7 +145,7 @@ export default function AboutPage() {
 
           <Card className="text-center border-0 shadow-lg">
             <CardHeader>
-              <Award className="w-12 h-12 text-purple-600 mx-auto mb-4" />
+              <Medal className="w-12 h-12 text-purple-600 mx-auto mb-4" />
               <CardTitle>Excellence</CardTitle>
             </CardHeader>
             <CardContent>
@@ -168,7 +177,7 @@ export default function AboutPage() {
 
             <Card className="border-0 shadow-lg">
               <CardHeader>
-                <TrendingUp className="w-10 h-10 text-green-600 mb-2" />
+                <TrendUp className="w-10 h-10 text-green-600 mb-2" />
                 <CardTitle>Advanced Analytics</CardTitle>
               </CardHeader>
               <CardContent>
@@ -193,7 +202,7 @@ export default function AboutPage() {
 
             <Card className="border-0 shadow-lg">
               <CardHeader>
-                <Zap className="w-10 h-10 text-orange-600 mb-2" />
+                <Lightning className="w-10 h-10 text-orange-600 mb-2" />
                 <CardTitle>Sales Pages</CardTitle>
               </CardHeader>
               <CardContent>
@@ -218,7 +227,7 @@ export default function AboutPage() {
 
             <Card className="border-0 shadow-lg">
               <CardHeader>
-                <Award className="w-10 h-10 text-indigo-600 mb-2" />
+                <Medal className="w-10 h-10 text-indigo-600 mb-2" />
                 <CardTitle>Product Review</CardTitle>
               </CardHeader>
               <CardContent>

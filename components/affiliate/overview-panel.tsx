@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { MousePointerClick } from "lucide-react"
+import { CursorClick } from "@/components/ds/icons"
 
 import { ClicksChart } from "@/components/affiliate/clicks-chart"
 import { Button } from "@/components/ui/button"
@@ -112,7 +112,7 @@ export function OverviewPanel({
 
           {isEmpty ? (
             <EmptyState
-              icon={<MousePointerClick className="h-5 w-5" />}
+              icon={<CursorClick className="h-5 w-5" />}
               title="Nothing happened in these days yet."
               description="Pick a product in the marketplace and share your link. Clicks appear here within a few minutes of the first visit."
               primaryAction={

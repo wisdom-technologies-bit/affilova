@@ -1,4 +1,14 @@
-import { CircleAlert, CircleCheck, Clock3, CircleSlash, Ban, Hourglass, RotateCcw, Send, type LucideIcon } from "lucide-react"
+import {
+  WarningCircle,
+  CheckCircle,
+  Clock,
+  ProhibitInset,
+  Prohibit,
+  Hourglass,
+  ArrowCounterClockwise,
+  PaperPlaneTilt,
+  type IconComponent,
+} from "@/components/ds/icons"
 import type { ReactNode } from "react"
 
 import { InlineAlert } from "@/components/ds/inline-alert"
@@ -57,7 +67,7 @@ export function StatusLine({ children }: { children: ReactNode }) {
 export function NoteBox({ title, children }: { title: string; children: ReactNode }) {
   return (
     <InlineAlert tone="info" title={title}>
-      <Hourglass aria-hidden="true" className="mr-1.5 inline h-3.5 w-3.5 align-text-bottom" />
+      <Hourglass aria-hidden="true" size="sm" className="mr-1.5 inline align-text-bottom" />
       {children}
     </InlineAlert>
   )
@@ -69,19 +79,19 @@ export function NoteBox({ title, children }: { title: string; children: ReactNod
  * The tone is the design system's, so a paid payout and a paid order are the same
  * green, and a failed transfer and a failed payment are the same red.
  */
-const STATUS_MAP: Readonly<Record<string, { tone: "neutral" | "success" | "warning" | "danger" | "info"; icon: LucideIcon }>> = {
-  requested: { tone: "warning", icon: Clock3 },
-  approved: { tone: "info", icon: CircleCheck },
-  processing: { tone: "info", icon: Send },
-  paid: { tone: "success", icon: CircleCheck },
-  failed: { tone: "danger", icon: Ban },
-  reversed: { tone: "danger", icon: RotateCcw },
-  rejected: { tone: "neutral", icon: CircleSlash },
-  cancelled: { tone: "neutral", icon: CircleSlash },
+const STATUS_MAP: Readonly<Record<string, { tone: "neutral" | "success" | "warning" | "danger" | "info"; icon: IconComponent }>> = {
+  requested: { tone: "warning", icon: Clock },
+  approved: { tone: "info", icon: CheckCircle },
+  processing: { tone: "info", icon: PaperPlaneTilt },
+  paid: { tone: "success", icon: CheckCircle },
+  failed: { tone: "danger", icon: Prohibit },
+  reversed: { tone: "danger", icon: ArrowCounterClockwise },
+  rejected: { tone: "neutral", icon: ProhibitInset },
+  cancelled: { tone: "neutral", icon: ProhibitInset },
 }
 
 export function WithdrawalStatusBadge({ status }: { status: string }) {
-  const entry = STATUS_MAP[status] ?? { tone: "neutral" as const, icon: CircleAlert }
+  const entry = STATUS_MAP[status] ?? { tone: "neutral" as const, icon: WarningCircle }
 
   const map: StatusMap<string> = {
     [status]: {

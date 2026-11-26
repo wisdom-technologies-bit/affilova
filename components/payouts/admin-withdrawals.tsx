@@ -1,6 +1,6 @@
 "use client"
 
-import { ShieldAlert } from "lucide-react"
+import { ShieldWarning } from "@/components/ds/icons"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
@@ -169,7 +169,7 @@ export function AdminWithdrawalsQueue({
           {row.isFirst ? <span>First withdrawal for this user</span> : null}
           {row.hasRiskFlag ? (
             <span className="inline-flex items-center gap-1 font-medium text-destructive">
-              <ShieldAlert aria-hidden="true" className="h-4 w-4" />
+              <ShieldWarning aria-hidden="true" className="h-4 w-4" />
               Risk flag
             </span>
           ) : null}

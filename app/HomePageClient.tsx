@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/button"
 import GlobalFooter from "@/components/global-footer" // Import GlobalFooter component
 import {
   Users,
-  TrendingUp,
+  TrendUp,
   Shield,
-  Zap,
+  Lightning,
   CheckCircle,
   ArrowRight,
-  Menu,
+  List,
   X,
-} from "lucide-react"
+} from "@/components/ds/icons"
 import { Logo } from "@/components/brand/logo"
 
 export default function HomePageClient() {
@@ -87,7 +87,7 @@ export default function HomePageClient() {
 
           {/* Mobile Menu Button */}
           <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <List className="w-6 h-6" />}
           </button>
         </div>
 
@@ -200,7 +200,7 @@ export default function HomePageClient() {
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             {
-              icon: Zap,
+              icon: Lightning,
               title: "Product Setup",
               description:
                 "Add a product with a title, price, commission rate, its own sales page and the file your customer receives.",
@@ -212,7 +212,7 @@ export default function HomePageClient() {
                 "Affiliates browse the marketplace and apply to promote the products they want. Vendors approve each application.",
             },
             {
-              icon: TrendingUp,
+              icon: TrendUp,
               title: "Dashboards",
               description:
                 "Sales, commissions and product performance are listed in the vendor and affiliate dashboards.",
@@ -318,7 +318,7 @@ export default function HomePageClient() {
               className="w-full h-full object-cover"
             />
             <div className="relative text-center space-y-4 z-10">
-              <Zap className="w-16 h-16 text-white mx-auto group-hover:scale-110 transition-transform drop-shadow-lg" />
+              <Lightning className="w-16 h-16 text-white mx-auto group-hover:scale-110 transition-transform drop-shadow-lg" />
               <p className="text-white font-semibold drop-shadow">Vendor Dashboard</p>
             </div>
           </div>
@@ -336,7 +336,7 @@ export default function HomePageClient() {
                 className="w-full h-full object-cover"
               />
               <div className="relative text-center space-y-4 z-10">
-                <TrendingUp className="w-16 h-16 text-white mx-auto group-hover:scale-110 transition-transform drop-shadow-lg" />
+                <TrendUp className="w-16 h-16 text-white mx-auto group-hover:scale-110 transition-transform drop-shadow-lg" />
                 <p className="text-white font-semibold drop-shadow">Affiliate Dashboard</p>
               </div>
             </div>

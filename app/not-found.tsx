@@ -3,7 +3,11 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Home, Search, ArrowLeft } from "lucide-react"
+import {
+  House,
+  MagnifyingGlass,
+  ArrowLeft,
+} from "@/components/ds/icons"
 import { Logo } from "@/components/brand/logo"
 
 export default function NotFound() {
@@ -25,14 +29,14 @@ export default function NotFound() {
           <div className="space-y-3">
             <Link href="/" className="block">
               <Button className="w-full bg-green-600 hover:bg-green-700">
-                <Home className="w-4 h-4 mr-2" />
+                <House className="w-4 h-4 mr-2" />
                 Go Home
               </Button>
             </Link>
 
             <Link href="/sign-up" className="block">
               <Button variant="outline" className="w-full">
-                <Search className="w-4 h-4 mr-2" />
+                <MagnifyingGlass className="w-4 h-4 mr-2" />
                 Browse Products
               </Button>
             </Link>

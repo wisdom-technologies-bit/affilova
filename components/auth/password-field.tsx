@@ -1,7 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { Eye, EyeOff } from "lucide-react"
+import {
+  Eye,
+  EyeSlash,
+} from "@/components/ds/icons"
 
 import { TextField, type TextFieldProps } from "./text-field"
 
@@ -28,9 +31,9 @@ export function PasswordField({ id, ...props }: PasswordFieldProps) {
           className="focus-ring inline-flex h-control-md w-control-md items-center justify-center rounded-md text-text-muted transition-colors duration-150 hover:bg-surface-muted hover:text-foreground"
         >
           {shown ? (
-            <EyeOff aria-hidden="true" className="h-4 w-4" />
+            <EyeSlash aria-hidden="true" size="sm" />
           ) : (
-            <Eye aria-hidden="true" className="h-4 w-4" />
+            <Eye aria-hidden="true" size="sm" />
           )}
           <span className="sr-only">{shown ? "Hide password" : "Show password"}</span>
         </button>

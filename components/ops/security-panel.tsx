@@ -1,6 +1,11 @@
 "use client"
 
-import { AlertTriangle, Check, Loader2, X } from "lucide-react"
+import {
+  Warning,
+  Check,
+  CircleNotch,
+  X,
+} from "@/components/ds/icons"
 import { useState } from "react"
 
 import { Section as DsSection } from "@/components/ds/section"
@@ -612,7 +617,7 @@ function HealthRow({
       ) : tone === "bad" ? (
         <X aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
       ) : (
-        <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+        <Warning aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
       )}
       <div>
         <p className="text-caption font-medium text-text-muted">{label}</p>
@@ -806,7 +811,7 @@ function TestEmailButton() {
         disabled={sending}
         className="inline-flex min-h-control-md items-center gap-2 rounded-md bg-brand-600 px-4 text-dense font-medium text-white transition-colors duration-150 hover:bg-brand-700 focus-ring disabled:opacity-60"
       >
-        {sending ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : null}
+        {sending ? <CircleNotch aria-hidden="true" className="h-4 w-4 animate-spin" /> : null}
         {sending ? "Sending…" : "Send test email"}
       </button>
 
@@ -876,7 +881,7 @@ function SelfTestSection() {
         disabled={running}
         className="inline-flex min-h-control-md items-center gap-2 rounded-md bg-brand-600 px-4 text-dense font-medium text-white transition-colors duration-150 hover:bg-brand-700 focus-ring disabled:opacity-60"
       >
-        {running ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : null}
+        {running ? <CircleNotch aria-hidden="true" className="h-4 w-4 animate-spin" /> : null}
         {running ? "Running the self-test…" : "Run scanner self-test"}
       </button>
 
@@ -905,7 +910,7 @@ export function SecurityPanel({
     <div className="space-y-4">
       {overviewError === null ? null : (
         <div className="flex items-start gap-2 rounded-md border border-destructive/40 px-3 py-2 text-dense text-danger">
-          <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+          <Warning aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
           <p>{overviewError}</p>
         </div>
       )}

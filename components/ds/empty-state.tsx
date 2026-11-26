@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 // There is no illustration, no mascot and no exclamation mark.
 
 export interface EmptyStateProps {
-  /** A 20px icon from lucide-react. Decorative: the title carries the meaning. */
+  /** A 20px icon from components/ds/icons. Decorative: the title carries the meaning. */
   icon?: ReactNode
   /** What is missing, in sentence case: "No products yet". */
   title: string

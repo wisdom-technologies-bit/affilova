@@ -1,4 +1,8 @@
-import { Facebook, MessageCircle, Send } from "lucide-react"
+import {
+  FacebookLogo,
+  ChatCircle,
+  PaperPlaneTilt,
+} from "@/components/ds/icons"
 
 import { shareUrls } from "@/lib/affiliate/links"
 
@@ -12,10 +16,10 @@ export function ShareLinks({ url, title }: { url: string; title: string }) {
   const urls = shareUrls({ url, title })
 
   const items = [
-    { key: "whatsapp", label: "WhatsApp", href: urls.whatsapp, Icon: MessageCircle },
-    { key: "x", label: "X", href: urls.x, Icon: Send },
-    { key: "facebook", label: "Facebook", href: urls.facebook, Icon: Facebook },
-    { key: "telegram", label: "Telegram", href: urls.telegram, Icon: Send },
+    { key: "whatsapp", label: "WhatsApp", href: urls.whatsapp, Icon: ChatCircle },
+    { key: "x", label: "X", href: urls.x, Icon: PaperPlaneTilt },
+    { key: "facebook", label: "Facebook", href: urls.facebook, Icon: FacebookLogo },
+    { key: "telegram", label: "Telegram", href: urls.telegram, Icon: PaperPlaneTilt },
   ] as const
 
   return (

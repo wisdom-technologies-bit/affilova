@@ -12,6 +12,7 @@ export default function GlobalFooter({ className = "" }: FooterProps) {
   // page it points at has been built.
   const footerLinks = {
     platform: [
+      { name: "Marketplace", href: "/marketplace" },
       { name: "How It Works", href: "/how-it-works" },
       { name: "About", href: "/about" },
       { name: "Blog", href: "/blog" },

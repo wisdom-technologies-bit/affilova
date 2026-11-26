@@ -1,9 +1,11 @@
 import Link from "next/link"
+import type { ReactNode } from "react"
 
 import { formatNaira } from "@/lib/catalog/money"
 import { refundSentence, type PublicProduct } from "@/lib/catalog/public"
 import { TEST_MODE_BANNER } from "@/lib/commerce/test-mode"
 
+import { ProductBreadcrumbs, type Crumb } from "./product-breadcrumbs"
 import { PurchaseCard } from "./purchase-card"
 
 // The public product page, without the database.
@@ -18,12 +20,25 @@ export interface ProductViewProps {
   product: PublicProduct
   testMode: boolean
   signedInEmail?: string | null
+  /** The trail above the title: Marketplace, category, product. */
+  breadcrumbs?: Crumb[]
+  /** The vendor's storefront, when its public handle is known. */
+  vendorHref?: string | null
+  /** The related row, under everything else. */
+  related?: ReactNode
 }
 
 const FOCUS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
 
-export function ProductView({ product, testMode, signedInEmail = null }: ProductViewProps) {
+export function ProductView({
+  product,
+  testMode,
+  signedInEmail = null,
+  breadcrumbs,
+  vendorHref = null,
+  related,
+}: ProductViewProps) {
   const cover = product.images[0]
 
   // One string, so a screen reader reads "3 files (PDF, ZIP)" as a sentence
@@ -46,6 +61,8 @@ export function ProductView({ product, testMode, signedInEmail = null }: Product
         </p>
       ) : null}
 
+      <ProductBreadcrumbs crumbs={breadcrumbs ?? []} />
+
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_auto_1fr] lg:gap-12">
         <header className="order-1 lg:col-start-1 lg:row-start-1">
           <p className="text-sm text-muted-foreground">
@@ -55,7 +72,17 @@ export function ProductView({ product, testMode, signedInEmail = null }: Product
             {product.title}
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            Sold by <span className="font-medium text-foreground">{product.vendorBusinessName}</span>
+            Sold by{" "}
+            {vendorHref === null ? (
+              <span className="font-medium text-foreground">{product.vendorBusinessName}</span>
+            ) : (
+              <Link
+                href={vendorHref}
+                className={`rounded-sm font-medium text-foreground underline underline-offset-2 ${FOCUS}`}
+              >
+                {product.vendorBusinessName}
+              </Link>
+            )}
           </p>
           <p className="mt-4 text-base text-foreground">{product.shortDescription}</p>
         </header>
@@ -149,6 +176,8 @@ export function ProductView({ product, testMode, signedInEmail = null }: Product
           </Link>
         </p>
       </footer>
+
+      {related}
     </main>
   )
 }

@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next"
 
 import { LEGAL_DOCUMENTS } from "@/content/legal"
 import { hostMapFromEnv } from "@/lib/hosts"
-import { getCachedSitemapEntries } from "@/lib/marketplace/cached"
+import { getSitemapEntries } from "@/lib/marketplace/queries"
 import { marketplaceSitemapEntries } from "@/lib/marketplace/sitemap"
 
 const PUBLIC_STATIC_ROUTES = [
@@ -29,6 +29,11 @@ function resolvePublicBaseUrl(): string {
   return "https://affilova.com"
 }
 
+// The whole file is revalidated every five minutes, the same window the listing
+// uses. A database read that fails leaves the rest of the sitemap intact rather
+// than failing the file.
+export const revalidate = 300
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = resolvePublicBaseUrl()
 
@@ -51,7 +56,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let marketplaceEntries: MetadataRoute.Sitemap = []
 
   try {
-    const entries = await getCachedSitemapEntries()
+    const entries = await getSitemapEntries()
 
     if (entries !== null) {
       marketplaceEntries = marketplaceSitemapEntries(baseUrl, entries)

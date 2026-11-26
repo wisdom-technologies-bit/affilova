@@ -98,14 +98,16 @@ describe("Legal index, footer, routes and sitemap", () => {
     }
   })
 
-  it("has a static page file and sitemap entry for /legal and every policy route", () => {
+  it("has a static page file and sitemap entry for /legal and every policy route", async () => {
     const routePaths = ["/legal", ...LEGAL_DOCUMENTS.map((doc) => doc.href)]
     for (const routePath of routePaths) {
       const pageFile = join(process.cwd(), "app", routePath.slice(1), "page.tsx")
       expect(existsSync(pageFile), `missing route file ${pageFile}`).toBe(true)
     }
 
-    const entries = sitemap()
+    // The sitemap is async since the marketplace entries are read from the
+    // database; a read that fails leaves the legal entries in place.
+    const entries = await sitemap()
     const urls = entries.map((entry) => entry.url)
     for (const routePath of routePaths) {
       expect(urls.some((url) => url.endsWith(routePath))).toBe(true)

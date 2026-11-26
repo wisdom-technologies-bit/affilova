@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next"
 
 import { LEGAL_DOCUMENTS } from "@/content/legal"
 import { hostMapFromEnv } from "@/lib/hosts"
+import { getCachedSitemapEntries } from "@/lib/marketplace/cached"
+import { marketplaceSitemapEntries } from "@/lib/marketplace/sitemap"
 
 const PUBLIC_STATIC_ROUTES = [
   "/",
@@ -27,7 +29,7 @@ function resolvePublicBaseUrl(): string {
   return "https://affilova.com"
 }
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = resolvePublicBaseUrl()
 
   const staticEntries: MetadataRoute.Sitemap = PUBLIC_STATIC_ROUTES.map((path) => ({
@@ -43,5 +45,20 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.4,
   }))
 
-  return [...staticEntries, ...legalEntries]
+  // The marketplace: the listing, its categories, the stores and the products.
+  // A read that fails leaves the rest of the sitemap intact rather than failing
+  // the whole file, so a crawler still gets the pages that do not need it.
+  let marketplaceEntries: MetadataRoute.Sitemap = []
+
+  try {
+    const entries = await getCachedSitemapEntries()
+
+    if (entries !== null) {
+      marketplaceEntries = marketplaceSitemapEntries(baseUrl, entries)
+    }
+  } catch {
+    marketplaceEntries = []
+  }
+
+  return [...staticEntries, ...legalEntries, ...marketplaceEntries]
 }

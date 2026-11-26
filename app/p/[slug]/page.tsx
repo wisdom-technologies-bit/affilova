@@ -2,10 +2,16 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 import { ProductView } from "@/components/commerce/product-view"
+import type { Crumb } from "@/components/commerce/product-breadcrumbs"
+import { RelatedProducts } from "@/components/commerce/related-products"
 import { cloudinaryImageUrl, getPublicProduct, SOCIAL_WIDTH } from "@/lib/catalog/public"
 import { isPaystackTestMode } from "@/lib/commerce/test-mode"
 import { appUrl } from "@/lib/identity/app-urls"
 import { getAuthUser } from "@/lib/identity/session"
+import { getCachedCategories } from "@/lib/marketplace/cached"
+import { cardImage, cloudNameOrNull } from "@/lib/marketplace/images"
+import { productJsonLd, serializeJsonLd } from "@/lib/marketplace/jsonld"
+import { getProductStoreSlug, getRelatedProducts } from "@/lib/marketplace/queries"
 
 // The public product page: /p/<slug> on the public host.
 //
@@ -87,5 +93,56 @@ export default async function PublicProductPage({ params }: PageProps) {
     signedInEmail = null
   }
 
-  return <ProductView product={product} testMode={isPaystackTestMode()} signedInEmail={signedInEmail} />
+  // Three independent reads, so they happen together: the vendor's public
+  // handle, the category index (for the breadcrumb's link) and the related row.
+  const [storeSlug, categories, related] = await Promise.all([
+    getProductStoreSlug(product.id),
+    getCachedCategories(),
+    getRelatedProducts(product.id),
+  ])
+
+  const categorySlug =
+    categories === null
+      ? null
+      : categories.find((category) => category.name === product.categoryName)?.slug ?? null
+
+  const crumbs: Crumb[] = [
+    { label: "Marketplace", href: "/marketplace" },
+    ...(categorySlug === null
+      ? []
+      : [{ label: product.categoryName, href: `/marketplace/${categorySlug}` }]),
+    { label: product.title },
+  ]
+
+  const cloudName = cloudNameOrNull()
+  const relatedItems =
+    related === null
+      ? []
+      : related.map((item) => ({ item, image: cardImage(item.coverPublicId, cloudName) }))
+
+  const jsonLd = productJsonLd({
+    product,
+    images: product.images.map((image) => image.url),
+    url: appUrl("public", `/p/${product.slug}`),
+    ...(storeSlug === null ? {} : { sellerUrl: appUrl("public", `/store/${storeSlug}`) }),
+  })
+
+  return (
+    <>
+      {/* The < character is escaped by serializeJsonLd, so a title containing
+          markup cannot close this block early. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
+      />
+      <ProductView
+        product={product}
+        testMode={isPaystackTestMode()}
+        signedInEmail={signedInEmail}
+        breadcrumbs={crumbs}
+        vendorHref={storeSlug === null ? null : `/store/${storeSlug}`}
+        related={<RelatedProducts items={relatedItems} />}
+      />
+    </>
+  )
 }

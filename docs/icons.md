@@ -154,3 +154,34 @@ screen that uses a `Select`, a `DropdownMenu` or a `Calendar`. Every component
 in `components/ds/*` and every page touched by the front-door pass uses the
 three tokens instead. A primitive that needs a different size gets it from a
 class on the primitive, not from a fourth token.
+
+## What the migration cost
+
+First-load JavaScript, measured in headless Chrome with the HTTP cache disabled,
+against a production `next build` / `next start` of `main` and of this branch in
+the same environment (see the front-door report for the method):
+
+| Route | main | after | change |
+| --- | --- | --- | --- |
+| `/sign-in` | 301.8 KB | 336.2 KB | +34.4 KB |
+| `/sign-up` | 292.1 KB | 327.0 KB | +34.9 KB |
+| `/marketplace` | 243.6 KB | 279.5 KB | +35.9 KB |
+| `/forgot-password` | 290.9 KB | 325.9 KB | +35.0 KB |
+| `/two-factor/verify` | 259.5 KB | 294.9 KB | +35.4 KB |
+
+The whole set of 58 icons the app uses arrives as one shared chunk of about
+160 KB uncompressed, 36 KB compressed, and every page loads it. Two things
+cause that, and neither is a wildcard import:
+
+1. **Phosphor carries six weights per icon.** One `House` component contains
+   thin, light, regular, bold, fill and duotone path data, because the weight is
+   a prop rather than a separate component. Only three weights are used here, but
+   the other three cannot be dropped from the package's own module.
+2. **The chunk is shared, not per route.** The icons are imported by the auth
+   forms, the shadcn primitives and the design guide, so the build hoists them
+   into a chunk common to every entry, and a page that uses two icons still
+   loads the union. Splitting the set into one module per icon was tried and
+   measured: it changed nothing, because the chunking happens above the module.
+
+If that 36 KB ever has to go, the lever is the number of icons in the approved
+set, not the import style.

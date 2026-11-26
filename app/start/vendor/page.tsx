@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 
 import { AuthShell } from "@/components/auth/auth-shell"
 import { VendorForm } from "@/app/start/_components/vendor-form"
+import { appUrl } from "@/lib/identity/app-urls"
 import { requireUser } from "@/lib/identity/guards"
 
 export const metadata: Metadata = {
@@ -21,11 +22,14 @@ export default async function StartVendorPage() {
   return (
     <AuthShell
       panel={{
-        heading: "Set up your store.",
+        heading: "Set up your store",
         body: "Tell us about your business. You can add products after this step.",
       }}
     >
-      <VendorForm />
+      <VendorForm
+        storeUrlPrefix={appUrl("public", "/store/")}
+        nextHref={appUrl("merchant", "/products/new")}
+      />
     </AuthShell>
   )
 }

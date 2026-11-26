@@ -30,7 +30,7 @@ export default function NotFound() {
               </Button>
             </Link>
 
-            <Link href="/auth/register" className="block">
+            <Link href="/sign-up" className="block">
               <Button variant="outline" className="w-full">
                 <Search className="w-4 h-4 mr-2" />
                 Browse Products

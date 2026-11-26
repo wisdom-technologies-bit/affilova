@@ -20,7 +20,6 @@ import {
 const NAV_LINKS = [
   { name: "How It Works", href: "/how-it-works" },
   { name: "About", href: "/about" },
-  { name: "Blog", href: "/blog" },
   { name: "Contact", href: "/contact" },
 ]
 
@@ -116,13 +115,13 @@ export default function HowItWorksClient() {
 
           <div className="flex items-center gap-2 text-sm">
             <Link
-              href="/auth/login"
+              href="/sign-in"
               className="rounded-md px-3 py-2 text-slate-700 transition-colors duration-150 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
             >
               Sign in
             </Link>
             <Link
-              href="/auth/register"
+              href="/sign-up"
               className="rounded-md bg-brand-500 px-4 py-2 font-medium text-white transition-colors duration-150 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
             >
               Get started
@@ -209,13 +208,13 @@ export default function HowItWorksClient() {
         <section className="pb-16">
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link
-              href="/auth/register?role=vendor"
+              href="/sign-up"
               className="inline-flex items-center justify-center rounded-md bg-brand-500 px-5 py-3 text-sm font-medium text-white transition-colors duration-150 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
             >
               Sell on Affilova
             </Link>
             <Link
-              href="/auth/register?role=affiliate"
+              href="/sign-up"
               className="inline-flex items-center justify-center rounded-md border border-[#E3E6E3] px-5 py-3 text-sm font-medium text-slate-900 transition-colors duration-150 hover:border-brand-500 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
             >
               Promote on Affilova

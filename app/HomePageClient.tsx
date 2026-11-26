@@ -59,9 +59,6 @@ export default function HomePageClient() {
             >
               How It Works
             </button>
-            <Link href="/blog" className="px-4 py-2 text-gray-600 hover:text-green-600 transition-colors">
-              Blog
-            </Link>
             <Link
               href="/privacy-policy"
               className="px-4 py-2 text-gray-600 hover:text-green-600 transition-colors text-sm"
@@ -78,12 +75,12 @@ export default function HomePageClient() {
 
           {/* Desktop Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            <Link href="/auth/login">
+            <Link href="/sign-in">
               <Button variant="ghost" className="text-gray-900 hover:text-green-600">
                 Sign In
               </Button>
             </Link>
-            <Link href="/auth/register">
+            <Link href="/sign-up">
               <Button className="bg-green-600 hover:bg-green-700 text-white">Get Started</Button>
             </Link>
           </div>
@@ -109,9 +106,6 @@ export default function HomePageClient() {
             >
               How It Works
             </button>
-            <Link href="/blog" className="block px-4 py-2 text-gray-600 hover:bg-gray-50 rounded">
-              Blog
-            </Link>
             <Link href="/privacy-policy" className="block px-4 py-2 text-gray-600 hover:bg-gray-50 rounded">
               Privacy
             </Link>
@@ -119,11 +113,11 @@ export default function HomePageClient() {
               Terms
             </Link>
             <div className="border-t pt-3 space-y-2">
-              <Link href="/auth/login" className="block px-4 py-2 text-gray-600 hover:bg-gray-50 rounded">
+              <Link href="/sign-in" className="block px-4 py-2 text-gray-600 hover:bg-gray-50 rounded">
                 Sign In
               </Link>
               <Link
-                href="/auth/register"
+                href="/sign-up"
                 className="block px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
               >
                 Get Started
@@ -152,7 +146,7 @@ export default function HomePageClient() {
                 from one dashboard.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/auth/register?role=vendor">
+                <Link href="/sign-up">
                   <Button
                     size="lg"
                     className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all"
@@ -160,7 +154,7 @@ export default function HomePageClient() {
                     Start Selling <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </Link>
-                <Link href="/auth/register?role=affiliate">
+                <Link href="/sign-up">
                   <Button
                     size="lg"
                     variant="outline"
@@ -387,12 +381,12 @@ export default function HomePageClient() {
               Set up a store to sell, or apply to promote products that are already listed.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/auth/register?role=vendor">
+              <Link href="/sign-up">
                 <Button size="lg" className="w-full sm:w-auto bg-white text-green-600 hover:bg-gray-100">
                   Start as Vendor
                 </Button>
               </Link>
-              <Link href="/auth/register?role=affiliate">
+              <Link href="/sign-up">
                 <Button
                   size="lg"
                   className="w-full sm:w-auto border-2 border-white text-white hover:bg-green-700 bg-transparent"

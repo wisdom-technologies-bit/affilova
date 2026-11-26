@@ -15,10 +15,10 @@ export default function AboutPage() {
             <Logo variant="horizontal" className="h-10 w-auto" />
           </Link>
           <div className="flex space-x-4">
-            <Link href="/auth/login">
+            <Link href="/sign-in">
               <Button variant="ghost">Sign In</Button>
             </Link>
-            <Link href="/auth/register">
+            <Link href="/sign-up">
               <Button className="bg-green-600 hover:bg-green-700">Get Started</Button>
             </Link>
           </div>
@@ -241,12 +241,12 @@ export default function AboutPage() {
             tools and support you need to succeed.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/auth/register?role=vendor">
+            <Link href="/sign-up">
               <Button size="lg" className="bg-white text-green-600 hover:bg-gray-100">
                 Start as Vendor
               </Button>
             </Link>
-            <Link href="/auth/register?role=affiliate">
+            <Link href="/sign-up">
               <Button
                 size="lg"
                 variant="outline"
@@ -273,7 +273,7 @@ export default function AboutPage() {
               <h4 className="font-semibold mb-4">Platform</h4>
               <ul className="space-y-2 text-sm text-gray-600">
                 <li>
-                  <Link href="/auth/register" className="hover:text-gray-900">
+                  <Link href="/sign-up" className="hover:text-gray-900">
                     Get Started
                   </Link>
                 </li>
@@ -293,7 +293,7 @@ export default function AboutPage() {
               <h4 className="font-semibold mb-4">For Vendors</h4>
               <ul className="space-y-2 text-sm text-gray-600">
                 <li>
-                  <Link href="/auth/register?role=vendor" className="hover:text-gray-900">
+                  <Link href="/sign-up" className="hover:text-gray-900">
                     List Products
                   </Link>
                 </li>
@@ -313,7 +313,7 @@ export default function AboutPage() {
               <h4 className="font-semibold mb-4">For Affiliates</h4>
               <ul className="space-y-2 text-sm text-gray-600">
                 <li>
-                  <Link href="/auth/register?role=affiliate" className="hover:text-gray-900">
+                  <Link href="/sign-up" className="hover:text-gray-900">
                     Join as Affiliate
                   </Link>
                 </li>

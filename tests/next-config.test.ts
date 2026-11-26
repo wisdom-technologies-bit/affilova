@@ -115,8 +115,6 @@ describe("next.config.mjs security headers", () => {
 
     const needed = [
       "https://challenges.cloudflare.com",
-      "https://checkout.squadco.com",
-      "https://popup.squadco.com",
       "https://*.supabase.co",
       "wss://*.supabase.co",
       "https://res.cloudinary.com",
@@ -138,10 +136,68 @@ describe("next.config.mjs security headers", () => {
       "https://checkout.paystack.com",
       "https://api.paystack.co",
       "https://api.pwnedpasswords.com",
+      "https://checkout.squadco.com",
+      "https://popup.squadco.com",
     ]
 
     for (const origin of unused) {
       expect(policy, `policy should not allow ${origin}`).not.toContain(origin)
     }
+  })
+})
+
+type RedirectRule = {
+  source: string
+  destination: string
+  permanent: boolean
+  missing?: { type: string; key?: string; value?: string }[]
+}
+
+async function redirectRules(): Promise<RedirectRule[]> {
+  const rules = await nextConfig.redirects?.()
+
+  expect(rules).toBeDefined()
+
+  return (rules ?? []) as RedirectRule[]
+}
+
+describe("next.config.mjs redirects for the removed legacy addresses", () => {
+  const cases: { source: string; destination: string; permanent: boolean }[] = [
+    { source: "/auth/login", destination: "/sign-in", permanent: true },
+    { source: "/auth/register", destination: "/sign-up", permanent: true },
+    { source: "/auth/forgot-password", destination: "/forgot-password", permanent: true },
+    { source: "/auth/reset-password", destination: "/reset-password", permanent: true },
+    { source: "/dashboard", destination: "/start", permanent: false },
+    { source: "/dashboard/:path*", destination: "/start", permanent: false },
+    { source: "/onboarding/:path*", destination: "/start", permanent: true },
+    { source: "/products/:path*", destination: "/marketplace", permanent: true },
+    { source: "/purchase/:path*", destination: "/marketplace", permanent: true },
+  ]
+
+  it.each(cases)("sends $source to $destination", async ({ source, destination, permanent }) => {
+    const rule = (await redirectRules()).find((candidate) => candidate.source === source)
+
+    expect(rule).toBeDefined()
+    expect(rule?.destination).toBe(destination)
+    expect(rule?.permanent).toBe(permanent)
+  })
+
+  it("has no other redirect", async () => {
+    expect(await redirectRules()).toHaveLength(cases.length)
+  })
+
+  it("leaves /blog and /admin alone, so they answer 404", async () => {
+    const sources = (await redirectRules()).map((rule) => rule.source)
+
+    expect(sources.some((source) => source.startsWith("/blog"))).toBe(false)
+    expect(sources.some((source) => source.startsWith("/admin"))).toBe(false)
+  })
+
+  it("does not redirect /products on an app host or in a preview override", async () => {
+    const rule = (await redirectRules()).find((candidate) => candidate.source === "/products/:path*")
+    const missing = rule?.missing ?? []
+
+    expect(missing).toContainEqual({ type: "query", key: "app" })
+    expect(missing).toContainEqual({ type: "cookie", key: "affilova_app" })
   })
 })

@@ -4,7 +4,6 @@ import { NextRequest } from "next/server"
 import { middleware, PATH_HEADER } from "./middleware"
 import { APP_OVERRIDE_COOKIE } from "./lib/host-routing"
 import { APP_HEADER, type AppName } from "./lib/hosts"
-import { TEST_JWT_SECRET } from "./tests/helpers/legacy-jwt"
 
 // What the middleware does per host: which app it resolves, which paths it
 // rewrites, which it blocks and which it passes through.
@@ -26,7 +25,6 @@ const ENV: Record<string, string> = {
 }
 
 function setEnv(overrides: Record<string, string | undefined> = {}): void {
-  process.env.JWT_SECRET = TEST_JWT_SECRET
   process.env.NEXT_PUBLIC_APP_ENV = "production"
 
   for (const [key, value] of Object.entries(ENV)) {

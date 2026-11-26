@@ -118,8 +118,6 @@ describe("parseServerEnv", () => {
     expect(env.BREVO_API_KEY).toBeUndefined()
     expect(env.TURNSTILE_SECRET_KEY).toBeUndefined()
     expect(env.CLOUDINARY_API_KEY).toBeUndefined()
-    expect(env.DATABASE_URL).toBeUndefined()
-    expect(env.JWT_SECRET).toBeUndefined()
   })
 })
 

@@ -45,11 +45,6 @@ const requiredUrl = z.preprocess(
   z.string({ required_error: "is required" }).url("must be a valid URL, e.g. https://example.com"),
 )
 
-const optionalUrl = z.preprocess(
-  present,
-  z.string().url("must be a valid URL, e.g. https://example.com").optional(),
-)
-
 const hostName = z.preprocess(
   present,
   z
@@ -118,13 +113,6 @@ const serverEnvSchema = z.object({
   CLOUDINARY_CLOUD_NAME: optionalString,
   CLOUDINARY_API_KEY: optionalString,
   CLOUDINARY_API_SECRET: optionalString,
-  // Legacy variables, to be removed once the replacements above are in use.
-  DATABASE_URL: optionalUrl,
-  JWT_SECRET: optionalString,
-  GOOGLE_CLIENT_ID: optionalString,
-  GOOGLE_CLIENT_SECRET: optionalString,
-  SQUAD_SECRET_KEY: optionalString,
-  SQUAD_PUBLIC_KEY: optionalString,
 })
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>

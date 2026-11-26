@@ -1,5 +1,9 @@
 # Legacy route audit
 
+> **Removed.** Every route audited below was deleted in `chore/remove-legacy`
+> (see `docs/legacy-removal-inventory.md`). This document is kept only as the
+> record of what the legacy API surface was.
+
 Scope: every `route.ts` under `app/api`. This audit lists the routes that call
 none of the session primitives (`getSession`, `verifyToken`, `requireRole`) and
 classifies each one, so the remaining legacy surface is explicit.

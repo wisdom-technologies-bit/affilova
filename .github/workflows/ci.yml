@@ -40,6 +40,5 @@ jobs:
       - name: Build
         run: pnpm build
         env:
-          # Placeholders only: this job proves the app compiles, not that it runs.
-          DATABASE_URL: postgresql://ci:ci@localhost:5432/affilova
+          # Placeholder only: this job proves the app compiles, not that it runs.
           NEXT_PUBLIC_APP_URL: https://affilova.example.com

@@ -345,7 +345,7 @@ asset other than the logo.
    `/auth/reset-password`.
 6. Try Google sign-in: it comes back through `/auth/callback` with a session.
 7. Try an expired or already used link: it goes to
-   `/auth/login?error=link_invalid`.
+   `/sign-in?error=link_invalid` (the old `/auth/login` address redirects to `/sign-in`).
 
 ## 9. Where the code lives
 
@@ -361,5 +361,6 @@ asset other than the logo.
 | `app/auth/callback/route.ts` | OAuth code exchange |
 | `app/auth/confirm/route.ts` | `token_hash` verification for the email links |
 
-The legacy login under `app/api/auth/*` and `lib/auth.ts` is untouched and keeps
-working. Only the new pages call the actions above.
+**Removed:** the legacy login under `app/api/auth/*` and `lib/auth.ts` was deleted
+in `chore/remove-legacy`. The old `/auth/*` page addresses redirect to the new
+pages (see `next.config.mjs`).

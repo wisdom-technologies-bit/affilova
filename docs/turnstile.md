@@ -82,6 +82,6 @@ Allowed form: 1 to 32 characters of letters, numbers, underscore or hyphen.
 
 ## Out of scope
 
-The legacy routes still verify Turnstile server-side with their existing
-secret environment variable (`lib/security.ts`, used by the `app/api/auth/*`
-handlers). They are unchanged by this work and are not part of the new flow.
+**Removed:** the legacy routes (`lib/security.ts`, `app/api/auth/*`) that verified
+Turnstile with their own secret were deleted in `chore/remove-legacy`. Only the
+new flow remains.

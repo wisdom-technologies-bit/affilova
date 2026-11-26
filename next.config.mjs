@@ -28,16 +28,9 @@ import { withSentryConfig } from "@sentry/nextjs/config"
 //    hooks/ and styles/ for external URLs:
 //
 //      script-src   https://challenges.cloudflare.com  Turnstile widget script.
-//                   app/auth/login/login-client.tsx, app/auth/register/
-//                   _components/RegisterClient.tsx, lib/identity/turnstile.ts
-//      script-src   https://checkout.squadco.com      Legacy Squad checkout
-//                   widget. components/squad-payment.tsx (used by
-//                   app/products/[id]/purchase and app/dashboard/vendor/store)
+//                   lib/identity/turnstile.ts
 //      frame-src    https://challenges.cloudflare.com Turnstile renders in an
 //                   iframe.
-//      frame-src    https://popup.squadco.com         The Squad widget builds an
-//                   iframe pointed at this origin (read from
-//                   https://checkout.squadco.com/widget/squad.min.js).
 //      connect-src  https://*.supabase.co,
 //                   wss://*.supabase.co              Supabase auth client.
 //                   lib/supabase/browser.ts
@@ -51,12 +44,11 @@ import { withSentryConfig } from "@sentry/nextjs/config"
 //                   PUT (single) or POSTed in parts (multipart) straight to a
 //                   signed R2 URL, and the ETag header is read back from the
 //                   response (lib/catalog/upload-client.ts).
-//      img-src      https://res.cloudinary.com        Uploaded product, blog and
-//                   avatar images. lib/cloudinary.ts returns Cloudinary
+//      img-src      https://res.cloudinary.com        Uploaded product and
+//                   avatar images. lib/images/cloudinary.ts returns Cloudinary
 //                   secure_url values, which are rendered in <img>.
 //      img-src      https://lh3.googleusercontent.com Google account avatars.
-//                   profile_picture_url is filled from Google's `picture` claim
-//                   in app/api/auth/google/callback/route.ts.
+//                   Kept for avatar URLs already stored on profiles.
 //
 //    Origins that are **not** in the policy, and why:
 //
@@ -73,18 +65,13 @@ import { withSentryConfig } from "@sentry/nextjs/config"
 //        called from the "use server" actions), so the browser never fetches it
 //        and connect-src is not what governs that call.
 //
-//    Server-to-server calls are not covered by CSP at all: lib/brevo.ts
-//    (api.brevo.com), lib/google-auth.ts and app/api/auth/google/callback
-//    (oauth2.googleapis.com, accounts.google.com) and lib/squad.ts
-//    (api-d.squadco.com) never run in the page.
+//    Server-to-server calls are not covered by CSP at all: lib/email/brevo.ts
+//    (api.brevo.com) and the Paystack client never run in the page.
 //
 // 5. Known gaps the Report-Only phase is expected to surface, recorded here so
 //    nobody mistakes a report for a regression:
-//    - form-action 'self' and the Squad widget's 3-D Secure step, which posts a
-//      form to the issuing bank's own ACS origin (an unenumerable set of hosts).
-//    - Vendor-authored blog and sales-page HTML is rendered with
-//      dangerouslySetInnerHTML, so it can reference images or embeds from any
-//      origin an author typed.
+//    - Vendor-authored product descriptions that are rendered as HTML can
+//      reference images or embeds from any origin an author typed.
 
 // The endpoint that receives violations. POST only, 8 KB cap, no storage: see
 // app/api/csp-report/route.ts.
@@ -98,14 +85,59 @@ const contentSecurityPolicyReportOnly = [
   "frame-ancestors 'none'",
   // 'unsafe-inline' is required while there is no per-request nonce; the
   // nonce-based policy described above replaces it.
-  "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://checkout.squadco.com",
+  "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com",
   "font-src 'self' data:",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com https://api.cloudinary.com https://*.r2.cloudflarestorage.com",
-  "frame-src https://challenges.cloudflare.com https://popup.squadco.com",
+  "frame-src https://challenges.cloudflare.com",
   `report-uri ${CSP_REPORT_URI}`,
 ].join("; ")
+
+// Old addresses that moved, and addresses that are gone.
+//
+// /blog and /admin/* are deliberately not listed: the pages and routes no
+// longer exist, so they answer 404 on their own (the blog is hidden until it is
+// rebuilt after launch).
+//
+// "/products" is a real path on the merchant and admin hosts (middleware
+// rewrites it into /hosts/<app>/products), and redirects run before middleware.
+// The redirect to the marketplace therefore must not apply on those hosts. It
+// is skipped when the request is for a configured app host, or carries the
+// preview override (?app= or the affilova_app cookie). NEXT_PUBLIC_* values are
+// read at build time, the same moment Next.js reads this file.
+const APP_HOST_VARIABLES = [
+  "NEXT_PUBLIC_HOST_AFFILIATE",
+  "NEXT_PUBLIC_HOST_MERCHANT",
+  "NEXT_PUBLIC_HOST_ACCOUNT",
+  "NEXT_PUBLIC_HOST_ADMIN",
+]
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+const appHostConditions = APP_HOST_VARIABLES.map((name) => process.env[name]?.trim())
+  .filter((host) => typeof host === "string" && host !== "")
+  .map((host) => ({ type: "host", value: escapeRegExp(host) }))
+
+const publicOnly = [
+  ...appHostConditions,
+  { type: "query", key: "app" },
+  { type: "cookie", key: "affilova_app" },
+]
+
+const legacyRedirects = [
+  { source: "/auth/login", destination: "/sign-in", permanent: true },
+  { source: "/auth/register", destination: "/sign-up", permanent: true },
+  { source: "/auth/forgot-password", destination: "/forgot-password", permanent: true },
+  { source: "/auth/reset-password", destination: "/reset-password", permanent: true },
+  { source: "/dashboard", destination: "/start", permanent: false },
+  { source: "/dashboard/:path*", destination: "/start", permanent: false },
+  { source: "/onboarding/:path*", destination: "/start", permanent: true },
+  { source: "/products/:path*", destination: "/marketplace", permanent: true, missing: publicOnly },
+  { source: "/purchase/:path*", destination: "/marketplace", permanent: true },
+]
 
 const securityHeaders = [
   {
@@ -140,6 +172,9 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
+  },
+  async redirects() {
+    return legacyRedirects
   },
   async headers() {
     return [

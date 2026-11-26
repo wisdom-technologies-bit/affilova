@@ -37,13 +37,13 @@ export function LegalHeader({ currentHref }: { currentHref?: string }) {
 
         <div className="flex items-center gap-2 text-sm">
           <Link
-            href="/auth/login"
+            href="/sign-in"
             className="rounded-md px-3 py-2 text-slate-700 transition-colors duration-150 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
           >
             Sign in
           </Link>
           <Link
-            href="/auth/register"
+            href="/sign-up"
             className="rounded-md bg-brand-500 px-4 py-2 font-medium text-white transition-colors duration-150 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
           >
             Get started

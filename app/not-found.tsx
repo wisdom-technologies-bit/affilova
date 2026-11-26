@@ -1,61 +1,55 @@
 "use client"
 
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Home, Search, ArrowLeft } from "lucide-react"
+
 import { Logo } from "@/components/brand/logo"
+import { MagnifyingGlass, SignOut } from "@/components/ds/icons"
+import { Button } from "@/components/ui/button"
+
+// The 404, on any host.
+//
+// It says what happened, names the two places worth going, and offers the browser
+// back button for the case where the person arrived here by a mistyped link. No
+// illustration, no search box that cannot search anything, no apology paragraph.
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-surface-subtle flex items-center justify-center px-4">
-      <Card className="w-full max-w-md border-0 shadow-lg">
-        <CardContent className="p-8 text-center">
-          <div className="mb-6">
-            <div className="text-6xl font-bold text-gray-300 mb-2">404</div>
-            <Logo variant="stacked" className="h-12 w-auto mx-auto" />
-          </div>
+    <main className="flex min-h-screen items-center justify-center bg-surface-subtle px-6 py-16">
+      <div className="w-full max-w-[520px] rounded-lg border border-border bg-background p-8">
+        <Logo variant="horizontal" tone="auto" className="h-7 w-auto" />
 
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Page Not Found</h1>
-          <p className="text-gray-600 mb-8">
-            Sorry, we couldn't find the page you're looking for. It might have been moved, deleted, or you entered the
-            wrong URL.
-          </p>
+        <h1 className="mt-6 text-h1 text-foreground">Page not found</h1>
 
-          <div className="space-y-3">
-            <Link href="/" className="block">
-              <Button className="w-full bg-green-600 hover:bg-green-700">
-                <Home className="w-4 h-4 mr-2" />
-                Go Home
-              </Button>
+        <p className="mt-3 text-body text-text-muted">
+          There is nothing at this address. The link may be wrong, or the page may have moved.
+        </p>
+
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+          <Button asChild>
+            <Link href="/marketplace">
+              <MagnifyingGlass size="sm" />
+              Browse the marketplace
             </Link>
+          </Button>
 
-            <Link href="/sign-up" className="block">
-              <Button variant="outline" className="w-full">
-                <Search className="w-4 h-4 mr-2" />
-                Browse Products
-              </Button>
+          <Button asChild variant="outline">
+            <Link href="/sign-in">
+              <SignOut size="sm" />
+              Sign in
             </Link>
+          </Button>
+        </div>
 
-            <button
-              onClick={() => window.history.back()}
-              className="w-full text-sm text-gray-600 hover:text-gray-900 flex items-center justify-center gap-2 py-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Go Back
-            </button>
-          </div>
+        <p className="mt-6 text-small text-text-muted">Arrived here from another page?</p>
 
-          <div className="mt-8 pt-6 border-t">
-            <p className="text-sm text-gray-500">
-              Need help?{" "}
-              <Link href="/contact" className="text-green-600 hover:underline">
-                Contact Support
-              </Link>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        <button
+          type="button"
+          onClick={() => window.history.back()}
+          className="focus-ring mt-1 inline-flex min-h-11 items-center rounded-sm font-medium text-brand-600 underline-offset-2 transition-colors duration-150 hover:text-brand-700 hover:underline"
+        >
+          Go back
+        </button>
+      </div>
+    </main>
   )
 }

@@ -1,4 +1,7 @@
-import { CircleAlert, CircleCheck } from "lucide-react"
+import {
+  WarningCircle,
+  CheckCircle,
+} from "@/components/ds/icons"
 
 import type { ProductReadiness } from "@/lib/catalog/action-types"
 
@@ -52,7 +55,7 @@ export function ReadinessChecklist({
   if (readiness.missing.length === 0) {
     return (
       <p className="flex items-center gap-2 text-sm text-brand-ink">
-        <CircleCheck aria-hidden="true" className="h-4 w-4 text-brand-700" />
+        <CheckCircle aria-hidden="true" className="h-4 w-4 text-brand-700" />
         Everything a reviewer needs is here. This product can be submitted.
       </p>
     )
@@ -73,7 +76,7 @@ export function ReadinessChecklist({
               href={`#${sectionFor(key)}`}
               className="flex min-h-[44px] items-center gap-2 rounded-md px-1 text-sm text-brand-ink underline-offset-4 transition-colors duration-150 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
             >
-              <CircleAlert aria-hidden="true" className="h-4 w-4 shrink-0 text-destructive" />
+              <WarningCircle aria-hidden="true" className="h-4 w-4 shrink-0 text-destructive" />
               <span>
                 {readinessLabel(key)}
                 <span className="sr-only"> (still needed, go to the section that fixes it)</span>
@@ -89,7 +92,7 @@ export function ReadinessChecklist({
           <ul className="mt-1 space-y-1" aria-label="Requirements already met">
             {done.map((item) => (
               <li key={`${idPrefix}-${item.key}`} className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CircleCheck aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-700" />
+                <CheckCircle aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-700" />
                 {item.label}
               </li>
             ))}

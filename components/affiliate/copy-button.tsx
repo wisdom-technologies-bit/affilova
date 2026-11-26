@@ -1,6 +1,9 @@
 "use client"
 
-import { Check, Copy } from "lucide-react"
+import {
+  Check,
+  Copy,
+} from "@/components/ds/icons"
 import { useEffect, useRef, useState } from "react"
 
 import { cn } from "@/lib/utils"

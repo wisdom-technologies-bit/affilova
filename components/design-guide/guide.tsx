@@ -1,6 +1,14 @@
 "use client"
 
-import { Archive, ArrowRight, CircleAlert, PackageSearch, Plus, Search, Trash2 } from "lucide-react"
+import {
+  Archive,
+  ArrowRight,
+  WarningCircle,
+  Package,
+  Plus,
+  MagnifyingGlass,
+  Trash,
+} from "@/components/ds/icons"
 import { useState } from "react"
 import { toast } from "sonner"
 
@@ -165,8 +173,8 @@ function TypeSpecimen({ entry }: { entry: (typeof TYPE_SCALE)[number] }) {
 
 const PAYOUT_STATUS: StatusMap<"paid" | "pending" | "failed" | "reversed" | "queued"> = {
   paid: { tone: "success", label: "Paid", icon: Archive, description: "The transfer settled." },
-  pending: { tone: "warning", label: "Pending", icon: CircleAlert, description: "Waiting on approval." },
-  failed: { tone: "danger", label: "Failed", icon: CircleAlert, description: "The bank rejected it." },
+  pending: { tone: "warning", label: "Pending", icon: WarningCircle, description: "Waiting on approval." },
+  failed: { tone: "danger", label: "Failed", icon: WarningCircle, description: "The bank rejected it." },
   reversed: { tone: "info", label: "Reversed", icon: Archive, description: "Returned after settlement." },
   queued: { tone: "neutral", label: "Queued", icon: Archive, description: "In the next run." },
 }
@@ -517,7 +525,7 @@ export function DesignSystemGuide() {
             <ArrowRight aria-hidden="true" />
           </Button>
           <Button variant="ghost" aria-label="Delete">
-            <Trash2 aria-hidden="true" />
+            <Trash aria-hidden="true" />
           </Button>
         </Row>
       </Section>
@@ -926,7 +934,7 @@ export function DesignSystemGuide() {
                 <Field label="Search products" id="guide-search" hideLabel>
                   {(field) => (
                     <div className="relative">
-                      <Search
+                      <MagnifyingGlass
                         aria-hidden="true"
                         className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-subtle"
                       />
@@ -956,7 +964,7 @@ export function DesignSystemGuide() {
         <div className="mt-6">
           <Subsection title="EmptyState" note="What is missing, why, and the one thing to do next.">
             <EmptyState
-              icon={<PackageSearch className="h-5 w-5" />}
+              icon={<Package className="h-5 w-5" />}
               title="No products yet"
               description="A product is a file, a price and a page. Add the first one and it appears in the marketplace once it passes review."
               primaryAction={<Button>New product</Button>}

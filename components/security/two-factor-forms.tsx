@@ -1,48 +1,56 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, type ReactNode } from "react"
 
+import { FormAlert } from "@/components/auth/form-alert"
+import { SubmitButton } from "@/components/auth/submit-button"
+import { CopyField } from "@/components/ds/copy-field"
+import { Field } from "@/components/ds/field"
+import { Input } from "@/components/ui/input"
 import { submitEnrollmentCode, submitVerifyCode } from "@/lib/identity/mfa-actions"
 
 // The two forms behind staff two-factor sign-in.
 //
-// Both are a labelled six digit field with inputmode numeric and
-// autocomplete="one-time-code", so a phone offers the code from the message or
-// the authenticator, and a screen reader announces the field as a one time code.
-// The error sits in an aria-live region, so it is read out when it appears
-// without moving focus.
+// Both use the same six digit field: inputmode numeric so a phone shows a number
+// pad, autocomplete="one-time-code" so the code can be offered from the message or
+// the authenticator, and a label a screen reader reads as a one time code. The
+// error is an InlineAlert with role="alert", so it is announced without the focus
+// being taken off the field the person is about to correct.
+//
+// Enrolment is three numbered steps in one card, in the order they happen: install
+// the app, scan or copy the key, then enter the first code. The secret is shown in
+// groups of four to be read aloud, and copied without the spaces.
 
-const FIELD =
-  "mt-1.5 block w-full min-h-11 rounded-md border border-input bg-background px-3 py-2.5 text-center text-lg tracking-[0.4em] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+const CODE_LENGTH = 6
 
-const LABEL = "block text-sm font-medium text-foreground"
+/** "JBSWY3DPEHPK3PXP" -> "JBSW Y3DP EHPK 3PXP", for reading and typing by hand. */
+export function groupSecret(secret: string): string {
+  return secret.replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim()
+}
 
-const BUTTON =
-  "mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 disabled:opacity-60"
-
-function CodeField({ id }: { id: string }) {
+function CodeField({ id, error }: { id: string; error?: string }) {
   return (
-    <>
-      <label htmlFor={id} className={LABEL}>
-        Six digit code
-      </label>
-      <input
-        id={id}
-        name="code"
-        type="text"
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        pattern="[0-9]{6}"
-        maxLength={6}
-        required
-        autoFocus
-        aria-describedby={`${id}-hint`}
-        className={FIELD}
-      />
-      <p id={`${id}-hint`} className="mt-1.5 text-xs text-muted-foreground">
-        The code changes every thirty seconds.
-      </p>
-    </>
+    <Field
+      id={id}
+      label="Six digit code"
+      help="The code changes every thirty seconds."
+      error={error}
+      required
+    >
+      {(field) => (
+        <Input
+          {...field}
+          name="code"
+          type="text"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          pattern="[0-9]{6}"
+          maxLength={CODE_LENGTH}
+          autoFocus
+          className="text-center text-lg tracking-[0.4em] tabular"
+        />
+      )}
+    </Field>
   )
 }
 
@@ -55,24 +63,26 @@ export function VerifyForm({ next }: VerifyFormProps) {
 
   return (
     <form action={formAction}>
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">Enter your code</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
+      <h1 className="text-h1 text-foreground">Enter your code</h1>
+      <p className="mt-2 text-body text-text-muted">
         Open your authenticator app and enter the six digit code for Affilova.
       </p>
 
       <input type="hidden" name="next" value={next} />
 
+      {error === null ? null : (
+        <div className="mt-6">
+          <FormAlert variant="error">{error}</FormAlert>
+        </div>
+      )}
+
       <div className="mt-6">
-        <CodeField id="verify-code" />
+        <CodeField id="verify-code" error={error ?? undefined} />
       </div>
 
-      <button type="submit" className={BUTTON} disabled={pending}>
-        {pending ? "Checking…" : "Verify"}
-      </button>
-
-      <p aria-live="polite" className="mt-4 min-h-6 text-sm text-destructive">
-        {error ?? ""}
-      </p>
+      <div className="mt-6">
+        <SubmitButton pending={pending}>Verify</SubmitButton>
+      </div>
     </form>
   )
 }
@@ -83,44 +93,79 @@ export interface EnrollFormProps {
   next: string
 }
 
+function Step({ number, title, children }: { number: number; title: string; children: ReactNode }) {
+  return (
+    <li className="border-t border-border pt-6 first:border-0 first:pt-0">
+      <div className="flex items-baseline gap-3">
+        <span aria-hidden="true" className="text-small font-medium tabular text-text-subtle">
+          {number}
+        </span>
+        <h2 className="text-h3 text-foreground">{title}</h2>
+      </div>
+      <div className="mt-3 pl-6">{children}</div>
+    </li>
+  )
+}
+
 export function EnrollForm({ qrCode, secret, next }: EnrollFormProps) {
   const [error, formAction, pending] = useActionState(submitEnrollmentCode, null)
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">Set up two-factor sign-in</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Staff accounts need a second step to sign in. Scan this code with an authenticator app, then enter
-        the six digit code it shows.
+      <h1 className="text-h1 text-foreground">Set up two-factor sign-in</h1>
+      <p className="mt-2 text-body text-text-muted">
+        Staff accounts need a second step to sign in. This takes about a minute.
       </p>
 
-      <div className="mt-6 flex flex-col items-center gap-4">
-        {/* The QR code is an inline image from Supabase, not a stored file. */}
-        <img
-          src={qrCode}
-          alt="QR code to scan with an authenticator app"
-          width={180}
-          height={180}
-          className="rounded-md border border-border bg-white p-2"
-        />
-        <div className="w-full">
-          <p className="text-xs font-medium text-muted-foreground">Or enter this key by hand</p>
-          <code className="mt-1 block break-all rounded-md border border-border bg-muted px-3 py-2 font-mono text-sm text-foreground">
-            {secret}
-          </code>
-        </div>
-      </div>
-
-      <form action={formAction} className="mt-6">
+      <form action={formAction} className="mt-6 rounded-lg border border-border p-6">
         <input type="hidden" name="next" value={next} />
-        <CodeField id="enroll-code" />
-        <button type="submit" className={BUTTON} disabled={pending}>
-          {pending ? "Checking…" : "Turn on two-factor"}
-        </button>
-        <p aria-live="polite" className="mt-4 min-h-6 text-sm text-destructive">
-          {error ?? ""}
-        </p>
+
+        <ol className="space-y-6">
+          <Step number={1} title="Install an authenticator app">
+            <p className="text-body text-text-muted">
+              Any app that generates six digit codes will work: Google Authenticator, Authy, 1Password.
+            </p>
+          </Step>
+
+          <Step number={2} title="Scan the code or copy the key">
+            {/* The QR code is an inline image from Supabase, not a stored file. */}
+            <img
+              src={qrCode}
+              alt="QR code to scan with an authenticator app"
+              width={192}
+              height={192}
+              className="h-48 w-48 rounded-md border border-border bg-background p-2"
+            />
+
+            <CopyField
+              className="mt-4"
+              label="Setup key"
+              value={groupSecret(secret)}
+              copyValue={secret.replace(/\s+/g, "")}
+              copyLabel="Copy key"
+            />
+          </Step>
+
+          <Step number={3} title="Enter the 6 digit code">
+            <CodeField id="enroll-code" error={error ?? undefined} />
+          </Step>
+        </ol>
+
+        {error === null ? null : (
+          <div className="mt-6">
+            <FormAlert variant="error">{error}</FormAlert>
+          </div>
+        )}
+
+        <div className="mt-6">
+          <SubmitButton pending={pending}>Turn on two-factor</SubmitButton>
+        </div>
       </form>
+
+      <p className="mt-6 text-small text-text-muted">
+        If you lose the device, another admin can reset two-factor for your account. You will then set it
+        up again with a new device.
+      </p>
     </div>
   )
 }

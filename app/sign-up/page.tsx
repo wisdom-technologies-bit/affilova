@@ -12,8 +12,8 @@ export default function SignUpPage() {
   return (
     <AuthShell
       panel={{
-        heading: "Start on Affilova.",
-        body: "Create one account. Sell your own products, promote other people's, or do both.",
+        heading: "One account, two ways to earn",
+        body: "Sell your own products, promote other people's, or do both.",
       }}
     >
       <SignUpForm />

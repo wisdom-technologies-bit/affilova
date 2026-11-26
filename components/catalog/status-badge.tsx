@@ -1,12 +1,13 @@
 import {
   Archive,
-  CircleAlert,
-  CircleCheck,
+  WarningCircle,
+  CheckCircle,
   CircleDashed,
-  CirclePause,
-  Clock3,
+  PauseCircle,
+  Clock,
   PencilLine,
-} from "lucide-react"
+  type IconComponent,
+} from "@/components/ds/icons"
 
 import type { ProductStatus } from "@/lib/catalog/action-types"
 import { productStatusLabel } from "@/lib/catalog/format"
@@ -15,12 +16,12 @@ import { productStatusLabel } from "@/lib/catalog/format"
 // optional signal, so the badge still reads in a screenshot, in grayscale and
 // to somebody who cannot tell the shades apart.
 
-const APPEARANCE: Record<ProductStatus, { icon: typeof CircleCheck; className: string }> = {
+const APPEARANCE: Record<ProductStatus, { icon: IconComponent; className: string }> = {
   draft: { icon: PencilLine, className: "border-border bg-muted text-brand-ink" },
-  submitted: { icon: Clock3, className: "border-border bg-background text-brand-ink" },
-  live: { icon: CircleCheck, className: "border-brand-600 bg-brand-50 text-brand-800" },
-  paused: { icon: CirclePause, className: "border-border bg-background text-brand-ink" },
-  rejected: { icon: CircleAlert, className: "border-destructive/40 bg-background text-destructive" },
+  submitted: { icon: Clock, className: "border-border bg-background text-brand-ink" },
+  live: { icon: CheckCircle, className: "border-brand-600 bg-brand-50 text-brand-800" },
+  paused: { icon: PauseCircle, className: "border-border bg-background text-brand-ink" },
+  rejected: { icon: WarningCircle, className: "border-destructive/40 bg-background text-destructive" },
   archived: { icon: Archive, className: "border-border bg-background text-muted-foreground" },
 }
 
@@ -32,7 +33,7 @@ export function StatusBadge({ status }: { status: ProductStatus }) {
     <span
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${appearance.className}`}
     >
-      <Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+      <Icon aria-hidden="true" size="sm" className="shrink-0" />
       {productStatusLabel(status)}
     </span>
   )

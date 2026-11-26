@@ -1,4 +1,8 @@
-import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react"
+import {
+  ArrowDown,
+  ArrowUp,
+  CaretUpDown,
+} from "@/components/ds/icons"
 import type { ReactNode } from "react"
 
 import { cn } from "@/lib/utils"
@@ -161,12 +165,12 @@ export function DataTable<Row>({
                         {column.header}
                         {active ? (
                           sort?.state.direction === "asc" ? (
-                            <ArrowUp aria-hidden="true" className="h-3.5 w-3.5" />
+                            <ArrowUp aria-hidden="true" size="sm" />
                           ) : (
-                            <ArrowDown aria-hidden="true" className="h-3.5 w-3.5" />
+                            <ArrowDown aria-hidden="true" size="sm" />
                           )
                         ) : (
-                          <ChevronsUpDown aria-hidden="true" className="h-3.5 w-3.5 text-text-subtle" />
+                          <CaretUpDown aria-hidden="true" size="sm" className="text-text-subtle" />
                         )}
                       </a>
                     )}

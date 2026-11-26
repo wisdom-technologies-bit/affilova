@@ -1,6 +1,9 @@
 "use client"
 
-import { Check, Copy } from "lucide-react"
+import {
+  Check,
+  Copy,
+} from "@/components/ds/icons"
 import { useEffect, useRef, useState } from "react"
 
 import { cn } from "@/lib/utils"
@@ -18,6 +21,12 @@ import { cn } from "@/lib/utils"
 export interface CopyFieldProps {
   /** The value shown and copied. */
   value: string
+  /**
+   * What the button copies, when it differs from what is shown. A secret is
+   * displayed in groups of four to be read aloud or typed by hand, and copied
+   * without the spaces.
+   */
+  copyValue?: string
   /** The field's label. Sentence case, and it names the value: "Tracking link". */
   label: string
   /** The word on the button before it is pressed. */
@@ -31,6 +40,7 @@ export interface CopyFieldProps {
 
 export function CopyField({
   value,
+  copyValue,
   label,
   copyLabel = "Copy",
   copiedLabel = "Copied",
@@ -51,7 +61,7 @@ export function CopyField({
 
   async function copy(): Promise<void> {
     try {
-      await navigator.clipboard.writeText(value)
+      await navigator.clipboard.writeText(copyValue ?? value)
       setState("copied")
     } catch {
       setState("failed")
@@ -89,7 +99,7 @@ export function CopyField({
           }}
           className="focus-ring inline-flex h-control-md shrink-0 items-center gap-1.5 rounded-md border border-border-control bg-background px-3 text-small font-medium text-foreground transition-colors duration-150 hover:bg-surface-muted"
         >
-          <Icon aria-hidden="true" className="h-4 w-4" />
+          <Icon aria-hidden="true" size="sm" />
           {buttonText}
         </button>
       </div>

@@ -130,6 +130,10 @@ export function Turnstile({ action, onToken, onExpire, onError, resetSignal = 0 
   const widgetIdRef = useRef<string | undefined>(undefined)
   const callbacksRef = useRef({ onToken, onExpire, onError })
   const [failed, setFailed] = useState(false)
+  // The widget is an iframe of a fixed height that arrives after the page has
+  // painted. The box below is reserved at that height from the first frame, so
+  // the submit button never jumps down when it lands.
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     callbacksRef.current = { onToken, onExpire, onError }
@@ -167,6 +171,8 @@ export function Turnstile({ action, onToken, onExpire, onError, resetSignal = 0 
         if (cancelled || !api || !container) {
           return
         }
+
+        setMounted(true)
 
         widgetIdRef.current = api.render(container, {
           ...options,
@@ -228,5 +234,17 @@ export function Turnstile({ action, onToken, onExpire, onError, resetSignal = 0 
     )
   }
 
-  return <div ref={containerRef} />
+  return (
+    <div className="relative h-[72px]">
+      {mounted ? null : (
+        <p className="absolute inset-0 flex items-center text-small text-text-subtle">
+          Checking you are human
+        </p>
+      )}
+      {/* Absolutely positioned, so whatever Cloudflare injects cannot change the
+          height of this box and push the submit button down. 72px is the height
+          the widget occupies once rendered. */}
+      <div ref={containerRef} className="absolute inset-0" />
+    </div>
+  )
 }

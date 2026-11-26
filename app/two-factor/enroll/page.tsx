@@ -31,7 +31,7 @@ export default async function EnrollPage({ searchParams }: { searchParams: Promi
   return (
     <AuthShell
       panel={{
-        heading: "One more step.",
+        heading: "Turn on two-factor sign-in",
         body: "A second factor keeps the admin app closed to anyone who only has your password.",
       }}
     >

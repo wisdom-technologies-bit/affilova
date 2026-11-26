@@ -28,7 +28,7 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
   return (
     <AuthShell
       panel={{
-        heading: "Two factors, one session.",
+        heading: "Confirm it is you",
         body: "The admin app opens once the code is confirmed.",
       }}
     >

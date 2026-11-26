@@ -1,48 +1,66 @@
 import Link from "next/link"
 
+import { ArrowRight, CheckCircle, WarningCircle } from "@/components/ds/icons"
+import { Button } from "@/components/ui/button"
+
 // What the join page says, in its two and only two shapes.
 //
-// Success names the product, because that is what the affiliate just gained.
-// Every failure is the same neutral sentence: an expired token, a revoked one, a
-// token that never existed and a token already used up all look identical, so the
-// page cannot be used to probe which invites exist.
+// Success names the product, because that is what the affiliate just gained, and
+// offers the one thing to do next. Every failure is the same neutral sentence: an
+// expired token, a revoked one, a token that never existed and a token already
+// used up all look identical, so the page cannot be used to probe which invites
+// exist. A failure has no action, because there is nothing here to act on: the
+// vendor is the one who sends a new link.
+//
+// The two other outcomes of a join link are redirects, not cards: signed out goes
+// to sign-in with this page as the next path, and signed in without the affiliate
+// role goes to the affiliate setup. Both keep the invitation for the trip back.
+
+export type JoinOutcomeValue = { ok: true; productTitle: string } | { ok: false }
 
 export function JoinOutcome({
   outcome,
   affiliateUrl,
 }: {
-  outcome: { ok: true; productTitle: string } | { ok: false }
+  outcome: JoinOutcomeValue
   affiliateUrl: string
 }) {
   return (
-    <main className="mx-auto flex min-h-[60vh] max-w-md flex-col justify-center px-4 py-12">
-      <h1 className="text-2xl font-semibold tracking-tight text-brand-ink">
-        {outcome.ok ? "Invitation accepted" : "This invite is not valid"}
-      </h1>
+    <main className="mx-auto flex min-h-screen max-w-[560px] flex-col justify-center px-6 py-16">
+      <div className="rounded-lg border border-border bg-background p-8">
+        {outcome.ok ? (
+          <CheckCircle size="lg" tone="success" className="text-success" />
+        ) : (
+          <WarningCircle size="lg" className="text-text-subtle" />
+        )}
 
-      {outcome.ok ? (
-        <>
-          <p className="mt-3 text-sm text-brand-ink">
-            You can now promote {outcome.productTitle}.
+        <h1 className="mt-4 text-h1 text-foreground">
+          {outcome.ok ? "Invitation accepted" : "This invite is not valid"}
+        </h1>
+
+        {outcome.ok ? (
+          <>
+            <p className="mt-3 text-body text-text-muted">
+              You can now promote{" "}
+              <span className="font-medium text-foreground">{outcome.productTitle}</span>.
+            </p>
+            <p className="mt-2 text-body text-text-muted">
+              Create a link from the marketplace, then share it anywhere. Every click it records is
+              counted for you.
+            </p>
+            <Button asChild className="mt-6">
+              <Link href={affiliateUrl}>
+                Go to your affiliate dashboard
+                <ArrowRight size="sm" />
+              </Link>
+            </Button>
+          </>
+        ) : (
+          <p className="mt-3 text-body text-text-muted">
+            It may have expired, been used already, or been withdrawn. Ask the vendor for a new one.
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create a link from the marketplace, then share it anywhere. Every click it records is
-            counted for you.
-          </p>
-          <p className="mt-6">
-            <Link
-              href={affiliateUrl}
-              className="inline-flex min-h-[44px] items-center rounded-md bg-brand-600 px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
-            >
-              Go to your affiliate dashboard
-            </Link>
-          </p>
-        </>
-      ) : (
-        <p className="mt-3 text-sm text-muted-foreground">
-          It may have expired, been used already, or been withdrawn. Ask the vendor for a new one.
-        </p>
-      )}
+        )}
+      </div>
     </main>
   )
 }

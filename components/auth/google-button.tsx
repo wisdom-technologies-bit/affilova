@@ -3,12 +3,18 @@
 import { useState } from "react"
 
 import { signInWithGoogleAction } from "@/app/auth/actions"
+import { Button } from "@/components/ui/button"
 
 import { FormAlert } from "./form-alert"
 
 // Google sign-in: the server action returns the provider URL with the browser
 // redirect suppressed, and the browser is then sent there. Any failure is shown
 // inline; the action only ever returns a safe message.
+//
+// The button is the design system's outline button in its large size, so it sits
+// one step below the primary action on the same page instead of beside it as a
+// second, differently-drawn control. The Google mark keeps its own four colours:
+// it is a brand mark, and recolouring it would make it wrong.
 
 const UNEXPECTED_FAILURE = "Google sign-in could not start. Please try again."
 
@@ -62,16 +68,18 @@ export function GoogleButton() {
 
   return (
     <div>
-      <button
+      <Button
         type="button"
+        variant="outline"
+        size="lg"
+        className="w-full [&_svg]:size-5"
         onClick={handleClick}
         disabled={pending}
-        aria-busy={pending}
-        className="focus-ring inline-flex h-control-md w-full items-center justify-center gap-2 rounded-md border border-border-control bg-background px-4 text-dense font-medium text-foreground transition-colors duration-150 hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+        aria-busy={pending || undefined}
       >
         <GoogleMark />
         Continue with Google
-      </button>
+      </Button>
 
       {error ? (
         <div className="mt-3">

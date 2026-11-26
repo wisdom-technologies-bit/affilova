@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Menu } from "lucide-react"
+import { List } from "@/components/ds/icons"
 
 import { Logo } from "@/components/brand/logo"
 import { Button } from "@/components/ui/button"
@@ -50,7 +50,7 @@ export function Topbar({
             className="lg:hidden"
             aria-label="Open navigation"
           >
-            <Menu className="h-5 w-5" aria-hidden="true" />
+            <List className="h-5 w-5" aria-hidden="true" />
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="w-72 border-r border-border p-0">

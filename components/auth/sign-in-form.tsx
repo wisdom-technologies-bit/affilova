@@ -13,12 +13,17 @@ import { PasswordField } from "./password-field"
 import { SubmitButton } from "./submit-button"
 import { TextField } from "./text-field"
 import { Turnstile } from "./turnstile"
+import { emailError, signInPasswordError } from "./validation"
 
 // Sign in with email and password, or with Google.
 //
 // The Turnstile token goes to the server action as captchaToken and is redeemed
 // by Supabase. A token is single use, so every attempt (successful or not)
 // clears it and resets the widget; a failed attempt also clears the password.
+//
+// The inline messages under a field are advice shown on blur. They do not decide
+// whether the form submits: the server action still owns every rule, so pressing
+// the button with an empty field gets the same answer it always did.
 
 const UNEXPECTED_FAILURE = "Something went wrong. Please try again."
 const MISSING_TOKEN = "Complete the verification check to continue."
@@ -30,12 +35,16 @@ export interface SignInFormProps {
   error?: string
 }
 
+const TEXT_LINK =
+  "focus-ring rounded-sm font-medium text-brand-600 underline-offset-2 transition-colors duration-150 hover:text-brand-700 hover:underline"
+
 export function SignInForm({ next, error }: SignInFormProps) {
   const router = useRouter()
   const initialAlert = signInAlertForError(error)
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [touched, setTouched] = useState({ email: false, password: false })
   const [formError, setFormError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [token, setToken] = useState("")
@@ -87,17 +96,17 @@ export function SignInForm({ next, error }: SignInFormProps) {
   return (
     <div>
       <h1 className="text-h1 text-foreground">Sign in</h1>
-      <p className="mt-1 text-body text-text-muted">Use your email address and password.</p>
+      <p className="mt-2 text-body text-text-muted">Use your email address and password.</p>
 
       {alert ? (
-        <div className="mt-5">
+        <div className="mt-6">
           <FormAlert key={alert.message} variant={alert.variant} autoFocus>
             {alert.message}
           </FormAlert>
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-5">
         <TextField
           id="sign-in-email"
           name="email"
@@ -109,6 +118,8 @@ export function SignInForm({ next, error }: SignInFormProps) {
           spellCheck={false}
           required
           value={email}
+          error={touched.email ? emailError(email) : undefined}
+          onBlur={() => setTouched((current) => ({ ...current, email: true }))}
           onChange={(event) => setEmail(event.target.value)}
         />
 
@@ -120,16 +131,15 @@ export function SignInForm({ next, error }: SignInFormProps) {
             autoComplete="current-password"
             required
             value={password}
+            error={touched.password ? signInPasswordError(password) : undefined}
+            onBlur={() => setTouched((current) => ({ ...current, password: true }))}
             onChange={(event) => setPassword(event.target.value)}
           />
-          <div className="mt-2 text-right">
-            <Link
-              href="/forgot-password"
-              className="focus-ring rounded-sm text-denseall font-medium text-brand-600 underline-offset-2 transition-colors duration-150 hover:underline"
-            >
-              Forgot password?
+          <p className="mt-2 text-small">
+            <Link href="/forgot-password" className={TEXT_LINK}>
+              Forgot your password?
             </Link>
-          </div>
+          </p>
         </div>
 
         <Turnstile
@@ -145,20 +155,17 @@ export function SignInForm({ next, error }: SignInFormProps) {
         </SubmitButton>
       </form>
 
-      <div className="my-5 flex items-center gap-3">
+      <div className="my-6 flex items-center gap-3">
         <span aria-hidden="true" className="h-px flex-1 bg-border" />
-        <span className="text-denseall text-text-subtle">or</span>
+        <span className="text-small text-text-subtle">or</span>
         <span aria-hidden="true" className="h-px flex-1 bg-border" />
       </div>
 
       <GoogleButton />
 
-      <p className="mt-6 text-center text-denseall text-text-muted">
+      <p className="mt-8 text-small text-text-muted">
         New here?{" "}
-        <Link
-          href="/sign-up"
-          className="focus-ring rounded-sm font-medium text-brand-600 underline-offset-2 transition-colors duration-150 hover:underline"
-        >
+        <Link href="/sign-up" className={TEXT_LINK}>
           Create an account
         </Link>
       </p>

@@ -24,8 +24,8 @@ export default async function SignInPage({
   return (
     <AuthShell
       panel={{
-        heading: "Welcome back.",
-        body: "Sign in to manage your products, links and earnings.",
+        heading: "Sign in to your account",
+        body: "Your products, links and earnings are in one place.",
       }}
     >
       <SignInForm next={single(params.next)} error={single(params.error)} />

@@ -1,13 +1,16 @@
 import Link from "next/link"
+import type { ReactNode } from "react"
 
-// The sentence both onboarding forms show above their submit button, and the
-// link-styled button the success state shows instead of the form.
+import { Button } from "@/components/ui/button"
+
+// The sentence both onboarding forms show above their submit button, and the link
+// the success state shows instead of the form.
 //
 // Policy versions are kept in lib/site-config.ts and recorded through
 // record_policy_acceptance() when onboarding completes.
 
 const LINK =
-  "rounded-sm font-medium text-brand-700 underline-offset-2 transition-colors duration-150 hover:text-brand-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+  "rounded-sm font-medium text-brand-700 underline underline-offset-2 transition-colors duration-150 hover:text-brand-800 focus-ring"
 
 export type OnboardingAgreementRole = "vendor" | "affiliate"
 
@@ -18,7 +21,7 @@ export function TermsNotice({ role }: { role: OnboardingAgreementRole }) {
       : { href: "/affiliate-agreement", label: "Affiliate Agreement" }
 
   return (
-    <p className="text-xs leading-relaxed text-slate-600">
+    <p className="text-small leading-relaxed text-text-muted">
       I have read and agree to the{" "}
       <Link href={roleAgreement.href} className={LINK}>
         {roleAgreement.label}
@@ -36,13 +39,28 @@ export function TermsNotice({ role }: { role: OnboardingAgreementRole }) {
   )
 }
 
-export function ContinueLink({ href, children }: { href: string; children: string }) {
+export interface ContinueLinkProps {
+  href: string
+  children: ReactNode
+  /** `primary` is the one action of the panel; `text` is a quiet way back. */
+  variant?: "primary" | "text"
+}
+
+export function ContinueLink({ href, children, variant = "primary" }: ContinueLinkProps) {
+  if (variant === "text") {
+    return (
+      <Link
+        href={href}
+        className="focus-ring rounded-sm font-medium text-brand-600 underline-offset-2 transition-colors duration-150 hover:text-brand-700 hover:underline"
+      >
+        {children}
+      </Link>
+    )
+  }
+
   return (
-    <Link
-      href={href}
-      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white transition-colors duration-150 hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
-    >
-      {children}
-    </Link>
+    <Button asChild className="mt-4 w-full">
+      <Link href={href}>{children}</Link>
+    </Button>
   )
 }

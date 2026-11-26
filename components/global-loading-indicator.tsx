@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
-import { Loader2 } from "lucide-react"
+import { CircleNotch } from "@/components/ds/icons"
 
 export default function GlobalLoadingIndicator() {
   const pathname = usePathname()
@@ -40,7 +40,7 @@ export default function GlobalLoadingIndicator() {
 
   return (
     <div className="fixed bottom-4 left-4 z-50 bg-white shadow-lg rounded-full p-3 border border-green-200 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <Loader2 className="w-5 h-5 text-green-500 animate-spin" />
+      <CircleNotch className="w-5 h-5 text-green-500 animate-spin" />
     </div>
   )
 }

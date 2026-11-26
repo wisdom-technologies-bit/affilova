@@ -1,4 +1,4 @@
-import { CircleAlert } from "lucide-react"
+import { WarningCircle } from "@/components/ds/icons"
 import type { ReactNode } from "react"
 
 import { cn } from "@/lib/utils"
@@ -99,7 +99,7 @@ export function Field({
 
       {error === undefined ? null : (
         <p id={errorId} className="mt-1.5 flex items-start gap-1 text-small text-danger">
-          <CircleAlert aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <WarningCircle aria-hidden="true" size="sm" className="mt-0.5 shrink-0" />
           {error}
         </p>
       )}

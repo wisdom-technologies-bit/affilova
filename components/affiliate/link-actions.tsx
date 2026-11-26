@@ -1,6 +1,10 @@
 "use client"
 
-import { Archive, Link2, Share2 } from "lucide-react"
+import {
+  Archive,
+  LinkSimple,
+  ShareNetwork,
+} from "@/components/ds/icons"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
@@ -43,7 +47,7 @@ export function LinkActions({ link, url }: { link: LinkStat; url: string }) {
 
       <Dialog open={shareOpen} onOpenChange={setShareOpen}>
         <DialogTrigger className={BUTTON}>
-          <Share2 aria-hidden="true" className="h-4 w-4" />
+          <ShareNetwork aria-hidden="true" className="h-4 w-4" />
           Share
         </DialogTrigger>
         <DialogContent>
@@ -61,7 +65,7 @@ export function LinkActions({ link, url }: { link: LinkStat; url: string }) {
 
       <Dialog open={parametersOpen} onOpenChange={setParametersOpen}>
         <DialogTrigger className={BUTTON}>
-          <Link2 aria-hidden="true" className="h-4 w-4" />
+          <LinkSimple aria-hidden="true" className="h-4 w-4" />
           Parameters
         </DialogTrigger>
         <DialogContent>

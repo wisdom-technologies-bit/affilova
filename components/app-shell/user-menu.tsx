@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { LogOut } from "lucide-react"
+import { SignOut } from "@/components/ds/icons"
 
 import { signOutAction } from "@/app/auth/actions"
 import { Badge } from "@/components/ui/badge"
@@ -103,7 +103,7 @@ export function UserMenu({ user }: { user: AccountSummary }) {
           }}
           className="gap-2"
         >
-          <LogOut className="h-4 w-4" aria-hidden="true" />
+          <SignOut className="h-4 w-4" aria-hidden="true" />
           {pending ? "Signing out…" : "Sign out"}
         </DropdownMenuItem>
       </DropdownMenuContent>

@@ -1,12 +1,12 @@
 import {
   Archive,
-  Ban,
-  CircleCheck,
+  Prohibit,
+  CheckCircle,
   CircleDashed,
-  CircleSlash,
-  Clock3,
-  RotateCcw,
-} from "lucide-react"
+  ProhibitInset,
+  Clock,
+  ArrowCounterClockwise,
+} from "@/components/ds/icons"
 
 import { InlineAlert } from "@/components/ds/inline-alert"
 import { StatusBadge, type StatusMap } from "@/components/ds/status-badge"
@@ -48,7 +48,7 @@ const STATUS_MAP: StatusMap<PillStatus> = {
   active: {
     tone: "success",
     label: "Active",
-    icon: CircleCheck,
+    icon: CheckCircle,
     description: "Live and counting clicks.",
   },
   archived: {
@@ -60,37 +60,37 @@ const STATUS_MAP: StatusMap<PillStatus> = {
   pending: {
     tone: "warning",
     label: "Pending",
-    icon: Clock3,
+    icon: Clock,
     description: "Waiting for someone to decide.",
   },
   approved: {
     tone: "success",
     label: "Approved",
-    icon: CircleCheck,
+    icon: CheckCircle,
     description: "Accepted.",
   },
   rejected: {
     tone: "neutral",
     label: "Declined",
-    icon: CircleSlash,
+    icon: ProhibitInset,
     description: "Declined. Nothing further happens.",
   },
   blocked: {
     tone: "danger",
     label: "Blocked",
-    icon: Ban,
+    icon: Prohibit,
     description: "Stopped. The affiliate cannot promote this product.",
   },
   paid: {
     tone: "success",
     label: "Paid",
-    icon: CircleCheck,
+    icon: CheckCircle,
     description: "Money has been sent.",
   },
   refunded: {
     tone: "info",
     label: "Refunded",
-    icon: RotateCcw,
+    icon: ArrowCounterClockwise,
     description: "The order was refunded.",
   },
   other: {

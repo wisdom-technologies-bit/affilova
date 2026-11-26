@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 
 import { AffiliateForm } from "@/app/start/_components/affiliate-form"
 import { AuthShell } from "@/components/auth/auth-shell"
+import { appUrl } from "@/lib/identity/app-urls"
 import { requireUser } from "@/lib/identity/guards"
 
 export const metadata: Metadata = {
@@ -21,11 +22,11 @@ export default async function StartAffiliatePage() {
   return (
     <AuthShell
       panel={{
-        heading: "Set up your affiliate profile.",
+        heading: "Set up your affiliate profile",
         body: "Choose a username and tell us where you promote.",
       }}
     >
-      <AffiliateForm />
+      <AffiliateForm nextHref={appUrl("affiliate", "/marketplace")} />
     </AuthShell>
   )
 }

@@ -64,6 +64,7 @@ import { CircleIcon } from "@phosphor-icons/react/dist/ssr/Circle"
 import { CircleNotchIcon } from "@phosphor-icons/react/dist/ssr/CircleNotch"
 import { ClockIcon } from "@phosphor-icons/react/dist/ssr/Clock"
 import { CopyIcon } from "@phosphor-icons/react/dist/ssr/Copy"
+import { CreditCardIcon } from "@phosphor-icons/react/dist/ssr/CreditCard"
 import { CursorClickIcon } from "@phosphor-icons/react/dist/ssr/CursorClick"
 import { DotIcon } from "@phosphor-icons/react/dist/ssr/Dot"
 import { DotsSixVerticalIcon } from "@phosphor-icons/react/dist/ssr/DotsSixVertical"
@@ -202,6 +203,7 @@ export const X = /* @__PURE__ */ createIcon(XIcon)
 // Objects and places.
 export const Bank = /* @__PURE__ */ createIcon(BankIcon)
 export const ChatCircle = /* @__PURE__ */ createIcon(ChatCircleIcon)
+export const CreditCard = /* @__PURE__ */ createIcon(CreditCardIcon)
 export const EnvelopeSimple = /* @__PURE__ */ createIcon(EnvelopeSimpleIcon)
 export const FacebookLogo = /* @__PURE__ */ createIcon(FacebookLogoIcon)
 export const Globe = /* @__PURE__ */ createIcon(GlobeIcon)

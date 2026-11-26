@@ -23,7 +23,7 @@ export default async function ResetPasswordPage() {
   return (
     <AuthShell
       panel={{
-        heading: "Choose a new password.",
+        heading: "Choose a new password",
         body: "Use at least 10 characters. A passphrase works well.",
       }}
     >

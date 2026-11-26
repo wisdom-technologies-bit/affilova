@@ -24,8 +24,8 @@ export default async function ForgotPasswordPage({
   return (
     <AuthShell
       panel={{
-        heading: "Reset your password.",
-        body: "Enter your email address and we will send you a reset link.",
+        heading: "Reset your password",
+        body: "Enter your email address and we will send you a link.",
       }}
     >
       <ForgotPasswordForm error={single(params.error)} />

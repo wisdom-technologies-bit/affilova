@@ -112,6 +112,17 @@ vi.mock("@/lib/identity/session", () => ({
   getUserRoles: async () => ["admin"],
 }))
 
+// The Users screen reads through the admin client, which needs a real
+// environment. Here it answers an empty page; lib/admin/users-actions.test.ts
+// owns what it does with real input.
+vi.mock("@/lib/admin/users-actions", () => ({
+  STAFF_ROLES: ["admin", "finance", "support", "moderator"],
+  ACCOUNT_STATUSES: ["active", "suspended", "deletion_pending"],
+  VERIFICATION_LEVELS: ["basic", "verified", "pro"],
+  listUsersAction: async () => ({ ok: true, data: { rows: [], total: 0 } }),
+  getUserAction: async () => ({ ok: true, data: null }),
+}))
+
 vi.mock("@/lib/admin/finance-actions", () => ({
   getAdminOverviewAction: async () => ({ ok: false, error: "Not part of this test." }),
   getAdminDailySeriesAction: async () => ({ ok: false, error: "Not part of this test." }),

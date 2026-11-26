@@ -142,3 +142,48 @@ and the route guard, and asserts that a wrapped action is never called when the
 session is not good enough.
 
 The sandbox cannot reach a Supabase project, so these tests use fakes by design.
+
+## The Users screens
+
+`/hosts/admin/users` lists accounts twenty-five at a time with a search box and
+two filters. The filters are a GET form, so a filtered list is a URL that can be
+linked and reloaded without JavaScript. `/hosts/admin/users/[id]` is one account:
+its roles (active and revoked), its status and its verification level.
+
+Three things can be changed there, and each one is a database function rather
+than an `UPDATE` from the app:
+
+| Change | Function | Permission |
+| --- | --- | --- |
+| grant or revoke a staff role | `admin_grant_staff_role`, `admin_revoke_staff_role` | `roles:grant` |
+| suspend or reactivate | `admin_set_user_status` | `users:suspend` |
+| raise or lower verification | `admin_set_verification_level` | `users:suspend` |
+
+The rules that matter live in those functions, in
+`supabase/migrations/20261125000200_admin_users.sql`:
+
+- only `admin`, `finance`, `support` and `moderator` can be granted or revoked
+  there. `customer`, `affiliate` and `vendor` belong to the onboarding flows, and
+  handing them out from this screen would be a second, quieter way to get one;
+- the actor must hold an active `admin` role, and the actor passed to SQL is
+  always the signed-in person's id, never a value from the form;
+- the last active admin cannot be revoked or suspended. This is the rule that
+  keeps recovery possible (see above). A suspended admin does not count as the
+  second admin either, so suspending one admin and then revoking the other is
+  refused at the second step;
+- every change appends one row to `public.audit_log`. The before/after JSON holds
+  the role, the status or the level. It never holds an email address or a name;
+- a no-op writes nothing: granting a role the person already holds, or setting the
+  status they already have, returns without an audit row.
+
+The screens are a convenience, not the boundary. Anyone who could call the
+functions directly still meets every rule above, and `service_role` is the only
+role that can call them at all.
+
+## What is not built yet
+
+VAT settings. The package asks for a VAT settings function and screen, but the
+existing VAT settings module is `lib/commerce/vat-settings.ts`, and
+`lib/commerce/*` is on this package's forbidden list. Building it needs either a
+new `lib/admin/vat-*.ts` module or permission to change that file, so it is left
+out rather than done in the wrong place.

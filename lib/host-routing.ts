@@ -57,7 +57,9 @@ export const ASSET_EXTENSIONS: readonly string[] = [
 
 // Paths served by the normal routes on every host: the auth flow, the API, the
 // onboarding start, the error-tracking tunnel and the legal pages.
-const SHARED_PREFIXES = ["/api", "/auth", "/monitoring", "/start"] as const
+// /two-factor is shared because the second factor is checked on whichever host a
+// staff member signed in on, not only on the admin host.
+const SHARED_PREFIXES = ["/api", "/auth", "/monitoring", "/start", "/two-factor"] as const
 
 const SHARED_EXACT: readonly string[] = [
   "/acceptable-use",

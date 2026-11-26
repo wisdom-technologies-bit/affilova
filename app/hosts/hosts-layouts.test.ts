@@ -39,6 +39,13 @@ const currentApp = vi.hoisted(() => ({ getRequestPath: vi.fn() }))
 
 vi.mock("@/lib/current-app", () => ({ getRequestPath: currentApp.getRequestPath }))
 
+// The second factor has its own suite in lib/identity/mfa.test.ts. Here it is a
+// no-op, so these tests keep asking about the shell and the permission guards.
+vi.mock("@/lib/identity/mfa", () => ({
+  requireStaffAal2: async () => {},
+  staffAal2Failure: async () => null,
+}))
+
 // The two product screens read their first page on the server. A render test
 // must not reach Supabase, so the actions answer with an empty page.
 const catalog = vi.hoisted(() => ({
@@ -103,6 +110,17 @@ vi.mock("@/lib/identity/session", () => ({
   getAuthUser: async () => ({ id: "admin-1", email: "ada@example.com" }),
   // The admin pages ask for the roles before they ask for any money.
   getUserRoles: async () => ["admin"],
+}))
+
+// The Users screen reads through the admin client, which needs a real
+// environment. Here it answers an empty page; lib/admin/users-actions.test.ts
+// owns what it does with real input.
+vi.mock("@/lib/admin/users-actions", () => ({
+  STAFF_ROLES: ["admin", "finance", "support", "moderator"],
+  ACCOUNT_STATUSES: ["active", "suspended", "deletion_pending"],
+  VERIFICATION_LEVELS: ["basic", "verified", "pro"],
+  listUsersAction: async () => ({ ok: true, data: { rows: [], total: 0 } }),
+  getUserAction: async () => ({ ok: true, data: null }),
 }))
 
 vi.mock("@/lib/admin/finance-actions", () => ({

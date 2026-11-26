@@ -4,6 +4,7 @@ import * as db from "@/lib/admin/db"
 import { FinanceRpcError } from "@/lib/admin/db"
 import { vatCsv, vatCsvFileName } from "@/lib/admin/csv"
 import { catalogErrorMessage } from "@/lib/catalog/errors"
+import { staffAal2RouteGuard } from "@/lib/identity/mfa"
 import { can } from "@/lib/identity/permissions"
 import { getAuthUser, getUserRoles } from "@/lib/identity/session"
 import { logger } from "@/lib/logger"
@@ -40,6 +41,14 @@ export async function GET(request: Request): Promise<Response> {
 
   if (!can(roles, "vat:manage")) {
     return new NextResponse("You do not have access to that.", { status: 403 })
+  }
+
+  // A route handler has no page around it, so the second factor is checked here
+  // too. The answer is 403 with the same sentence the actions use.
+  const mfa = await staffAal2RouteGuard("/admin")
+
+  if (mfa !== null) {
+    return mfa
   }
 
   const period = new URL(request.url).searchParams.get("period") ?? ""

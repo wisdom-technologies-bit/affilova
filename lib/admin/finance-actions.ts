@@ -4,6 +4,7 @@ import { z } from "zod"
 
 import { catalogErrorMessage, GENERIC_ERROR } from "@/lib/catalog/errors"
 import { resolveRange } from "@/lib/dates/lagos"
+import { staffAal2Failure } from "@/lib/identity/mfa"
 import { can } from "@/lib/identity/permissions"
 import { getAuthUser, getUserRoles, type AppRole } from "@/lib/identity/session"
 import { enqueueJob } from "@/lib/jobs/queue"
@@ -63,6 +64,14 @@ async function guard(action: Parameters<typeof can>[1]): Promise<Guarded> {
 
   if (!can(roles, action)) {
     return { ok: false, error: FORBIDDEN }
+  }
+
+  // The second factor is checked here as well as in the admin layout: an action
+  // is an endpoint of its own, and calling it directly never renders the page.
+  const mfa = await staffAal2Failure("/admin")
+
+  if (mfa !== null) {
+    return { ok: false, error: mfa }
   }
 
   return { ok: true, actor: user.id, roles }

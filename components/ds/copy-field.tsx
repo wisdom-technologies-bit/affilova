@@ -21,6 +21,12 @@ import { cn } from "@/lib/utils"
 export interface CopyFieldProps {
   /** The value shown and copied. */
   value: string
+  /**
+   * What the button copies, when it differs from what is shown. A secret is
+   * displayed in groups of four to be read aloud or typed by hand, and copied
+   * without the spaces.
+   */
+  copyValue?: string
   /** The field's label. Sentence case, and it names the value: "Tracking link". */
   label: string
   /** The word on the button before it is pressed. */
@@ -34,6 +40,7 @@ export interface CopyFieldProps {
 
 export function CopyField({
   value,
+  copyValue,
   label,
   copyLabel = "Copy",
   copiedLabel = "Copied",
@@ -54,7 +61,7 @@ export function CopyField({
 
   async function copy(): Promise<void> {
     try {
-      await navigator.clipboard.writeText(value)
+      await navigator.clipboard.writeText(copyValue ?? value)
       setState("copied")
     } catch {
       setState("failed")

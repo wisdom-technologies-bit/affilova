@@ -74,7 +74,7 @@ function makeDeps(
     markRefundFailed: vi.fn(async () => undefined),
     getOrderByReference: vi.fn(async () => null),
     openDispute: vi.fn(async () => undefined),
-    resolveDispute: vi.fn(async () => undefined),
+    recordDisputeProviderOutcome: vi.fn(async () => undefined),
     ...(options.omitRecorder === true ? {} : { recordTransferResult }),
     log,
   } as unknown as WebhookDeps

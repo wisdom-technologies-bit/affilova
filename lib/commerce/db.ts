@@ -510,6 +510,38 @@ export async function openDispute(reference: string, note: string): Promise<{ st
   return { status: row === null ? "disputed" : (readString(row, "status") ?? "disputed") }
 }
 
+/**
+ * What Paystack decided, stored without moving anything.
+ *
+ * The provider's resolution is recorded and the dispute is flagged as needing a
+ * person; the order, the entitlements and the ledger are untouched. Only
+ * resolve_dispute moves money, and only a person may call it.
+ */
+export async function recordDisputeProviderOutcome(
+  reference: string,
+  resolution: string,
+  note: string,
+): Promise<{ status: string; needsDecision: boolean }> {
+  const { data, error } = await getSupabaseAdminClient().rpc("record_dispute_provider_outcome", {
+    p_reference: reference,
+    p_resolution: resolution,
+    p_note: note,
+  })
+
+  if (error) {
+    throw new Error(
+      typeof error.message === "string" ? error.message.trim() : "record_dispute_provider_outcome_failed",
+    )
+  }
+
+  const row = firstObject(data)
+
+  return {
+    status: row === null ? "recorded" : (readString(row, "status") ?? "recorded"),
+    needsDecision: row === null ? true : row.needs_decision === true,
+  }
+}
+
 export async function resolveDispute(
   orderId: string,
   outcome: "won" | "lost",

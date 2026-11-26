@@ -25,6 +25,10 @@ vi.mock("@/lib/identity/guards", () => ({
   requirePermission: guard.requirePermission,
 }))
 
+vi.mock("@/lib/commerce/vat-settings", () => ({
+  getVatSettings: async () => ({ enabled: true, rateBps: 750, basis: "platform_fee", pricesIncludeVat: false }),
+}))
+
 vi.mock("@/lib/identity/account-summary", () => ({
   getAccountSummary: directory.getAccountSummary,
 }))
@@ -97,6 +101,26 @@ const payouts = vi.hoisted(() => ({
 
 vi.mock("@/lib/identity/session", () => ({
   getAuthUser: async () => ({ id: "admin-1", email: "ada@example.com" }),
+  // The admin pages ask for the roles before they ask for any money.
+  getUserRoles: async () => ["admin"],
+}))
+
+vi.mock("@/lib/admin/finance-actions", () => ({
+  getAdminOverviewAction: async () => ({ ok: false, error: "Not part of this test." }),
+  getAdminDailySeriesAction: async () => ({ ok: false, error: "Not part of this test." }),
+  resolveOverviewRangeAction: async () => ({
+    ok: true,
+    data: { preset: "last30", from: "2026-11-01", to: "2026-11-30", fromTs: "2026-11-01T00:00:00+01:00", toTs: "2026-11-30T23:59:59+01:00" },
+  }),
+  listOrdersAction: async () => ({ ok: true, data: { rows: [], nextCursor: null } }),
+  listRefundsAction: async () => ({ ok: true, data: { rows: [], nextCursor: null } }),
+  listDisputesAction: async () => ({ ok: true, data: { rows: [], nextCursor: null } }),
+  listLedgerAction: async () => ({ ok: true, data: { rows: [], nextCursor: null, accounts: [] } }),
+  getTrialBalanceAction: async () => ({ ok: false, error: "Not part of this test." }),
+  listReconciliationAction: async () => ({ ok: true, data: { rows: [], nextCursor: null } }),
+  listVatPeriodsAction: async () => ({ ok: true, data: [] }),
+  getVatPeriodAction: async () => ({ ok: false, error: "Not part of this test." }),
+  getOrderDetailAction: async () => ({ ok: false, error: "Not part of this test." }),
 }))
 
 vi.mock("@/lib/payouts/actions", () => ({
@@ -267,6 +291,7 @@ const EXPECTED_LABELS: Record<ShellApp, readonly string[]> = {
   account: ["Purchases", "Receipts", "Support", "Profile"],
   admin: [
     "Overview",
+    "Finance",
     "Users",
     "Products",
     "Withdrawals",

@@ -75,7 +75,12 @@ export interface WebhookDeps {
   markRefundFailed: typeof db.markRefundFailed
   getOrderByReference: typeof db.getOrderByReference
   openDispute: typeof db.openDispute
-  resolveDispute: typeof db.resolveDispute
+  /**
+   * Records what Paystack decided about a dispute. It moves no money: the
+   * decision itself is a person's, taken in the admin app through
+   * resolve_dispute.
+   */
+  recordDisputeProviderOutcome: typeof db.recordDisputeProviderOutcome
   /**
    * The payout result writer. Optional so every existing caller and test keeps
    * compiling; without it a transfer event is logged and ignored rather than
@@ -416,18 +421,16 @@ async function handleDisputeCreate(data: unknown, deps: WebhookDeps): Promise<Ou
 }
 
 /**
- * charge.dispute.resolve: the dispute has an outcome.
+ * charge.dispute.resolve: Paystack has decided the dispute.
  *
- * The documented resolutions are merchant-accepted and declined, and they map
- * straight onto what happens to the money:
+ * The resolution is stored on the dispute and the row is flagged as needing a
+ * decision. Nothing else moves: not the order, not the buyer's access, not the
+ * ledger. A chargeback is money, and money is moved by a person, in the admin
+ * app, after reading both sides. The webhook only reports what the provider said.
  *
- *   merchant-accepted  the merchant accepted the chargeback, so the customer is
- *                      refunded: the order loses (won = false).
- *   declined           the merchant rejected the chargeback and it did not
- *                      stand: the order keeps the money (won = true).
- *
- * Anything else is not guessed at. It is logged and ignored, because guessing
- * would either reverse a sale that stands or keep money that went back.
+ * The documented resolutions are merchant-accepted and declined. Anything else is
+ * not guessed at: it is logged and ignored, because guessing would either reverse
+ * a sale that stands or keep money that went back.
  */
 async function handleDisputeResolve(data: unknown, deps: WebhookDeps): Promise<Outcome> {
   const reference = extractReference(data)
@@ -445,18 +448,11 @@ async function handleDisputeResolve(data: unknown, deps: WebhookDeps): Promise<O
     return ignored("resolution_unknown")
   }
 
-  const outcome = resolution === "merchant-accepted" ? "lost" : "won"
+  const id = record.id
+  const note = typeof id === "number" ? `Paystack dispute ${id}` : "Paystack dispute"
 
   try {
-    const order = await deps.getOrderByReference(reference)
-
-    if (order === null) {
-      deps.log.warn("paystack_dispute_order_not_found", { reference })
-
-      return ignored("order_not_found")
-    }
-
-    await deps.resolveDispute(order.id, outcome)
+    await deps.recordDisputeProviderOutcome(reference, resolution, note)
 
     return OK
   } catch (error) {
@@ -464,6 +460,12 @@ async function handleDisputeResolve(data: unknown, deps: WebhookDeps): Promise<O
 
     if (code === "no_open_dispute") {
       return ignored("no_open_dispute")
+    }
+
+    if (code === "not_found") {
+      deps.log.warn("paystack_dispute_order_not_found", { reference })
+
+      return ignored("order_not_found")
     }
 
     deps.log.error("paystack_dispute_resolve_failed", { reference, error })
@@ -710,7 +712,7 @@ function configuredDeps(): WebhookDeps | null {
       markRefundFailed: db.markRefundFailed,
       getOrderByReference: db.getOrderByReference,
       openDispute: db.openDispute,
-      resolveDispute: db.resolveDispute,
+      recordDisputeProviderOutcome: db.recordDisputeProviderOutcome,
       recordTransferResult: payoutDb.recordTransferResult,
       log: logger,
     }

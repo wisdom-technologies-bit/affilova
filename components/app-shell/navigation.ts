@@ -65,6 +65,7 @@ export const SHELL_NAVIGATION: Record<ShellApp, ShellNavigation> = {
     label: "Admin",
     items: [
       { label: "Overview", path: "/" },
+      { label: "Finance", path: "/finance" },
       { label: "Users", path: "/users" },
       { label: "Products", path: "/products" },
       { label: "Withdrawals", path: "/withdrawals" },

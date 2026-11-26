@@ -18,6 +18,11 @@ export type Action =
   | "products:review"
   | "tickets:read"
   | "payouts:approve"
+  | "orders:read"
+  | "refunds:manage"
+  | "disputes:manage"
+  | "ledger:read"
+  | "reconciliation:read"
   | "vat:manage"
   | "settings:read"
   | "settings:write"
@@ -32,6 +37,11 @@ export const ACTIONS: readonly Action[] = [
   "products:review",
   "tickets:read",
   "payouts:approve",
+  "orders:read",
+  "refunds:manage",
+  "disputes:manage",
+  "ledger:read",
+  "reconciliation:read",
   "vat:manage",
   "settings:read",
   "settings:write",
@@ -57,6 +67,14 @@ const PERMISSIONS: Record<Action, readonly AppRole[]> = {
   "products:review": ["admin", "moderator"],
   "tickets:read": ["admin", "support"],
   "payouts:approve": ["admin", "finance"],
+  // Support may look at an order or a refund request, because answering a
+  // customer starts there. It may not move money, so it cannot manage a refund
+  // or a dispute, and it cannot see the ledger.
+  "orders:read": ["admin", "finance", "support"],
+  "refunds:manage": ["admin", "finance"],
+  "disputes:manage": ["admin", "finance"],
+  "ledger:read": ["admin", "finance"],
+  "reconciliation:read": ["admin", "finance"],
   "vat:manage": ["admin", "finance"],
   "settings:read": ["admin", "finance", "support", "moderator"],
   "settings:write": ["admin", "finance"],

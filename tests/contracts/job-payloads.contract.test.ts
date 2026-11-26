@@ -194,7 +194,7 @@ describe("refund_notice: what the webhook enqueues and what the handler reads", 
       markRefundFailed: async () => undefined,
       getOrderByReference: async () => null,
       openDispute: async () => ({ status: "disputed" }),
-      resolveDispute: async () => ({ status: "won" }),
+      recordDisputeProviderOutcome: async () => ({ status: "recorded", needsDecision: true }),
       log: { info: () => undefined, warn: () => undefined, error: () => undefined },
     })
 

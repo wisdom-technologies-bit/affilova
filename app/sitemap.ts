@@ -9,9 +9,8 @@ const PUBLIC_STATIC_ROUTES = [
   "/",
   "/how-it-works",
   "/about",
-  "/blog",
   "/contact",
-  "/products",
+  "/marketplace",
   "/legal",
 ] as const
 
@@ -39,7 +38,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticEntries: MetadataRoute.Sitemap = PUBLIC_STATIC_ROUTES.map((path) => ({
     url: `${baseUrl}${path}`,
-    changeFrequency: path === "/products" || path === "/blog" ? "daily" : "monthly",
+    changeFrequency: path === "/marketplace" ? "daily" : "monthly",
     priority: path === "/" ? 1 : 0.6,
   }))
 
@@ -65,5 +64,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     marketplaceEntries = []
   }
 
-  return [...staticEntries, ...legalEntries, ...marketplaceEntries]
+  // /marketplace is a static entry (so it is listed when the database read
+  // fails) and also comes from the marketplace entries: keep one of each URL.
+  const seen = new Set<string>()
+
+  return [...staticEntries, ...legalEntries, ...marketplaceEntries].filter((entry) => {
+    if (seen.has(entry.url)) {
+      return false
+    }
+
+    seen.add(entry.url)
+    return true
+  })
 }

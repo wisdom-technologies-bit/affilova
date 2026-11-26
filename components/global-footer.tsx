@@ -15,14 +15,13 @@ export default function GlobalFooter({ className = "" }: FooterProps) {
       { name: "Marketplace", href: "/marketplace" },
       { name: "How It Works", href: "/how-it-works" },
       { name: "About", href: "/about" },
-      { name: "Blog", href: "/blog" },
       { name: "Contact", href: "/contact" },
     ],
     account: [
-      { name: "Sign In", href: "/auth/login" },
-      { name: "Create an Account", href: "/auth/register" },
-      { name: "Sell on Affilova", href: "/auth/register?role=vendor" },
-      { name: "Promote on Affilova", href: "/auth/register?role=affiliate" },
+      { name: "Sign In", href: "/sign-in" },
+      { name: "Create an Account", href: "/sign-up" },
+      { name: "Sell on Affilova", href: "/sign-up" },
+      { name: "Promote on Affilova", href: "/sign-up" },
     ],
     legal: [
       { name: "All Legal Policies", href: "/legal" },

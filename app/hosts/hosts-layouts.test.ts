@@ -39,6 +39,13 @@ const currentApp = vi.hoisted(() => ({ getRequestPath: vi.fn() }))
 
 vi.mock("@/lib/current-app", () => ({ getRequestPath: currentApp.getRequestPath }))
 
+// The second factor has its own suite in lib/identity/mfa.test.ts. Here it is a
+// no-op, so these tests keep asking about the shell and the permission guards.
+vi.mock("@/lib/identity/mfa", () => ({
+  requireStaffAal2: async () => {},
+  staffAal2Failure: async () => null,
+}))
+
 // The two product screens read their first page on the server. A render test
 // must not reach Supabase, so the actions answer with an empty page.
 const catalog = vi.hoisted(() => ({

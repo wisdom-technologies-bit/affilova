@@ -28,6 +28,18 @@ const requiredString = z.preprocess(
 
 const optionalString = z.preprocess(present, z.string().min(1, "must not be empty").optional())
 
+// "true" and "false" become booleans; absent or blank becomes undefined, so a
+// variable that is not set reads the same as one left empty.
+const optionalBoolean = z.preprocess(
+  present,
+  z
+    .enum(["true", "false"], {
+      invalid_type_error: "must be true or false",
+    })
+    .transform((value) => value === "true")
+    .optional(),
+)
+
 const requiredUrl = z.preprocess(
   present,
   z.string({ required_error: "is required" }).url("must be a valid URL, e.g. https://example.com"),
@@ -82,6 +94,11 @@ const serverEnvSchema = z.object({
       .string({ required_error: "is required" })
       .min(32, "must be at least 32 characters long"),
   ),
+  // The documented break-glass switch for staff two-factor sign-in. Absent means
+  // "enforced", except in development, where it means "not enforced" so a
+  // developer without an authenticator can still work. Set it to "false" in
+  // Vercel to turn enforcement off during an incident, then set it back.
+  STAFF_MFA_ENFORCE: optionalBoolean,
   // Optional for now; required once the feature that uses them ships.
   PAYSTACK_SECRET_KEY: optionalString,
   // Optional here so a deployment that never sends an access link still builds;
@@ -377,6 +394,34 @@ export function parseStepUpSecret(source: EnvSource): string {
 
 let serverEnvCache: ServerEnv | undefined
 let publicEnvCache: PublicEnv | undefined
+
+/**
+ * Whether a staff account must complete a second factor.
+ *
+ * The explicit setting wins. Without it, production and preview enforce and
+ * development does not, so a fresh clone is usable and a deployed build is not
+ * open. This is the break-glass switch documented in docs/staff-security.md.
+ */
+export function resolveStaffMfaEnforced(configured: boolean | undefined, appEnv: string): boolean {
+  if (configured !== undefined) {
+    return configured
+  }
+
+  return appEnv !== "development"
+}
+
+export function staffMfaEnforced(): boolean {
+  // Read directly rather than through the strict schemas, so a build that is
+  // missing an unrelated variable still answers this question instead of
+  // throwing on the way into the admin app. A build with no NEXT_PUBLIC_APP_ENV
+  // is treated as a development build, which is how the rest of the app already
+  // treats one (see resolveAppOverride in lib/host-routing.ts).
+  const raw = present(process.env.STAFF_MFA_ENFORCE)
+  const configured = raw === "true" ? true : raw === "false" ? false : undefined
+  const appEnv = present(process.env.NEXT_PUBLIC_APP_ENV) ?? "development"
+
+  return resolveStaffMfaEnforced(configured, appEnv)
+}
 
 export function getServerEnv(): ServerEnv {
   if (!serverEnvCache) {

@@ -6,6 +6,7 @@ import { sendEmail } from "@/lib/email/brevo"
 import { stepUpCodeEmail } from "@/lib/email/templates"
 import { catalogErrorCode, GENERIC_ERROR, catalogErrorMessage } from "@/lib/catalog/errors"
 import { isLagosDay, lagosDayOf, addDays } from "@/lib/dates/lagos"
+import { staffAal2Failure } from "@/lib/identity/mfa"
 import { can } from "@/lib/identity/permissions"
 import { appUrl } from "@/lib/identity/app-urls"
 import { getAuthUser, getUserRoles, type AppRole } from "@/lib/identity/session"
@@ -160,6 +161,14 @@ async function requireAdmin(action: "payouts:approve" | "settings:write"): Promi
 
   if (!can(roles, action)) {
     return { ok: false, error: FORBIDDEN }
+  }
+
+  // Money moves through these actions, so the second factor is required in the
+  // action itself and not only on the screen that calls it.
+  const mfa = await staffAal2Failure("/admin")
+
+  if (mfa !== null) {
+    return { ok: false, error: mfa }
   }
 
   return { ok: true, actor: { userId: user.id, roles } }

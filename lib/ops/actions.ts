@@ -4,6 +4,7 @@ import { webhookEventCounts } from "@/lib/commerce/db"
 import { getPaystackEnv, type PaystackMode } from "@/lib/env"
 import { logger } from "@/lib/logger"
 import { getPaystackTransfers } from "@/lib/paystack/transfers"
+import { staffAal2Failure } from "@/lib/identity/mfa"
 import { can } from "@/lib/identity/permissions"
 import { getAuthUser, getUserRoles, type AppRole } from "@/lib/identity/session"
 import { catalogErrorMessage, GENERIC_ERROR } from "@/lib/catalog/errors"
@@ -286,6 +287,14 @@ async function requireOpsActor(action: "area:admin" | "roles:grant", onlyRoles?:
 
   if (onlyRoles !== undefined && !roles.some((role) => onlyRoles.includes(role))) {
     return { ok: false, error: catalogErrorMessage("forbidden") }
+  }
+
+  // An ops action is reachable without its page, so the second factor is checked
+  // in the action itself.
+  const mfa = await staffAal2Failure("/admin")
+
+  if (mfa !== null) {
+    return { ok: false, error: mfa }
   }
 
   return { ok: true, actor: { userId: user.id, roles } }

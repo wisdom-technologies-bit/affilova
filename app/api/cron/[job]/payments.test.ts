@@ -20,6 +20,8 @@ const state = vi.hoisted(() => ({
 }))
 
 vi.mock("@/lib/env", () => ({
+  // Staff two-factor is off in tests: the MFA rule has its own suite.
+  staffMfaEnforced: () => false,
   getServerEnv: () => ({ CRON_SECRET: "0123456789abcdef0123456789abcdef" }),
 }))
 

@@ -79,7 +79,9 @@ vi.mock("@/lib/supabase/admin", () => ({
     }),
   }),
 }))
-vi.mock("@/lib/env", () => ({ getStepUpSecret: () => "0123456789abcdef0123456789abcdef" }))
+vi.mock("@/lib/env", () => ({
+  // Staff two-factor is off in tests: the MFA rule has its own suite.
+  staffMfaEnforced: () => false, getStepUpSecret: () => "0123456789abcdef0123456789abcdef" }))
 
 import { PayoutRpcError } from "./db"
 import * as actions from "./actions"

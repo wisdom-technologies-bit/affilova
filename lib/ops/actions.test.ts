@@ -65,6 +65,8 @@ vi.mock("@/lib/logger", () => ({
 // The payments half of the page: the Paystack mode and the webhook counts of the
 // last day. Both are read through their own modules so the test can drive them.
 vi.mock("@/lib/env", () => ({
+  // Staff two-factor is off in tests: the MFA rule has its own suite.
+  staffMfaEnforced: () => false,
   getPaystackEnv: () => {
     if (state.paystackEnvFails) {
       throw new Error("Invalid Paystack environment variables")

@@ -85,7 +85,7 @@ function GroupForm({ group, snapshot }: { group: SettingGroup; snapshot: PayoutS
           return (
             <div key={field.key}>
               {field.kind === "switch" ? (
-                <label className="flex min-h-[44px] items-start gap-3 text-sm text-brand-ink">
+                <label className="flex min-h-control-md items-start gap-3 text-dense text-foreground">
                   <input
                     type="checkbox"
                     checked={values[field.key] === "true"}
@@ -100,7 +100,7 @@ function GroupForm({ group, snapshot }: { group: SettingGroup; snapshot: PayoutS
                 </label>
               ) : (
                 <>
-                  <label htmlFor={id} className="block text-sm font-medium text-brand-ink">
+                  <label htmlFor={id} className="block text-dense font-medium text-foreground">
                     {field.label}
                   </label>
                   <input
@@ -119,7 +119,7 @@ function GroupForm({ group, snapshot }: { group: SettingGroup; snapshot: PayoutS
                   />
                 </>
               )}
-              <p id={`${id}-help`} className="mt-1 text-sm text-muted-foreground">
+              <p id={`${id}-help`} className="mt-1 text-dense text-text-muted">
                 {field.help} Now: {settingDescribe(field, settingShown(field, snapshot.values[field.key]))}.
               </p>
             </div>
@@ -128,8 +128,8 @@ function GroupForm({ group, snapshot }: { group: SettingGroup; snapshot: PayoutS
 
         {confirming ? (
           <div className="space-y-3 rounded-md border border-border px-4 py-3" aria-live="polite">
-            <p className="font-medium text-brand-ink">Confirm these changes</p>
-            <ul className="list-disc space-y-1 pl-5 text-sm">
+            <p className="font-medium text-foreground">Confirm these changes</p>
+            <ul className="list-disc space-y-1 pl-5 text-dense">
               {changed.map((field) => (
                 <li key={field.key}>
                   {field.label}: {settingDescribe(field, initial[field.key] ?? "")} to {settingDescribe(field, values[field.key] ?? "")}
@@ -197,14 +197,14 @@ export function PayoutSettingsPanel({
 
       <Section title="Recent changes" description="Every change is recorded with who made it and when.">
         {snapshot.changes.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No payout settings have been changed yet.</p>
+          <p className="text-dense text-text-muted">No payout settings have been changed yet.</p>
         ) : (
-          <ul className="divide-y divide-border text-sm">
+          <ul className="divide-y divide-border text-dense">
             {snapshot.changes.map((change, index) => (
               <li key={`${change.key}-${change.changedAt}-${index}`} className="py-2">
-                <span className="font-medium text-brand-ink">{LABELS[change.key as PayoutSettingKey]?.label ?? change.key}</span>
+                <span className="font-medium text-foreground">{LABELS[change.key as PayoutSettingKey]?.label ?? change.key}</span>
                 : {historyValue(change.key, change.oldValue)} to {historyValue(change.key, change.newValue)}
-                <span className="block text-muted-foreground">{formatLagosDateTime(change.changedAt)}</span>
+                <span className="block text-text-muted">{formatLagosDateTime(change.changedAt)}</span>
               </li>
             ))}
           </ul>

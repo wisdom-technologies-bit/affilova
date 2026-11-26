@@ -1,3 +1,4 @@
+import { Stat } from "@/components/ds/stat"
 import type { MetricDefinition } from "@/lib/affiliate/definitions"
 
 /**
@@ -6,6 +7,10 @@ import type { MetricDefinition } from "@/lib/affiliate/definitions"
  * The definition is a title attribute, which is what a mouse shows on hover, and
  * the same sentence is repeated in the visible "How these are calculated"
  * disclosure below the cards, so it is never only a hover away.
+ *
+ * It is the design system's Stat: tabular figures so eight of these line up, a
+ * 1px border instead of a shadow, and the value set at the same size on every
+ * screen. The props are the ones the affiliate screens already pass.
  */
 export function KpiCard({
   metric,
@@ -16,15 +21,5 @@ export function KpiCard({
   value: string
   hint?: string
 }) {
-  return (
-    <div className="rounded-md border border-border bg-background px-4 py-3">
-      <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        <span title={metric.definition} className="cursor-help">
-          {metric.label}
-        </span>
-      </dt>
-      <dd className="mt-1 text-xl font-semibold tabular-nums text-brand-ink">{value}</dd>
-      {hint === undefined ? null : <dd className="mt-1 text-xs text-muted-foreground">{hint}</dd>}
-    </div>
-  )
+  return <Stat label={metric.label} value={value} hint={hint} description={metric.definition} />
 }

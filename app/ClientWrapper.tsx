@@ -15,7 +15,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
       const badge = document.querySelector('div[style*="v0"], div[aria-label*="v0"], .v0-badge')
       if (badge && badge.parentNode) {
         badge.parentNode.removeChild(badge)
-        console.log("✔️ Removed 'Built with v0' badge")
+        console.log("Removed the built-with badge")
       }
     }
 

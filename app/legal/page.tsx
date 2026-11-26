@@ -24,7 +24,7 @@ export function LegalIndexView({
   const cleanIdentityLine = identityLine.trim()
 
   return (
-    <div className="min-h-screen bg-white text-slate-900">
+    <div className="min-h-screen bg-background text-foreground">
       <LegalHeader currentHref="/legal" />
 
       <main className="mx-auto w-full max-w-[70ch] px-5 py-10 sm:px-6 sm:py-14">
@@ -40,14 +40,14 @@ export function LegalIndexView({
           </aside>
         ) : null}
 
-        <header className="border-b border-[#E3E6E3] pb-6">
+        <header className="border-b border-border pb-6">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-600">
             Affilova Legal
           </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             Legal Policies &amp; Agreements
           </h1>
-          <p className="mt-4 text-base leading-relaxed text-slate-600">
+          <p className="mt-4 text-base leading-relaxed text-text-muted">
             Read the agreements and policies that govern accounts, product listings, affiliate promotions, payments, privacy and acceptable conduct on Affilova.
           </p>
         </header>
@@ -56,10 +56,10 @@ export function LegalIndexView({
           {documents.map((doc) => (
             <article
               key={doc.slug}
-              className="rounded-xl border border-[#E3E6E3] bg-white p-5 transition-colors hover:border-brand-300 sm:p-6"
+              className="rounded-lg border border-border bg-background p-5 transition-colors hover:border-border-strong sm:p-6"
             >
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="text-lg font-semibold tracking-tight text-slate-900">
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">
                   <Link
                     href={doc.href}
                     className="underline-offset-2 hover:text-brand-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
@@ -69,7 +69,7 @@ export function LegalIndexView({
                 </h2>
                 <span className="font-mono text-xs text-slate-500">{doc.version}</span>
               </div>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">{doc.description}</p>
+              <p className="mt-2 text-sm leading-relaxed text-text-muted">{doc.description}</p>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
                 <span>Effective date: {doc.effectiveDate}</span>
                 <Link
@@ -83,7 +83,7 @@ export function LegalIndexView({
           ))}
         </section>
 
-        <footer className="mt-10 border-t border-[#E3E6E3] pt-6 text-sm text-slate-600">
+        <footer className="mt-10 border-t border-border pt-6 text-sm text-text-muted">
           {cleanIdentityLine !== "" ? (
             <p className="mb-3 text-slate-700">{cleanIdentityLine}</p>
           ) : null}

@@ -3,6 +3,7 @@
 import { AlertTriangle, Check, Loader2, X } from "lucide-react"
 import { useState } from "react"
 
+import { Section as DsSection } from "@/components/ds/section"
 import { formatLagosDateTime, scanStatusLabel, timeAgo } from "@/lib/catalog/format"
 import { runScannerSelfTestAction, sendTestEmailAction } from "@/lib/ops/actions"
 import type {
@@ -117,18 +118,23 @@ function emailReasonWord(reason: string): string {
 function Badge({ tone, children }: { tone: "good" | "bad" | "neutral"; children: string }) {
   const classes =
     tone === "good"
-      ? "border-brand-600/40 bg-brand-50 text-brand-ink"
+      ? "border-success/40 bg-success-subtle text-success"
       : tone === "bad"
-        ? "border-destructive/40 bg-destructive/5 text-destructive"
-        : "border-border bg-muted text-muted-foreground"
+        ? "border-danger/40 bg-danger-subtle text-danger"
+        : "border-border bg-surface-muted text-text-muted"
 
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${classes}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-caption font-medium ${classes}`}
+    >
       {children}
     </span>
   )
 }
 
+// The card every block on this page sits in. It is the design system's Section,
+// so the heading is the same h2 at the same size as every other panel, and the
+// edge is the same 1px border with no shadow.
 function Section({
   title,
   description,
@@ -139,11 +145,9 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-lg border border-border p-4 md:p-6">
-      <h2 className="text-base font-semibold text-brand-ink">{title}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      <div className="mt-4">{children}</div>
-    </section>
+    <DsSection title={title} description={description}>
+      {children}
+    </DsSection>
   )
 }
 
@@ -153,21 +157,21 @@ function ScannerSection({ health }: { health: ScannerHealth }) {
       title="Scanner"
       description="The service that downloads, types and scans every uploaded file."
     >
-      <dl className="grid gap-3 text-sm sm:grid-cols-3">
+      <dl className="grid gap-3 text-dense sm:grid-cols-3">
         <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">Service</dt>
+          <dt className="text-caption font-medium text-text-muted">Service</dt>
           <dd className="mt-1">
             <Badge tone={health.state === "ok" ? "good" : "bad"}>{scannerStateWords(health)}</Badge>
           </dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">Engine</dt>
+          <dt className="text-caption font-medium text-text-muted">Engine</dt>
           <dd className="mt-1">
             <Badge tone="neutral">Bouncer</Badge>
           </dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">Signature age</dt>
+          <dt className="text-caption font-medium text-text-muted">Signature age</dt>
           <dd className="mt-1">
             {/* Bouncer keeps its own detection data on its side, so /healthz has
                 no signature age to report and there is nothing here to check. */}
@@ -194,33 +198,33 @@ function PipelineSection({
       description="Where every uploaded file stands right now, and how much scanning has happened."
     >
       <div className="grid gap-4 lg:grid-cols-3">
-        <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4 lg:col-span-2">
+        <dl className="grid grid-cols-2 gap-3 text-dense sm:grid-cols-4 lg:col-span-2">
           {entries.map(([status, count]) => (
             <div key={status} className="rounded-md border border-border p-3">
-              <dt className="text-xs text-muted-foreground">{statusWord(status)}</dt>
-              <dd className="mt-1 text-lg font-semibold tabular-nums text-brand-ink">{count}</dd>
+              <dt className="text-caption text-text-muted">{statusWord(status)}</dt>
+              <dd className="mt-1 text-lg font-semibold tabular-nums text-foreground">{count}</dd>
             </div>
           ))}
         </dl>
 
-        <dl className="space-y-3 text-sm">
+        <dl className="space-y-3 text-dense">
           <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Oldest waiting file</dt>
-            <dd className="mt-1 text-brand-ink">
+            <dt className="text-caption font-medium text-text-muted">Oldest waiting file</dt>
+            <dd className="mt-1 text-foreground">
               {scan.oldestQueuedMinutes === null
                 ? "Nothing is waiting"
                 : `${scan.oldestQueuedMinutes} minutes`}
             </dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Last 24 hours</dt>
-            <dd className="mt-1 text-brand-ink">{scan.scansLast24h} scan answers</dd>
+            <dt className="text-caption font-medium text-text-muted">Last 24 hours</dt>
+            <dd className="mt-1 text-foreground">{scan.scansLast24h} scan answers</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Infections, 30 days</dt>
-            <dd className="mt-1 text-brand-ink">{scan.infectedLast30d}</dd>
+            <dt className="text-caption font-medium text-text-muted">Infections, 30 days</dt>
+            <dd className="mt-1 text-foreground">{scan.infectedLast30d}</dd>
           </div>
-          <p className="text-xs text-muted-foreground">Read at {formatLagosDateTime(now.toISOString())}.</p>
+          <p className="text-caption text-text-muted">Read at {formatLagosDateTime(now.toISOString())}.</p>
         </dl>
       </div>
     </Section>
@@ -235,24 +239,24 @@ function JobsSection({ jobs }: { jobs: SecurityOverview["jobs"] }) {
       title="Background jobs"
       description="The queue that drives scanning and cleanup, and when each schedule last ran."
     >
-      <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
+      <dl className="grid grid-cols-2 gap-3 text-dense sm:grid-cols-5">
         {entries.map(([status, count]) => (
           <div key={status} className="rounded-md border border-border p-3">
-            <dt className="text-xs capitalize text-muted-foreground">{status}</dt>
-            <dd className="mt-1 text-lg font-semibold tabular-nums text-brand-ink">{count}</dd>
+            <dt className="text-caption capitalize text-text-muted">{status}</dt>
+            <dd className="mt-1 text-lg font-semibold tabular-nums text-foreground">{count}</dd>
           </div>
         ))}
       </dl>
 
-      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+      <dl className="mt-4 grid gap-3 text-dense sm:grid-cols-2">
         <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">Oldest queued job</dt>
-          <dd className="mt-1 text-brand-ink">
+          <dt className="text-caption font-medium text-text-muted">Oldest queued job</dt>
+          <dd className="mt-1 text-foreground">
             {jobs.oldestQueuedMinutes === null ? "Nothing is queued" : `${jobs.oldestQueuedMinutes} minutes`}
           </dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">Dead jobs</dt>
+          <dt className="text-caption font-medium text-text-muted">Dead jobs</dt>
           <dd className="mt-1">
             <Badge tone={jobs.deadCount === 0 ? "good" : "bad"}>
               {jobs.deadCount === 0 ? "None" : `${jobs.deadCount} gave up`}
@@ -262,7 +266,7 @@ function JobsSection({ jobs }: { jobs: SecurityOverview["jobs"] }) {
       </dl>
 
       {jobs.heartbeats.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">
+        <p className="mt-4 text-dense text-text-muted">
           No schedule has recorded a run yet. If the cron has just been set up, this fills in on the
           next tick.
         </p>
@@ -274,11 +278,11 @@ function JobsSection({ jobs }: { jobs: SecurityOverview["jobs"] }) {
             return (
               <li
                 key={beat.job}
-                className="flex flex-col gap-1 rounded-md border border-border p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-1 rounded-md border border-border p-3 text-dense sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
-                  <p className="font-medium text-brand-ink">{beat.job}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="font-medium text-foreground">{beat.job}</p>
+                  <p className="text-caption text-text-muted">
                     Last run {formatAge(beat.ageSeconds)}
                     {beat.lastDurationMs === null ? "" : `, took ${beat.lastDurationMs} ms`}
                     {beat.lastStatus === null ? "" : `, finished ${beat.lastStatus}`}
@@ -301,14 +305,14 @@ function EventsSection({ events, now }: { events: readonly ScanEventRow[]; now: 
       description="The last answers from the scanner. No file names and no vendors: this counts verdicts."
     >
       {events.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No scan has answered yet.</p>
+        <p className="text-dense text-text-muted">No scan has answered yet.</p>
       ) : (
         <>
           <div className="hidden overflow-x-auto md:block">
-            <table className="w-full border-collapse text-sm">
+            <table className="w-full border-collapse text-dense">
               <caption className="sr-only">The most recent scan results, newest first</caption>
               <thead>
-                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border text-left text-caption font-medium text-text-muted">
                   <th scope="col" className="py-2 pr-4 font-medium">
                     Verdict
                   </th>
@@ -329,13 +333,13 @@ function EventsSection({ events, now }: { events: readonly ScanEventRow[]; now: 
               <tbody>
                 {events.map((event) => (
                   <tr key={`${event.createdAt}-${event.verdict}-${event.detail ?? ""}`} className="border-b border-border">
-                    <td className="py-2 pr-4 text-brand-ink">{statusWord(event.verdict)}</td>
-                    <td className="py-2 pr-4 font-mono text-xs text-brand-ink">{event.detail ?? "—"}</td>
-                    <td className="py-2 pr-4 text-brand-ink">{event.engine ?? "—"}</td>
-                    <td className="py-2 pr-4 tabular-nums text-brand-ink">{event.signatureVersion ?? "—"}</td>
-                    <td className="py-2 text-brand-ink">
+                    <td className="py-2 pr-4 text-foreground">{statusWord(event.verdict)}</td>
+                    <td className="py-2 pr-4 font-mono text-caption text-foreground">{event.detail ?? "—"}</td>
+                    <td className="py-2 pr-4 text-foreground">{event.engine ?? "—"}</td>
+                    <td className="py-2 pr-4 tabular-nums text-foreground">{event.signatureVersion ?? "—"}</td>
+                    <td className="py-2 text-foreground">
                       <span className="block">{formatLagosDateTime(event.createdAt)}</span>
-                      <span className="block text-xs text-muted-foreground">{timeAgo(event.createdAt, now)}</span>
+                      <span className="block text-caption text-text-muted">{timeAgo(event.createdAt, now)}</span>
                     </td>
                   </tr>
                 ))}
@@ -346,12 +350,12 @@ function EventsSection({ events, now }: { events: readonly ScanEventRow[]; now: 
           <ul className="space-y-3 md:hidden">
             {events.map((event) => (
               <li key={`${event.createdAt}-${event.verdict}-${event.detail ?? ""}`} className="rounded-md border border-border p-3">
-                <p className="text-sm font-medium text-brand-ink">{statusWord(event.verdict)}</p>
-                <p className="font-mono text-xs text-brand-ink">{event.detail ?? "—"}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="text-dense font-medium text-foreground">{statusWord(event.verdict)}</p>
+                <p className="font-mono text-caption text-foreground">{event.detail ?? "—"}</p>
+                <p className="mt-1 text-caption text-text-muted">
                   {event.engine ?? "—"} · signatures {event.signatureVersion ?? "—"}
                 </p>
-                <p className="text-xs text-muted-foreground">{formatLagosDateTime(event.createdAt)}</p>
+                <p className="text-caption text-text-muted">{formatLagosDateTime(event.createdAt)}</p>
               </li>
             ))}
           </ul>
@@ -364,7 +368,7 @@ function EventsSection({ events, now }: { events: readonly ScanEventRow[]; now: 
 function ResultCell({ passed }: { passed: boolean }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 text-sm font-medium ${passed ? "text-brand-ink" : "text-destructive"}`}
+      className={`inline-flex items-center gap-1.5 text-dense font-medium ${passed ? "text-foreground" : "text-danger"}`}
     >
       {passed ? (
         <Check aria-hidden="true" className="h-4 w-4" />
@@ -389,20 +393,20 @@ export function SelfTestResults({
   return (
     <div aria-live="polite" className="mt-4">
       {error === null ? null : (
-        <p role="alert" className="rounded-md border border-destructive/40 px-3 py-2 text-sm text-destructive">
+        <p role="alert" className="rounded-md border border-destructive/40 px-3 py-2 text-dense text-danger">
           {error}
         </p>
       )}
 
-      {summary === "" ? null : <p className="mb-3 text-sm font-medium text-brand-ink">{summary}</p>}
+      {summary === "" ? null : <p className="mb-3 text-dense font-medium text-foreground">{summary}</p>}
 
       {rows === null || rows.length === 0 ? null : (
         <>
           <div className="hidden overflow-x-auto md:block">
-            <table className="w-full border-collapse text-sm">
+            <table className="w-full border-collapse text-dense">
               <caption className="sr-only">Self-test results, one row per sample file</caption>
               <thead>
-                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border text-left text-caption font-medium text-text-muted">
                   <th scope="col" className="py-2 pr-4 font-medium">
                     Sample
                   </th>
@@ -423,12 +427,12 @@ export function SelfTestResults({
               <tbody>
                 {rows.map((row) => (
                   <tr key={row.name} className="border-b border-border align-top">
-                    <th scope="row" className="py-2 pr-4 text-left font-mono text-xs font-medium text-brand-ink">
+                    <th scope="row" className="py-2 pr-4 text-left font-mono text-caption font-medium text-foreground">
                       {row.name}
                     </th>
-                    <td className="py-2 pr-4 text-brand-ink">{row.expected}</td>
-                    <td className="py-2 pr-4 text-brand-ink">{row.actual}</td>
-                    <td className="py-2 pr-4 tabular-nums text-brand-ink">{row.durationMs} ms</td>
+                    <td className="py-2 pr-4 text-foreground">{row.expected}</td>
+                    <td className="py-2 pr-4 text-foreground">{row.actual}</td>
+                    <td className="py-2 pr-4 tabular-nums text-foreground">{row.durationMs} ms</td>
                     <td className="py-2">
                       <ResultCell passed={row.passed} />
                     </td>
@@ -442,12 +446,12 @@ export function SelfTestResults({
             {rows.map((row) => (
               <li key={row.name} className="rounded-md border border-border p-3">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="font-mono text-xs font-medium text-brand-ink">{row.name}</p>
+                  <p className="font-mono text-caption font-medium text-foreground">{row.name}</p>
                   <ResultCell passed={row.passed} />
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">Expected {row.expected}</p>
-                <p className="text-xs text-muted-foreground">Actual {row.actual}</p>
-                <p className="text-xs text-muted-foreground">{row.durationMs} ms</p>
+                <p className="mt-1 text-caption text-text-muted">Expected {row.expected}</p>
+                <p className="text-caption text-text-muted">Actual {row.actual}</p>
+                <p className="text-caption text-text-muted">{row.durationMs} ms</p>
               </li>
             ))}
           </ul>
@@ -485,23 +489,23 @@ function PaymentsSection({ payments }: { payments: SecurityOverview["payments"] 
       title="Payments"
       description="Which Paystack mode this deployment talks to, and how the webhook deliveries of the last day ended."
     >
-      <dl className="grid gap-4 text-sm lg:grid-cols-3">
+      <dl className="grid gap-4 text-dense lg:grid-cols-3">
         <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">Paystack</dt>
+          <dt className="text-caption font-medium text-text-muted">Paystack</dt>
           <dd className="mt-1">
             <Badge tone={mode.good ? "good" : "bad"}>{mode.label}</Badge>
           </dd>
         </div>
 
         <div className="lg:col-span-2">
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+          <dt className="text-caption font-medium text-text-muted">
             Webhook events, last {payments.windowHours} hours
           </dt>
           <dd className="mt-1 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {entries.map(([status, count]) => (
               <div key={status} className="rounded-md border border-border p-3">
-                <p className="text-xs capitalize text-muted-foreground">{status}</p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-brand-ink">{count}</p>
+                <p className="text-caption capitalize text-text-muted">{status}</p>
+                <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">{count}</p>
               </div>
             ))}
           </dd>
@@ -509,7 +513,7 @@ function PaymentsSection({ payments }: { payments: SecurityOverview["payments"] 
       </dl>
 
       {payments.webhookEvents.failed === undefined ? null : (
-        <p className="mt-3 text-xs text-muted-foreground">
+        <p className="mt-3 text-caption text-text-muted">
           A failed delivery is one Paystack will send again: the database or Paystack itself was
           unreachable when it arrived.
         </p>
@@ -540,11 +544,11 @@ function PayoutsSection({ payouts }: { payouts: SecurityOverview["payouts"] }) {
       title="Payouts"
       description="Withdrawals by state, the Paystack balance behind them, and how long the oldest request has been waiting."
     >
-      <dl className="grid gap-4 text-sm lg:grid-cols-3">
+      <dl className="grid gap-4 text-dense lg:grid-cols-3">
         <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">Paystack balance</dt>
+          <dt className="text-caption font-medium text-text-muted">Paystack balance</dt>
           <dd className="mt-1 flex items-center gap-2">
-            <span className="text-lg font-semibold tabular-nums text-brand-ink">
+            <span className="text-lg font-semibold tabular-nums text-foreground">
               {balance ?? "Unknown"}
             </span>
             {payouts.lowBalance ? <Badge tone="bad">Below approved payouts</Badge> : null}
@@ -552,19 +556,19 @@ function PayoutsSection({ payouts }: { payouts: SecurityOverview["payouts"] }) {
         </div>
 
         <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+          <dt className="text-caption font-medium text-text-muted">
             Failed, last 7 days
           </dt>
-          <dd className="mt-1 text-lg font-semibold tabular-nums text-brand-ink">
+          <dd className="mt-1 text-lg font-semibold tabular-nums text-foreground">
             {payouts.failedLast7d}
           </dd>
         </div>
 
         <div>
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+          <dt className="text-caption font-medium text-text-muted">
             Oldest request waiting
           </dt>
-          <dd className="mt-1 text-lg font-semibold tabular-nums text-brand-ink">
+          <dd className="mt-1 text-lg font-semibold tabular-nums text-foreground">
             {payouts.oldestRequestedMinutes === null
               ? "Nothing waiting"
               : `${payouts.oldestRequestedMinutes} min`}
@@ -575,14 +579,14 @@ function PayoutsSection({ payouts }: { payouts: SecurityOverview["payouts"] }) {
       <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {entries.map(([status, count]) => (
           <div key={status} className="rounded-md border border-border p-3">
-            <dt className="text-xs capitalize text-muted-foreground">{status}</dt>
-            <dd className="mt-1 text-lg font-semibold tabular-nums text-brand-ink">{count}</dd>
+            <dt className="text-caption capitalize text-text-muted">{status}</dt>
+            <dd className="mt-1 text-lg font-semibold tabular-nums text-foreground">{count}</dd>
           </div>
         ))}
       </dl>
 
       {payouts.lowBalance ? (
-        <p className="mt-3 text-xs text-muted-foreground">
+        <p className="mt-3 text-caption text-text-muted">
           The balance cannot cover every approved and processing withdrawal, so the transfer job
           puts its batch back and logs an error. Top the Paystack balance up.
         </p>
@@ -604,15 +608,15 @@ function HealthRow({
   return (
     <div className="flex items-start gap-2">
       {tone === "good" ? (
-        <Check aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#10813F]" />
+        <Check aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-success" />
       ) : tone === "bad" ? (
-        <X aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+        <X aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
       ) : (
         <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
       )}
       <div>
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="text-sm text-brand-ink">{text}</p>
+        <p className="text-caption font-medium text-text-muted">{label}</p>
+        <p className="text-dense text-foreground">{text}</p>
       </div>
     </div>
   )
@@ -690,7 +694,7 @@ function EmailSection({ email, now }: { email: EmailOverview; now: Date }) {
         </Badge>
       </div>
 
-      <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-4 grid gap-4 text-dense sm:grid-cols-2 lg:grid-cols-3">
         <HealthRow label="Brevo key" tone={key.tone} text={key.text} />
         <HealthRow label="Sender address" tone={from.tone} text={from.text} />
         <HealthRow label="Reply-to" tone={replyTo.tone} text={replyTo.text} />
@@ -701,7 +705,7 @@ function EmailSection({ email, now }: { email: EmailOverview; now: Date }) {
       {email.health.problems.length === 0 ? null : (
         <ul className="mt-4 space-y-2">
           {email.health.problems.map((problem) => (
-            <li key={problem} className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-brand-ink">
+            <li key={problem} className="rounded-md border border-border bg-surface-muted px-3 py-2 text-dense text-foreground">
               {problem}
             </li>
           ))}
@@ -709,24 +713,24 @@ function EmailSection({ email, now }: { email: EmailOverview; now: Date }) {
       )}
 
       <div className="mt-6">
-        <h3 className="text-sm font-semibold text-brand-ink">Failures, last 24 hours</h3>
+        <h3 className="text-dense font-semibold text-foreground">Failures, last 24 hours</h3>
 
         {!email.failuresAvailable ? (
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-dense text-text-muted">
             The failure table is not readable for your role.
           </p>
         ) : email.last24h.total === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">No send has failed in the last 24 hours.</p>
+          <p className="mt-2 text-dense text-text-muted">No send has failed in the last 24 hours.</p>
         ) : (
           <>
-            <p className="mt-2 text-sm text-brand-ink">
+            <p className="mt-2 text-dense text-foreground">
               {email.last24h.total === 1 ? "1 failed send" : `${email.last24h.total} failed sends`}
             </p>
             <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {failing.map(([reason, count]) => (
                 <div key={reason} className="rounded-md border border-border p-3">
-                  <dt className="text-xs text-muted-foreground">{emailReasonWord(reason)}</dt>
-                  <dd className="mt-1 text-lg font-semibold tabular-nums text-brand-ink">{count}</dd>
+                  <dt className="text-caption text-text-muted">{emailReasonWord(reason)}</dt>
+                  <dd className="mt-1 text-lg font-semibold tabular-nums text-foreground">{count}</dd>
                 </div>
               ))}
             </dl>
@@ -735,16 +739,16 @@ function EmailSection({ email, now }: { email: EmailOverview; now: Date }) {
       </div>
 
       <div className="mt-6">
-        <h3 className="text-sm font-semibold text-brand-ink">Recent failures</h3>
+        <h3 className="text-dense font-semibold text-foreground">Recent failures</h3>
 
         {!email.failuresAvailable ? null : email.recent.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">Nothing has failed yet.</p>
+          <p className="mt-2 text-dense text-text-muted">Nothing has failed yet.</p>
         ) : (
           <div className="mt-2 overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            <table className="w-full border-collapse text-dense">
               <caption className="sr-only">The last ten failed sends, newest first</caption>
               <thead>
-                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border text-left text-caption font-medium text-text-muted">
                   <th scope="col" className="py-2 pr-4 font-medium">Template</th>
                   <th scope="col" className="py-2 pr-4 font-medium">Status</th>
                   <th scope="col" className="py-2 pr-4 font-medium">Reason</th>
@@ -754,12 +758,12 @@ function EmailSection({ email, now }: { email: EmailOverview; now: Date }) {
               <tbody>
                 {email.recent.map((row) => (
                   <tr key={`${row.createdAt}-${row.reason}-${row.template}`} className="border-b border-border">
-                    <td className="py-2 pr-4 font-mono text-xs text-brand-ink">{row.template}</td>
-                    <td className="py-2 pr-4 tabular-nums text-brand-ink">{row.status}</td>
-                    <td className="py-2 pr-4 text-brand-ink">{emailReasonWord(row.reason)}</td>
-                    <td className="py-2 text-brand-ink">
+                    <td className="py-2 pr-4 font-mono text-caption text-foreground">{row.template}</td>
+                    <td className="py-2 pr-4 tabular-nums text-foreground">{row.status}</td>
+                    <td className="py-2 pr-4 text-foreground">{emailReasonWord(row.reason)}</td>
+                    <td className="py-2 text-foreground">
                       <span className="block">{formatLagosDateTime(row.createdAt)}</span>
-                      <span className="block text-xs text-muted-foreground">{timeAgo(row.createdAt, now)}</span>
+                      <span className="block text-caption text-text-muted">{timeAgo(row.createdAt, now)}</span>
                     </td>
                   </tr>
                 ))}
@@ -800,25 +804,25 @@ function TestEmailButton() {
           void send()
         }}
         disabled={sending}
-        className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-[#10813F] px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-[#0d6b34] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 disabled:opacity-60"
+        className="inline-flex min-h-control-md items-center gap-2 rounded-md bg-brand-600 px-4 text-dense font-medium text-white transition-colors duration-150 hover:bg-brand-700 focus-ring disabled:opacity-60"
       >
         {sending ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : null}
         {sending ? "Sending…" : "Send test email"}
       </button>
 
-      <p className="mt-2 text-xs text-muted-foreground">
+      <p className="mt-2 text-caption text-text-muted">
         Sends one plain message to your own address, through the real sender. Three an hour.
       </p>
 
-      <div aria-live="polite" className="mt-2 text-sm">
+      <div aria-live="polite" className="mt-2 text-dense">
         {result === null ? null : result.ok ? (
-          <p className="text-[#10813F]">Sent. Check your inbox.</p>
+          <p className="text-success">Sent. Check your inbox.</p>
         ) : (
-          <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-destructive">
+          <div className="rounded-md border border-danger/40 bg-danger-subtle px-3 py-2 text-danger">
             <p>{result.error}</p>
             {result.advice === undefined ? null : <p className="mt-1">{result.advice}</p>}
             {result.reason === undefined ? null : (
-              <p className="mt-1 font-mono text-xs">{result.reason}</p>
+              <p className="mt-1 font-mono text-caption">{result.reason}</p>
             )}
           </div>
         )}
@@ -870,13 +874,13 @@ function SelfTestSection() {
           void run()
         }}
         disabled={running}
-        className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-[#10813F] px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-[#0d6b34] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 disabled:opacity-60"
+        className="inline-flex min-h-control-md items-center gap-2 rounded-md bg-brand-600 px-4 text-dense font-medium text-white transition-colors duration-150 hover:bg-brand-700 focus-ring disabled:opacity-60"
       >
         {running ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : null}
         {running ? "Running the self-test…" : "Run scanner self-test"}
       </button>
 
-      <p className="mt-2 text-xs text-muted-foreground">
+      <p className="mt-2 text-caption text-text-muted">
         Takes a few seconds. Five runs an hour, and each run is recorded in the audit log.
       </p>
 
@@ -900,7 +904,7 @@ export function SecurityPanel({
   return (
     <div className="space-y-4">
       {overviewError === null ? null : (
-        <div className="flex items-start gap-2 rounded-md border border-destructive/40 px-3 py-2 text-sm text-destructive">
+        <div className="flex items-start gap-2 rounded-md border border-destructive/40 px-3 py-2 text-dense text-danger">
           <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
           <p>{overviewError}</p>
         </div>

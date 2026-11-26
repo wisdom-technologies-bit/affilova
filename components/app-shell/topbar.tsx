@@ -40,14 +40,14 @@ export function Topbar({
   const [open, setOpen] = useState(false)
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background px-4 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-topbar items-center gap-3 border-b border-border bg-background px-4 sm:px-6">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="h-11 w-11 lg:hidden"
+            className="lg:hidden"
             aria-label="Open navigation"
           >
             <Menu className="h-5 w-5" aria-hidden="true" />
@@ -55,7 +55,7 @@ export function Topbar({
         </SheetTrigger>
         <SheetContent side="left" className="w-72 border-r border-border p-0">
           <SheetHeader className="border-b border-border px-6 py-4 text-left">
-            <SheetTitle className="text-sm font-semibold text-brand-ink">{label}</SheetTitle>
+            <SheetTitle className="text-dense font-medium text-foreground">{label}</SheetTitle>
             <SheetDescription className="sr-only">
               {`Navigation for the ${label} app`}
             </SheetDescription>
@@ -73,7 +73,7 @@ export function Topbar({
 
       <Link
         href="/"
-        className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 lg:hidden"
+        className="focus-ring rounded-sm lg:hidden"
       >
         <Logo variant="horizontal" className="h-6 w-auto" />
       </Link>

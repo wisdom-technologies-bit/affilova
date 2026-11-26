@@ -1,11 +1,14 @@
 import type { ReactNode } from "react"
 
-import { Spinner } from "@/components/ui/spinner"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 // The primary action of every auth form: full width, 44px high, brand-600 with
-// white text (4.96:1), brand-700 on hover, a spinner and aria-busy while the
+// white text (5.09:1), brand-700 on hover, a spinner and aria-busy while the
 // request is in flight, and a real disabled state.
+//
+// It is the design system's Button in its large size, so it cannot drift from
+// the primary action on every other screen.
 
 export interface SubmitButtonProps {
   children: ReactNode
@@ -14,27 +17,10 @@ export interface SubmitButtonProps {
   className?: string
 }
 
-export function SubmitButton({
-  children,
-  pending = false,
-  disabled = false,
-  className,
-}: SubmitButtonProps) {
+export function SubmitButton({ children, pending = false, disabled = false, className }: SubmitButtonProps) {
   return (
-    <button
-      type="submit"
-      disabled={disabled || pending}
-      aria-busy={pending}
-      className={cn(
-        "inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4",
-        "text-sm font-semibold text-white transition-colors duration-150",
-        "hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2",
-        "disabled:cursor-not-allowed disabled:opacity-60",
-        className,
-      )}
-    >
-      {pending ? <Spinner className="text-white" /> : null}
+    <Button type="submit" size="lg" loading={pending} disabled={disabled} className={cn("w-full", className)}>
       {children}
-    </button>
+    </Button>
   )
 }

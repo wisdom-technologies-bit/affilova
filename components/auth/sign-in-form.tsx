@@ -86,8 +86,8 @@ export function SignInForm({ next, error }: SignInFormProps) {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold tracking-tight text-slate-900">Sign in</h1>
-      <p className="mt-1 text-sm text-slate-600">Use your email address and password.</p>
+      <h1 className="text-h1 text-foreground">Sign in</h1>
+      <p className="mt-1 text-body text-text-muted">Use your email address and password.</p>
 
       {alert ? (
         <div className="mt-5">
@@ -125,7 +125,7 @@ export function SignInForm({ next, error }: SignInFormProps) {
           <div className="mt-2 text-right">
             <Link
               href="/forgot-password"
-              className="rounded-sm text-sm font-medium text-brand-700 underline-offset-2 transition-colors duration-150 hover:text-brand-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+              className="focus-ring rounded-sm text-denseall font-medium text-brand-600 underline-offset-2 transition-colors duration-150 hover:underline"
             >
               Forgot password?
             </Link>
@@ -146,18 +146,18 @@ export function SignInForm({ next, error }: SignInFormProps) {
       </form>
 
       <div className="my-5 flex items-center gap-3">
-        <span aria-hidden="true" className="h-px flex-1 bg-[#E3E6E3]" />
-        <span className="text-xs uppercase tracking-wide text-slate-500">or</span>
-        <span aria-hidden="true" className="h-px flex-1 bg-[#E3E6E3]" />
+        <span aria-hidden="true" className="h-px flex-1 bg-border" />
+        <span className="text-denseall text-text-subtle">or</span>
+        <span aria-hidden="true" className="h-px flex-1 bg-border" />
       </div>
 
       <GoogleButton />
 
-      <p className="mt-6 text-center text-sm text-slate-600">
+      <p className="mt-6 text-center text-denseall text-text-muted">
         New here?{" "}
         <Link
           href="/sign-up"
-          className="rounded-sm font-medium text-brand-700 underline-offset-2 transition-colors duration-150 hover:text-brand-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+          className="focus-ring rounded-sm font-medium text-brand-600 underline-offset-2 transition-colors duration-150 hover:underline"
         >
           Create an account
         </Link>

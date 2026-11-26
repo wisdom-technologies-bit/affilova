@@ -113,11 +113,11 @@ export function AdminWithdrawalsQueue({
 
   function actions(row: AdminQueueRow) {
     if (row.status !== "requested") {
-      return row.failureReason === null ? null : <span className="text-sm text-muted-foreground">{row.failureReason}</span>
+      return row.failureReason === null ? null : <span className="text-dense text-text-muted">{row.failureReason}</span>
     }
 
     if (row.userId === currentUserId) {
-      return <span className="text-sm text-muted-foreground">Your own withdrawal: someone else must approve it.</span>
+      return <span className="text-dense text-text-muted">Your own withdrawal: someone else must approve it.</span>
     }
 
     const alreadyApproved = row.firstApprover !== null && row.firstApprover === currentUserId
@@ -136,7 +136,7 @@ export function AdminWithdrawalsQueue({
           Reject
         </button>
         {alreadyApproved ? (
-          <span className="basis-full text-sm text-muted-foreground">You approved this. A second approver is needed.</span>
+          <span className="basis-full text-dense text-text-muted">You approved this. A second approver is needed.</span>
         ) : null}
       </span>
     )
@@ -155,7 +155,7 @@ export function AdminWithdrawalsQueue({
         <span>
           {row.accountName}
           <br />
-          <span className="text-muted-foreground">
+          <span className="text-text-muted">
             {row.bankName}, ending {row.accountLast4}
           </span>
         </span>
@@ -165,7 +165,7 @@ export function AdminWithdrawalsQueue({
       key: "flags",
       header: "Checks",
       render: (row) => (
-        <span className="flex flex-col gap-1 text-sm">
+        <span className="flex flex-col gap-1 text-dense">
           {row.isFirst ? <span>First withdrawal for this user</span> : null}
           {row.hasRiskFlag ? (
             <span className="inline-flex items-center gap-1 font-medium text-destructive">
@@ -181,7 +181,7 @@ export function AdminWithdrawalsQueue({
           ) : (
             <span>Approvals: {row.approvals} of 1</span>
           )}
-          {!row.isFirst && !row.hasRiskFlag && !row.needsTwoApprovers ? <span className="text-muted-foreground">None</span> : null}
+          {!row.isFirst && !row.hasRiskFlag && !row.needsTwoApprovers ? <span className="text-text-muted">None</span> : null}
         </span>
       ),
     },
@@ -199,8 +199,8 @@ export function AdminWithdrawalsQueue({
             role="tab"
             aria-selected={tab === entry.value}
             onClick={() => choose(entry.value)}
-            className={`min-h-[44px] rounded-md border px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 ${
-              tab === entry.value ? "border-brand-600 bg-brand-50 text-brand-800" : "border-input text-brand-ink hover:bg-accent"
+            className={`min-h-control-md rounded-md border px-4 text-dense font-medium focus-ring ${
+              tab === entry.value ? "border-brand-600 bg-brand-50 text-brand-700" : "border-border-control text-foreground hover:bg-surface-muted"
             }`}
           >
             {entry.label}
@@ -209,9 +209,9 @@ export function AdminWithdrawalsQueue({
       </div>
 
       <div aria-live="polite" className="space-y-3">
-        {message === null ? null : <p role="status" className="rounded-md border border-brand-600/40 bg-brand-50 px-3 py-2 text-sm">{message}</p>}
+        {message === null ? null : <p role="status" className="rounded-md border border-success/40 bg-success-subtle text-success px-3 py-2 text-dense">{message}</p>}
         {error === null ? null : <AlertLine>{error}</AlertLine>}
-        {loading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
+        {loading ? <p className="text-dense text-text-muted">Loading…</p> : null}
       </div>
 
       {loading && rows.length === 0 ? null : (
@@ -249,7 +249,7 @@ export function AdminWithdrawalsQueue({
 
               {dialog.kind === "reject" ? (
                 <div>
-                  <label htmlFor="reject-reason" className="block text-sm font-medium text-brand-ink">
+                  <label htmlFor="reject-reason" className="block text-dense font-medium text-foreground">
                     Reason (at least 10 characters, shown to the user)
                   </label>
                   <textarea

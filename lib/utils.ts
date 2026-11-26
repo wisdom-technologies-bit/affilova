@@ -1,5 +1,24 @@
 import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { extendTailwindMerge } from "tailwind-merge"
+
+// Tailwind's class merger has to be told about the design system's type scale.
+//
+// Without this, `cn("text-small text-foreground")` drops text-small: the merger
+// only knows Tailwind's own size names (text-sm, text-lg ...) and treats
+// anything else starting with `text-` as a colour, so the two collide and the
+// later one wins. The size would silently disappear from every component that
+// passes both through cn(). Registering the scale keeps them in separate groups.
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      "font-size": [
+        {
+          text: ["display", "display-sm", "h1", "h2", "h3", "body", "dense", "small", "caption"],
+        },
+      ],
+    },
+  },
+})
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

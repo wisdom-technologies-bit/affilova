@@ -147,7 +147,7 @@ export function OrdersView({
       key: "number",
       header: "Order",
       render: (row) => (
-        <Link href={`/transactions/orders/${row.id}`} className="font-medium text-brand-green underline underline-offset-2">
+        <Link href={`/transactions/orders/${row.id}`} className="font-medium text-brand-600 underline underline-offset-2">
           {row.number}
         </Link>
       ),
@@ -266,18 +266,18 @@ export function OrdersView({
               <div className="flex items-center justify-between gap-2">
                 <Link
                   href={`/transactions/orders/${row.id}`}
-                  className="font-semibold text-brand-green underline underline-offset-2"
+                  className="font-semibold text-brand-600 underline underline-offset-2"
                 >
                   {row.number}
                 </Link>
                 <StatusTag tone={orderTone(row.status)}>{row.status}</StatusTag>
               </div>
-              <p className="mt-1 text-sm text-brand-ink">{row.productTitle ?? "Not recorded"}</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="mt-1 text-dense text-foreground">{row.productTitle ?? "Not recorded"}</p>
+              <p className="text-dense text-text-muted">
                 {row.vendorName ?? "Not recorded"} · {row.maskedEmail}
               </p>
-              <p className="mt-1 text-sm font-medium tabular-nums">{formatNaira(row.totalKobo)}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="mt-1 text-dense font-medium tabular-nums">{formatNaira(row.totalKobo)}</p>
+              <p className="text-caption text-text-muted">
                 {row.paidAt === null ? "Not paid" : `Paid ${formatLagosDateTime(row.paidAt)}`}
               </p>
             </li>
@@ -354,7 +354,7 @@ export function RefundsView({
       key: "order",
       header: "Order",
       render: (row) => (
-        <Link href={`/transactions/orders/${row.orderId}`} className="font-medium text-brand-green underline underline-offset-2">
+        <Link href={`/transactions/orders/${row.orderId}`} className="font-medium text-brand-600 underline underline-offset-2">
           {row.orderNumber}
         </Link>
       ),
@@ -383,12 +383,12 @@ export function RefundsView({
       header: "Action",
       render: (row) => {
         if (!canManage) {
-          return <span className="text-sm text-muted-foreground">Finance or admin</span>
+          return <span className="text-dense text-text-muted">Finance or admin</span>
         }
 
         if (row.status === "requested") {
           return (
-            <Link href={`/transactions/orders/${row.orderId}`} className="text-sm font-semibold text-brand-green underline underline-offset-2">
+            <Link href={`/transactions/orders/${row.orderId}`} className="text-dense font-semibold text-brand-600 underline underline-offset-2">
               Approve or reject
             </Link>
           )
@@ -402,7 +402,7 @@ export function RefundsView({
           )
         }
 
-        return <span className="text-sm text-muted-foreground">Nothing to do</span>
+        return <span className="text-dense text-text-muted">Nothing to do</span>
       },
     },
   ]
@@ -435,7 +435,7 @@ export function RefundsView({
 
       <div aria-live="polite" className="space-y-1">
         {error === null ? null : <AlertLine message={error} />}
-        {notice === null ? null : <p className="text-sm font-medium text-brand-ink">{notice}</p>}
+        {notice === null ? null : <p className="text-dense font-medium text-foreground">{notice}</p>}
         {loading ? <LoadingLine label="Loading refunds" /> : null}
       </div>
 
@@ -516,7 +516,7 @@ export function DisputesView({
       key: "order",
       header: "Order",
       render: (row) => (
-        <Link href={`/transactions/orders/${row.orderId}`} className="font-medium text-brand-green underline underline-offset-2">
+        <Link href={`/transactions/orders/${row.orderId}`} className="font-medium text-brand-600 underline underline-offset-2">
           {row.orderNumber}
         </Link>
       ),
@@ -534,14 +534,14 @@ export function DisputesView({
       key: "needs",
       header: "Decision",
       render: (row) =>
-        row.needsDecision ? <StatusTag tone="danger">Needs your decision</StatusTag> : <span className="text-sm text-muted-foreground">Recorded</span>,
+        row.needsDecision ? <StatusTag tone="danger">Needs your decision</StatusTag> : <span className="text-dense text-text-muted">Recorded</span>,
     },
     {
       key: "actions",
       header: "Action",
       render: (row) => {
         if (!canDecide || row.outcome !== "open") {
-          return <span className="text-sm text-muted-foreground">Nothing to do</span>
+          return <span className="text-dense text-text-muted">Nothing to do</span>
         }
 
         return (
@@ -562,7 +562,7 @@ export function DisputesView({
     <div className="space-y-4">
       <div aria-live="polite" className="space-y-1">
         {error === null ? null : <AlertLine message={error} />}
-        {notice === null ? null : <p className="text-sm font-medium text-brand-ink">{notice}</p>}
+        {notice === null ? null : <p className="text-dense font-medium text-foreground">{notice}</p>}
       </div>
 
       <DataTable
@@ -595,7 +595,7 @@ export function DisputesView({
           </DialogHeader>
 
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-dense text-text-muted">
               Paystack said: <strong>{dialog?.row.providerResolution ?? "nothing recorded yet"}</strong>. You are the
               person who decides, and the note is what the next person reads.
             </p>
@@ -611,7 +611,7 @@ export function DisputesView({
                 rows={4}
               />
               {note.trim().length > 0 && note.trim().length < 10 ? (
-                <p className="mt-1 text-sm text-destructive">Write at least 10 characters.</p>
+                <p className="mt-1 text-dense text-danger">Write at least 10 characters.</p>
               ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
@@ -730,7 +730,7 @@ export function LedgerView({
       </div>
 
       {balanced === null ? null : (
-        <p className="flex items-center gap-2 text-sm font-medium text-brand-ink">
+        <p className="flex items-center gap-2 text-dense font-medium text-foreground">
           <span aria-hidden="true">{balanced.balanced ? "✓" : "!"}</span>
           {balanced.balanced
             ? "Balanced: every debit has a credit."
@@ -747,17 +747,17 @@ export function LedgerView({
           {rows.map((txn) => (
             <li key={txn.id} className="rounded-md border border-border p-3">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="font-semibold text-brand-ink">{txn.kind}</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="font-semibold text-foreground">{txn.kind}</p>
+                <p className="text-dense text-text-muted">
                   {txn.createdAt === null ? "Not recorded" : formatLagosDateTime(txn.createdAt)}
                 </p>
               </div>
-              {txn.description === null ? null : <p className="text-sm text-muted-foreground">{txn.description}</p>}
+              {txn.description === null ? null : <p className="text-dense text-text-muted">{txn.description}</p>}
               <div className="mt-2 overflow-x-auto">
-                <table className="w-full min-w-[28rem] border-collapse text-sm">
+                <table className="w-full min-w-[28rem] border-collapse text-dense">
                   <caption className="sr-only">{`Entries of the ${txn.kind} transaction`}</caption>
                   <thead>
-                    <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr className="border-b border-border text-left text-caption uppercase tracking-wide text-text-muted">
                       <th scope="col" className="py-1 pr-3 font-semibold">
                         Account
                       </th>
@@ -820,10 +820,10 @@ export function ReconciliationView({
         description="Every account, its debits, its credits and its balance. The book is balanced when the two grand totals agree."
       >
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[34rem] border-collapse text-sm">
+          <table className="w-full min-w-[34rem] border-collapse text-dense">
             <caption className="sr-only">Trial balance per ledger account</caption>
             <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <tr className="border-b border-border text-left text-caption uppercase tracking-wide text-text-muted">
                 <th scope="col" className="py-2 pr-3 font-semibold">
                   Account
                 </th>
@@ -847,7 +847,7 @@ export function ReconciliationView({
                   <th scope="row" className="py-2 pr-3 text-left font-medium">
                     {account.name}
                   </th>
-                  <td className="py-2 pr-3 text-muted-foreground">{account.kind}</td>
+                  <td className="py-2 pr-3 text-text-muted">{account.kind}</td>
                   <td className="py-2 pr-3 text-right tabular-nums">{formatNaira(account.debitKobo)}</td>
                   <td className="py-2 pr-3 text-right tabular-nums">{formatNaira(account.creditKobo)}</td>
                   <td className="py-2 text-right tabular-nums">{formatNaira(account.balanceKobo)}</td>
@@ -867,15 +867,15 @@ export function ReconciliationView({
           </table>
         </div>
 
-        <dl className="mt-4 space-y-2 text-sm">
+        <dl className="mt-4 space-y-2 text-dense">
           <div className="flex items-center gap-2">
             <span aria-hidden="true">{balance.balanced ? "✓" : "!"}</span>
-            <dt className="font-medium text-brand-ink">Debits equal credits:</dt>
+            <dt className="font-medium text-foreground">Debits equal credits:</dt>
             <dd>{balance.balanced ? "Yes" : `No, off by ${formatNaira(balance.totals.differenceKobo)}`}</dd>
           </div>
           <div className="flex items-center gap-2">
             <span aria-hidden="true">{balance.payables.match ? "✓" : "!"}</span>
-            <dt className="font-medium text-brand-ink">Party balances match the payable accounts:</dt>
+            <dt className="font-medium text-foreground">Party balances match the payable accounts:</dt>
             <dd>
               {balance.payables.match
                 ? "Yes"
@@ -895,10 +895,10 @@ export function ReconciliationView({
           <EmptyBlock title="No run recorded yet" hint="The first run happens at 02:00 Lagos time." />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[32rem] border-collapse text-sm">
+            <table className="w-full min-w-[32rem] border-collapse text-dense">
               <caption className="sr-only">The last reconciliation runs</caption>
               <thead>
-                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border text-left text-caption uppercase tracking-wide text-text-muted">
                   <th scope="col" className="py-2 pr-3 font-semibold">
                     Run
                   </th>
@@ -933,7 +933,7 @@ export function ReconciliationView({
             </table>
           </div>
         )}
-        <p className="mt-3 text-sm text-muted-foreground">
+        <p className="mt-3 text-dense text-text-muted">
           A difference is not automatically an error. Settlement in flight, a payout Paystack has not confirmed, or a
           fee we have not seen yet all show up here for a day or two.
         </p>
@@ -984,7 +984,7 @@ export function OrderDetailView({
     <div className="space-y-6">
       <div aria-live="polite" className="space-y-1">
         {error === null ? null : <AlertLine message={error} />}
-        {notice === null ? null : <p className="text-sm font-medium text-brand-ink">{notice}</p>}
+        {notice === null ? null : <p className="text-dense font-medium text-foreground">{notice}</p>}
       </div>
 
       <Section title="Order">
@@ -1020,7 +1020,7 @@ export function OrderDetailView({
           <DetailRow label="Affiliate">{detail.affiliate?.username ?? "No affiliate"}</DetailRow>
         </DetailList>
         {detail.buyer.fullEmailVisible ? (
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="mt-2 text-caption text-text-muted">
             Opening this page as admin or support is recorded against your account.
           </p>
         ) : null}
@@ -1028,10 +1028,10 @@ export function OrderDetailView({
 
       <Section title="The split">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[34rem] border-collapse text-sm">
+          <table className="w-full min-w-[34rem] border-collapse text-dense">
             <caption className="sr-only">What each party takes from this order</caption>
             <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <tr className="border-b border-border text-left text-caption uppercase tracking-wide text-text-muted">
                 <th scope="col" className="py-2 pr-3 font-semibold">
                   Item
                 </th>
@@ -1072,7 +1072,7 @@ export function OrderDetailView({
         {detail.taxLines.length === 0 ? (
           <QuietLine>No tax was charged on this order.</QuietLine>
         ) : (
-          <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
+          <ul className="mt-3 space-y-1 text-dense text-text-muted">
             {detail.taxLines.map((line, index) => (
               <li key={`${line.basis}-${index}`}>
                 {line.basis} at {(line.rateBps / 100).toFixed(2)}% on {formatNaira(line.baseKobo)} ={" "}
@@ -1102,13 +1102,13 @@ export function OrderDetailView({
               <li key={request.id} className="rounded-md border border-border p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <StatusTag tone={refundTone(request.status)}>{request.status}</StatusTag>
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-dense text-text-muted">
                     {request.requestedAt === null ? "Not recorded" : formatLagosDateTime(request.requestedAt)}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-brand-ink">{request.reason}</p>
+                <p className="mt-1 text-dense text-foreground">{request.reason}</p>
                 {request.decisionNote === null ? null : (
-                  <p className="text-sm text-muted-foreground">Decision note: {request.decisionNote}</p>
+                  <p className="text-dense text-text-muted">Decision note: {request.decisionNote}</p>
                 )}
                 {request.status === "failed" && canManageRefunds ? (
                   <button type="button" className={`${BUTTON_SECONDARY} mt-2`} onClick={() => void retry(request.id)} disabled={busy}>
@@ -1120,7 +1120,7 @@ export function OrderDetailView({
           </ul>
         )}
         {canManageRefunds ? (
-          <p className="mt-3 text-sm text-muted-foreground">
+          <p className="mt-3 text-dense text-text-muted">
             Approving or rejecting a request uses the same decision as the vendor screen, and approving queues the
             Paystack refund.
           </p>
@@ -1138,7 +1138,7 @@ export function OrderDetailView({
                   <StatusTag tone={dispute.outcome === "open" ? "warning" : "neutral"}>{dispute.outcome}</StatusTag>
                   {dispute.needsDecision ? <StatusTag tone="danger">Needs your decision</StatusTag> : null}
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-dense text-text-muted">
                   Opened {dispute.openedAt === null ? "unknown" : formatLagosDateTime(dispute.openedAt)}
                   {dispute.providerResolution === null
                     ? ""
@@ -1146,13 +1146,13 @@ export function OrderDetailView({
                         dispute.providerResolvedAt === null ? "" : ` on ${formatLagosDate(dispute.providerResolvedAt)}`
                       }`}
                 </p>
-                {dispute.note === null ? null : <p className="text-sm text-brand-ink">{dispute.note}</p>}
+                {dispute.note === null ? null : <p className="text-dense text-foreground">{dispute.note}</p>}
               </li>
             ))}
           </ul>
         )}
         {canDecideDisputes ? (
-          <Link href="/transactions?tab=disputes" className="mt-3 inline-block text-sm font-semibold text-brand-green underline underline-offset-2">
+          <Link href="/transactions?tab=disputes" className="mt-3 inline-block text-dense font-semibold text-brand-600 underline underline-offset-2">
             Decide a dispute
           </Link>
         ) : null}
@@ -1162,14 +1162,14 @@ export function OrderDetailView({
         {detail.webhooks.length === 0 ? (
           <EmptyBlock title="No event recorded for this reference" />
         ) : (
-          <ul className="space-y-1 text-sm">
+          <ul className="space-y-1 text-dense">
             {detail.webhooks.map((event, index) => (
               <li key={`${event.eventType ?? "event"}-${index}`} className="flex flex-wrap justify-between gap-2">
-                <span className="text-brand-ink">
+                <span className="text-foreground">
                   {event.eventType ?? "Unknown event"} · {event.status}
                   {event.error === null ? "" : ` · ${event.error}`}
                 </span>
-                <span className="text-muted-foreground">
+                <span className="text-text-muted">
                   {event.processedAt === null
                     ? event.receivedAt === null
                       ? "Not recorded"
@@ -1186,13 +1186,13 @@ export function OrderDetailView({
         {detail.emails.length === 0 ? (
           <EmptyBlock title="No email sent for this order" />
         ) : (
-          <ul className="space-y-1 text-sm">
+          <ul className="space-y-1 text-dense">
             {detail.emails.map((email, index) => (
               <li key={`${email.kind}-${index}`} className="flex flex-wrap justify-between gap-2">
-                <span className="text-brand-ink">
+                <span className="text-foreground">
                   {email.kind} · {email.status}
                 </span>
-                <span className="text-muted-foreground">
+                <span className="text-text-muted">
                   {email.createdAt === null ? "Not recorded" : formatLagosDateTime(email.createdAt)}
                 </span>
               </li>
@@ -1213,20 +1213,20 @@ export function OrderDetailView({
             <ul className="space-y-3">
               {detail.ledger.transactions.map((txn) => (
                 <li key={txn.id}>
-                  <p className="text-sm font-semibold text-brand-ink">
+                  <p className="text-dense font-semibold text-foreground">
                     {txn.kind}{" "}
-                    <span className="font-normal text-muted-foreground">
+                    <span className="font-normal text-text-muted">
                       {txn.createdAt === null ? "" : formatLagosDateTime(txn.createdAt)}
                     </span>
                   </p>
-                  <ul className="mt-1 space-y-1 text-sm">
+                  <ul className="mt-1 space-y-1 text-dense">
                     {txn.entries.map((entry, index) => (
                       <li key={`${entry.accountCode}-${index}`} className="flex flex-wrap justify-between gap-2">
                         <span>
                           {entry.accountCode}
                           {entry.party === null ? "" : ` · ${entry.party}`}
                         </span>
-                        <span className="tabular-nums text-muted-foreground">
+                        <span className="tabular-nums text-text-muted">
                           {entry.debitKobo === BigInt(0) ? "" : `debit ${formatNaira(entry.debitKobo)}`}
                           {entry.creditKobo === BigInt(0) ? "" : ` credit ${formatNaira(entry.creditKobo)}`}
                           {entry.availableAt === null ? "" : ` · available ${formatLagosDate(entry.availableAt)}`}

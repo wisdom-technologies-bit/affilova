@@ -33,7 +33,7 @@ export function AppSwitcher({ apps }: { apps: readonly SwitcherApp[] }) {
           type="button"
           variant="outline"
           size="sm"
-          className="h-11 gap-2 border-border px-3 text-brand-ink focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+          className="h-control-md gap-2 px-3"
         >
           Apps
           <ChevronDown className="h-4 w-4" aria-hidden="true" />
@@ -46,10 +46,10 @@ export function AppSwitcher({ apps }: { apps: readonly SwitcherApp[] }) {
           <DropdownMenuItem key={app.key} asChild>
             <a
               href={app.href}
-              className="flex min-h-11 items-center justify-between gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
+              className="focus-ring flex min-h-control-md items-center justify-between gap-2"
             >
               <span>{app.label}</span>
-              <ExternalLink className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <ExternalLink className="h-4 w-4 text-text-subtle" aria-hidden="true" />
             </a>
           </DropdownMenuItem>
         ))}

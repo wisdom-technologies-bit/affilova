@@ -79,8 +79,8 @@ export function VatPeriodsView({
     <div className="space-y-4">
       {vatEnabled ? null : (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3">
-          <p className="text-sm font-semibold text-brand-ink">VAT is switched off</p>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="text-dense font-semibold text-foreground">VAT is switched off</p>
+          <p className="mt-1 text-dense text-text-muted">
             New orders are not being charged VAT. The settings say {rateBps / 100}% on the {basis.replace(/_/g, " ")}.
             Months below show what was charged while it was on.
           </p>
@@ -95,8 +95,8 @@ export function VatPeriodsView({
             aria-current={value === year ? "page" : undefined}
             className={
               value === year
-                ? "inline-flex min-h-11 items-center rounded-md bg-brand-ink px-4 text-sm font-semibold text-white"
-                : "inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm font-semibold text-brand-ink"
+                ? "inline-flex min-h-control-md items-center rounded-md bg-brand-ink px-4 text-dense font-semibold text-white"
+                : "inline-flex min-h-control-md items-center rounded-md border border-border px-4 text-dense font-semibold text-foreground"
             }
           >
             {value}
@@ -105,10 +105,10 @@ export function VatPeriodsView({
       </nav>
 
       <div className="hidden md:block">
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full border-collapse text-dense">
           <caption className="sr-only">The twelve VAT months of {year}</caption>
           <thead>
-            <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <tr className="border-b border-border text-left text-caption uppercase tracking-wide text-text-muted">
               <th scope="col" className="py-2 pr-3 font-semibold">
                 Month
               </th>
@@ -145,7 +145,7 @@ export function VatPeriodsView({
                   <td className="py-2 pr-3 text-right tabular-nums">{formatNaira(period.netPayableKobo)}</td>
                   <td className="py-2 pr-3">{period.dueDate === null ? "—" : formatLagosDate(`${period.dueDate}T12:00:00+01:00`)}</td>
                   <td className="py-2">
-                    <Link href={`/vat/${period.period}`} className="font-semibold text-brand-green underline underline-offset-2">
+                    <Link href={`/vat/${period.period}`} className="font-semibold text-brand-600 underline underline-offset-2">
                       Open
                     </Link>
                   </td>
@@ -163,15 +163,15 @@ export function VatPeriodsView({
           return (
             <li key={period.period} className="rounded-md border border-border p-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold text-brand-ink">
+                <span className="font-semibold text-foreground">
                   {formatLagosDate(`${period.period}T12:00:00+01:00`)}
                 </span>
                 <StatusTag tone={status.tone}>{status.text}</StatusTag>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-dense text-text-muted">
                 Output VAT {formatNaira(period.outputVatKobo)} · net payable {formatNaira(period.netPayableKobo)}
               </p>
-              <Link href={`/vat/${period.period}`} className="mt-1 inline-block text-sm font-semibold text-brand-green underline underline-offset-2">
+              <Link href={`/vat/${period.period}`} className="mt-1 inline-block text-dense font-semibold text-brand-600 underline underline-offset-2">
                 Open the month
               </Link>
             </li>
@@ -291,11 +291,11 @@ export function VatDetailView({
     <div className="space-y-6">
       <div aria-live="polite" className="space-y-1">
         {error === null ? null : <AlertLine message={error} />}
-        {notice === null ? null : <p className="text-sm font-medium text-brand-ink">{notice}</p>}
+        {notice === null ? null : <p className="text-dense font-medium text-foreground">{notice}</p>}
       </div>
 
       {vatEnabled ? null : (
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-brand-ink">
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-dense text-foreground">
           VAT is switched off, so no new order is charged. What is below is what was charged at the time.
         </div>
       )}
@@ -313,13 +313,13 @@ export function VatDetailView({
             { label: "Net payable", value: summary.netPayableKobo },
           ].map((item) => (
             <div key={item.label} className="rounded-md border border-border px-4 py-3">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{item.label}</dt>
-              <dd className="mt-1 text-xl font-semibold tabular-nums text-brand-ink">{formatNaira(item.value)}</dd>
+              <dt className="text-caption font-semibold uppercase tracking-wide text-text-muted">{item.label}</dt>
+              <dd className="mt-1 text-xl font-semibold tabular-nums text-foreground">{formatNaira(item.value)}</dd>
             </div>
           ))}
         </dl>
 
-        <p className="mt-3 text-sm text-muted-foreground">
+        <p className="mt-3 text-dense text-text-muted">
           Due {summary.dueDate === null ? "—" : formatLagosDate(`${summary.dueDate}T12:00:00+01:00`)}.{" "}
           {remitted
             ? `Remitted ${summary.remittedAmountKobo === BigInt(0) ? "" : formatNaira(summary.remittedAmountKobo)}${
@@ -348,7 +348,7 @@ export function VatDetailView({
         </div>
 
         {remitted ? (
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-dense text-text-muted">
             A remitted month is closed. A correction goes in as an adjustment, so the history of what was filed stays
             intact.
           </p>
@@ -359,10 +359,10 @@ export function VatDetailView({
         {detail.adjustments.length === 0 ? (
           <EmptyBlock title="No adjustment for this month" hint="Add one if a correction is needed." />
         ) : (
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-2 text-dense">
             {detail.adjustments.map((item) => (
               <li key={item.id} className="flex flex-wrap justify-between gap-2 rounded-md border border-border px-3 py-2">
-                <span className="text-brand-ink">{item.reason}</span>
+                <span className="text-foreground">{item.reason}</span>
                 <span className="tabular-nums">{formatNaira(item.amountKobo)}</span>
               </li>
             ))}
@@ -375,10 +375,10 @@ export function VatDetailView({
           <EmptyBlock title="No VAT was charged in this month" />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] border-collapse text-sm">
+            <table className="w-full min-w-[36rem] border-collapse text-dense">
               <caption className="sr-only">Tax lines for the month</caption>
               <thead>
-                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border text-left text-caption uppercase tracking-wide text-text-muted">
                   <th scope="col" className="py-2 pr-3 font-semibold">
                     Order
                   </th>
@@ -407,7 +407,7 @@ export function VatDetailView({
                   <tr key={line.id} className="border-b border-border last:border-0">
                     <th scope="row" className="py-2 pr-3 text-left font-medium">
                       {line.orderNumber}
-                      {line.refunded ? <span className="ml-2 text-xs text-muted-foreground">(refunded)</span> : null}
+                      {line.refunded ? <span className="ml-2 text-caption text-text-muted">(refunded)</span> : null}
                     </th>
                     <td className="py-2 pr-3">
                       {line.paidDateLagos === null ? "—" : formatLagosDate(`${line.paidDateLagos}T12:00:00+01:00`)}
@@ -429,11 +429,11 @@ export function VatDetailView({
       </Section>
 
       {dialog === null ? null : (
-        <div className="rounded-lg border border-border p-4">
+        <div className="rounded-md border border-border p-4">
           {dialog === "filed" ? (
             <div className="space-y-3">
-              <h2 className="text-base font-semibold text-brand-ink">Mark this month as filed</h2>
-              <p className="text-sm text-muted-foreground">
+              <h2 className="text-base font-semibold text-foreground">Mark this month as filed</h2>
+              <p className="text-dense text-text-muted">
                 Record the day the return was filed with the tax authority. The money is recorded separately.
               </p>
               <div>
@@ -461,8 +461,8 @@ export function VatDetailView({
 
           {dialog === "remitted" ? (
             <div className="space-y-3">
-              <h2 className="text-base font-semibold text-brand-ink">Record the payment</h2>
-              <p className="text-sm text-muted-foreground">
+              <h2 className="text-base font-semibold text-foreground">Record the payment</h2>
+              <p className="text-dense text-text-muted">
                 Type the amount that was actually paid and the reference the tax authority or bank gave you. The
                 amount is never filled in for you.
               </p>
@@ -514,8 +514,8 @@ export function VatDetailView({
 
           {dialog === "adjustment" ? (
             <div className="space-y-3">
-              <h2 className="text-base font-semibold text-brand-ink">Add an adjustment</h2>
-              <p className="text-sm text-muted-foreground">
+              <h2 className="text-base font-semibold text-foreground">Add an adjustment</h2>
+              <p className="text-dense text-text-muted">
                 A signed amount in naira. Use a minus for a correction that reduces what is payable. A reason is
                 required, because this is what an auditor reads.
               </p>

@@ -14,8 +14,11 @@ import { shellPath, type NavItem, type ShellApp } from "./navigation"
 // shellPath), so the item marked aria-current is the same during the server
 // render and after hydration.
 
+// The item is 44px tall so it can be hit with a thumb in the drawer, and the
+// current section is marked with aria-current, a background and a weight change,
+// never a colour on its own.
 const ITEM_BASE =
-  "flex min-h-11 items-center rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+  "focus-ring flex min-h-control-md items-center rounded-md px-3 py-2 text-dense font-medium transition-colors duration-150"
 
 export function SidebarNav({
   app,
@@ -46,8 +49,8 @@ export function SidebarNav({
                 className={cn(
                   ITEM_BASE,
                   active
-                    ? "bg-brand-50 text-brand-600"
-                    : "text-brand-ink/80 hover:bg-muted hover:text-brand-ink",
+                    ? "bg-brand-50 text-brand-700"
+                    : "text-text-muted hover:bg-surface-muted hover:text-foreground",
                 )}
               >
                 {item.label}
@@ -72,21 +75,19 @@ export function Sidebar({
   return (
     <aside
       aria-label={`${label} sidebar`}
-      className="hidden border-r border-border bg-background lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-64 lg:flex-col"
+      className="hidden border-r border-border bg-background lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-sidebar lg:flex-col"
     >
-      <div className="flex h-14 shrink-0 items-center border-b border-border px-6">
+      <div className="flex h-topbar shrink-0 items-center border-b border-border px-6">
         <Link
           href="/"
-          className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+          className="focus-ring rounded-sm"
         >
           <Logo variant="horizontal" className="h-6 w-auto" />
         </Link>
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-4">
-        <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {label}
-        </p>
+        <p className="px-3 pb-2 text-caption font-medium text-text-subtle">{label}</p>
         <SidebarNav app={app} items={items} ariaLabel={`${label} sections`} />
       </div>
     </aside>

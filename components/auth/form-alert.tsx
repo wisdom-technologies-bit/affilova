@@ -1,25 +1,24 @@
 "use client"
 
 import { useEffect, useRef, type ReactNode } from "react"
-import { AlertCircle, CheckCircle2, Info } from "lucide-react"
 
+import { InlineAlert, type AlertTone } from "@/components/ds/inline-alert"
 import type { AlertVariant } from "@/lib/identity/auth-ui"
 import { cn } from "@/lib/utils"
 
-// Form-level message box. Every variant carries an icon and a screen-reader
-// prefix, so the meaning never rests on colour alone.
+// Form-level message box.
+//
+// The look is the design system's InlineAlert: an icon, a pale semantic surface
+// and a text colour measured at 4.5:1. What this component adds is the auth
+// forms' own contract: every variant is announced assertively (a form failure is
+// the reason the person is still on the page), and the message can take the focus
+// when it appears, so a screen reader lands on it without hunting.
 
-const STYLES: Record<AlertVariant, string> = {
-  error: "border-red-300 bg-red-50 text-red-800",
-  success: "border-emerald-300 bg-emerald-50 text-emerald-800",
-  info: "border-slate-300 bg-slate-50 text-slate-800",
+const TONES: Record<AlertVariant, AlertTone> = {
+  error: "danger",
+  success: "success",
+  info: "info",
 }
-
-const ICONS = {
-  error: AlertCircle,
-  success: CheckCircle2,
-  info: Info,
-} as const
 
 const LABELS: Record<AlertVariant, string> = {
   error: "Error:",
@@ -37,7 +36,6 @@ export interface FormAlertProps {
 
 export function FormAlert({ variant, children, autoFocus = false, className }: FormAlertProps) {
   const ref = useRef<HTMLDivElement>(null)
-  const Icon = ICONS[variant]
 
   useEffect(() => {
     if (autoFocus) {
@@ -46,21 +44,11 @@ export function FormAlert({ variant, children, autoFocus = false, className }: F
   }, [autoFocus])
 
   return (
-    <div
-      ref={ref}
-      role="alert"
-      tabIndex={autoFocus ? -1 : undefined}
-      className={cn(
-        "flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm",
-        STYLES[variant],
-        className,
-      )}
-    >
-      <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-      <span>
+    <div ref={ref} tabIndex={autoFocus ? -1 : undefined} className={cn("focus-ring rounded-md", className)}>
+      <InlineAlert tone={TONES[variant]}>
         <span className="sr-only">{LABELS[variant]} </span>
         {children}
-      </span>
+      </InlineAlert>
     </div>
   )
 }

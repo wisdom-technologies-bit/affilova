@@ -180,15 +180,15 @@ export function PayoutDetailsPanel({
     <div className="space-y-6">
       <Section title="Payout account" description="Your earnings are paid into this account.">
         {account === null ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-dense text-text-muted">
             You have not added a payout account yet. Add one below to withdraw.
           </p>
         ) : (
           <div className="flex items-start gap-3 rounded-md border border-border px-4 py-3">
             <Landmark aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-brand-700" />
             <div className="min-w-0">
-              <p className="font-medium text-brand-ink">{account.accountName}</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="font-medium text-foreground">{account.accountName}</p>
+              <p className="text-dense text-text-muted">
                 {account.bankName}, account ending {account.accountLast4}
               </p>
             </div>
@@ -219,7 +219,7 @@ export function PayoutDetailsPanel({
             <button type="button" className={BUTTON_SECONDARY} onClick={() => setEditing(true)}>
               Change account
             </button>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-2 text-dense text-text-muted">
               Changing it needs a code we email you, and pauses withdrawals for 72 hours.
             </p>
           </div>
@@ -233,13 +233,13 @@ export function PayoutDetailsPanel({
             }}
             aria-label={account === null ? "Add a payout account" : "Change your payout account"}
           >
-            <h3 className="font-medium text-brand-ink">{account === null ? "Add an account" : "New account"}</h3>
+            <h3 className="font-medium text-foreground">{account === null ? "Add an account" : "New account"}</h3>
 
             {banksError !== null || banks === null ? (
               <AlertLine>{banksError ?? "The bank list could not be loaded. Refresh the page to try again."}</AlertLine>
             ) : (
               <div>
-                <label htmlFor="bank-filter" className="block text-sm font-medium text-brand-ink">
+                <label htmlFor="bank-filter" className="block text-dense font-medium text-foreground">
                   Find your bank
                 </label>
                 <input
@@ -253,7 +253,7 @@ export function PayoutDetailsPanel({
                   disabled={busy || resolved !== null}
                 />
 
-                <label htmlFor="bank-select" className="mt-3 block text-sm font-medium text-brand-ink">
+                <label htmlFor="bank-select" className="mt-3 block text-dense font-medium text-foreground">
                   Bank
                 </label>
                 <select
@@ -273,7 +273,7 @@ export function PayoutDetailsPanel({
                     </option>
                   ))}
                 </select>
-                <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">
+                <p className="mt-1 text-dense text-text-muted" aria-live="polite">
                   {filter.trim() === ""
                     ? `${(banks ?? []).length} banks`
                     : `${visibleBanks.length} ${visibleBanks.length === 1 ? "bank matches" : "banks match"}`}
@@ -282,7 +282,7 @@ export function PayoutDetailsPanel({
             )}
 
             <div>
-              <label htmlFor="account-number" className="block text-sm font-medium text-brand-ink">
+              <label htmlFor="account-number" className="block text-dense font-medium text-foreground">
                 Account number
               </label>
               <input
@@ -302,11 +302,11 @@ export function PayoutDetailsPanel({
                 className={`${INPUT_CLASS} mt-2`}
                 disabled={busy || resolved !== null}
               />
-              <p id="account-number-help" className="mt-1 text-sm text-muted-foreground">
+              <p id="account-number-help" className="mt-1 text-dense text-text-muted">
                 The 10 digit NUBAN number. Digits only.
               </p>
               {accountNumber !== "" && !numberOk ? (
-                <p className="mt-1 text-sm text-destructive">An account number has exactly 10 digits.</p>
+                <p className="mt-1 text-dense text-destructive">An account number has exactly 10 digits.</p>
               ) : null}
             </div>
 
@@ -323,9 +323,9 @@ export function PayoutDetailsPanel({
 
             {resolved !== null ? (
               <div className="space-y-4 rounded-md border border-border px-4 py-4" aria-live="polite">
-                <p className="text-sm text-muted-foreground">The bank says this account belongs to:</p>
-                <p className="text-lg font-semibold text-brand-ink">{resolved.accountName}</p>
-                <p className="text-sm text-muted-foreground">Account ending {resolved.accountLast4}</p>
+                <p className="text-dense text-text-muted">The bank says this account belongs to:</p>
+                <p className="text-h3 text-foreground">{resolved.accountName}</p>
+                <p className="text-dense text-text-muted">Account ending {resolved.accountLast4}</p>
 
                 {!resolved.nameMatches ? (
                   <AlertLine>
@@ -334,7 +334,7 @@ export function PayoutDetailsPanel({
                   </AlertLine>
                 ) : (
                   <>
-                    <label className="flex min-h-[44px] items-start gap-3 text-sm text-brand-ink">
+                    <label className="flex min-h-control-md items-start gap-3 text-dense text-foreground">
                       <input
                         type="checkbox"
                         checked={confirmed}
@@ -353,7 +353,7 @@ export function PayoutDetailsPanel({
 
                     {codeRequested ? (
                       <div>
-                        <label htmlFor="bank-code" className="block text-sm font-medium text-brand-ink">
+                        <label htmlFor="bank-code" className="block text-dense font-medium text-foreground">
                           6 digit code from your email
                         </label>
                         <input
@@ -395,7 +395,7 @@ export function PayoutDetailsPanel({
             {error !== null ? <AlertLine>{error}</AlertLine> : null}
 
             {account !== null ? (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-dense text-text-muted">
                 After you save, withdrawals pause for 72 hours. This protects you if someone else gets into
                 your account.
               </p>
@@ -421,10 +421,10 @@ export function PayoutDetailsPanel({
       <Section title="Automatic payout" description="Choose whether your available balance is paid out for you.">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p id="auto-label" className="font-medium text-brand-ink">
+            <p id="auto-label" className="font-medium text-foreground">
               Pay me automatically
             </p>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 text-dense text-text-muted">
               {auto ? "On. " : "Off. "}
               {account === null ? "Add a payout account to switch this on." : ""}
             </p>
@@ -436,8 +436,8 @@ export function PayoutDetailsPanel({
             aria-labelledby="auto-label"
             disabled={account === null || autoBusy}
             onClick={() => void toggleAuto()}
-            className={`relative inline-flex h-11 w-16 shrink-0 items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 disabled:opacity-60 ${
-              auto ? "border-brand-600 bg-brand-600" : "border-input bg-muted"
+            className={`relative inline-flex h-11 w-16 shrink-0 items-center rounded-full border transition-colors focus-ring disabled:opacity-60 ${
+              auto ? "border-brand-600 bg-brand-600" : "border-border-control bg-surface-muted"
             }`}
           >
             <span
@@ -455,7 +455,7 @@ export function PayoutDetailsPanel({
           </div>
         )}
 
-        <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-brand-ink">
+        <ul className="mt-4 list-disc space-y-1 pl-5 text-dense text-foreground">
           <li>Payouts run Monday to Friday, except on days we have paused them.</li>
           <li>
             Your available balance is sent when it reaches the minimum of {formatNaira(settings.minWithdrawalKobo)}.
@@ -470,7 +470,7 @@ export function PayoutDetailsPanel({
           </li>
         </ul>
 
-        <p className="mt-4 text-sm text-brand-ink">
+        <p className="mt-4 text-dense text-foreground">
           {data.todayIsPayoutDay ? "Today is a payout day. " : ""}
           Next payout day: <strong>{formatPayoutDay(data.nextPayoutDay)}</strong>.
         </p>
@@ -492,7 +492,7 @@ export function PayoutDetailsPanel({
         ) : null}
 
         {withdrawalsHref === null ? null : (
-          <p className="mt-4 text-sm">
+          <p className="mt-4 text-dense">
             <Link href={withdrawalsHref} className="font-medium text-brand-700 underline-offset-4 hover:underline">
               Go to withdrawals
             </Link>

@@ -11,13 +11,13 @@ const NAV_LINKS = [
 
 export function LegalHeader({ currentHref }: { currentHref?: string }) {
   return (
-    <header className="legal-no-print border-b border-[#E3E6E3] bg-white print:hidden">
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-6">
+    <header className="legal-no-print border-b border-border bg-background print:hidden">
+      <div className="container-public flex flex-wrap items-center justify-between gap-4 py-4">
         <Link href="/" aria-label="Affilova home" className="inline-flex shrink-0">
           <Logo variant="horizontal" className="h-8 w-auto" />
         </Link>
 
-        <nav aria-label="Primary navigation" className="flex flex-wrap items-center gap-1 text-sm">
+        <nav aria-label="Primary navigation" className="flex flex-wrap items-center gap-1 text-dense">
           {NAV_LINKS.map((link) => {
             const isCurrent = currentHref === link.href
             return (
@@ -25,8 +25,8 @@ export function LegalHeader({ currentHref }: { currentHref?: string }) {
                 key={link.href}
                 href={link.href}
                 aria-current={isCurrent ? "page" : undefined}
-                className={`rounded-md px-3 py-2 transition-colors duration-150 hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${
-                  isCurrent ? "font-medium text-brand-700" : "text-slate-600"
+                className={`focus-ring inline-flex min-h-control-md items-center rounded-md px-3 text-dense transition-colors duration-150 hover:bg-brand-50 hover:text-brand-700 ${
+                  isCurrent ? "font-medium text-brand-700" : "text-text-muted"
                 }`}
               >
                 {link.name}
@@ -35,16 +35,16 @@ export function LegalHeader({ currentHref }: { currentHref?: string }) {
           })}
         </nav>
 
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-dense">
           <Link
             href="/sign-in"
-            className="rounded-md px-3 py-2 text-slate-700 transition-colors duration-150 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+            className="focus-ring inline-flex min-h-control-md items-center rounded-md px-3 text-dense text-foreground transition-colors duration-150 hover:bg-surface-muted"
           >
             Sign in
           </Link>
           <Link
             href="/sign-up"
-            className="rounded-md bg-brand-500 px-4 py-2 font-medium text-white transition-colors duration-150 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+            className="focus-ring inline-flex min-h-control-md items-center rounded-md bg-brand-600 px-4 text-dense font-medium text-background transition-colors duration-150 hover:bg-brand-700"
           >
             Get started
           </Link>

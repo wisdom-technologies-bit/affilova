@@ -3,9 +3,15 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 
+import { TOKENS } from "@/lib/design/tokens"
+
 import ClientWrapper from "./ClientWrapper"
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
   title: "Affilova",
@@ -34,9 +40,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <meta name="theme-color" content="#14A953" />
+        <meta name="theme-color" content={TOKENS.brand500.hex} />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.variable} font-sans`}>
         <ClientWrapper>{children}</ClientWrapper>
       </body>
     </html>

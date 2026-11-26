@@ -1,6 +1,14 @@
 "use server"
 
 import { webhookEventCounts } from "@/lib/commerce/db"
+import { sendEmail } from "@/lib/email/brevo"
+import { getEmailFailureOverview, type EmailFailureRow, type EmailFailureSummary } from "@/lib/email/failures"
+import { getEmailConfigHealth, type EmailConfigHealth } from "@/lib/email/health"
+import {
+  EMAIL_FAILURE_REASONS,
+  EMAIL_REASON_ADVICE,
+  type EmailSendFailureReason,
+} from "@/lib/email/reasons"
 import { getPaystackEnv, type PaystackMode } from "@/lib/env"
 import { logger } from "@/lib/logger"
 import { getPaystackTransfers } from "@/lib/paystack/transfers"
@@ -26,6 +34,12 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin"
 //   runScannerSelfTestAction   admin only, five an hour, audited. Uploads four
 //                              known files, asks the scanner about them, deletes
 //                              them and reports the four verdicts.
+//   sendTestEmailAction        admin only, three an hour. Sends one plain message
+//                              to the signed-in admin's own address through the
+//                              real sender, and reports the reason it failed.
+//
+// The Email card is read as part of getSecurityOverviewAction: the configuration
+// health (categories only, never a value) and the failures of the last day.
 
 // A "use server" module may only export async functions, so these lists stay
 // private and the page keeps its own labels. They are the order the pipeline
@@ -113,6 +127,16 @@ export interface PayoutOverview {
   lowBalance: boolean
 }
 
+export interface EmailOverview {
+  /** Categories only: never a key, a prefix or an address. */
+  health: EmailConfigHealth
+  /** False when this role may not read the failure table, or it could not be read. */
+  failuresAvailable: boolean
+  last24h: EmailFailureSummary
+  /** The last ten failures, newest first. No address is in a row. */
+  recent: readonly EmailFailureRow[]
+}
+
 export interface SecurityOverview {
   scanner: ScannerHealth
   scan: ScanOverview
@@ -120,6 +144,7 @@ export interface SecurityOverview {
   events: readonly ScanEventRow[]
   payments: PaymentOverview
   payouts: PayoutOverview
+  email: EmailOverview
   /** The server's clock, so the page can say how old a heartbeat is. */
   fetchedAt: string
 }
@@ -138,10 +163,30 @@ export type SelfTestActionResult =
     }
   | { ok: false; error: string }
 
+export type SendTestEmailResult =
+  | { ok: true }
+  | {
+      ok: false
+      /** A short line for the page. The advice below says what to do about it. */
+      error: string
+      /** The reason code, when the failure came from the sender. */
+      reason?: EmailSendFailureReason
+      /** What to do about that reason. */
+      advice?: string
+    }
+
 /** Five self-tests an hour per person: enough to prove it works, not enough to load the service. */
 const SELF_TEST_HOURLY_LIMIT = 5
 
 const SELF_TEST_WINDOW_SECONDS = 60 * 60
+
+/** Three test emails an hour: enough to prove the settings work after a change. */
+const TEST_EMAIL_HOURLY_LIMIT = 3
+
+const TEST_EMAIL_WINDOW_SECONDS = 60 * 60
+
+/** The roles email_failure_overview() allows. */
+const EMAIL_FAILURE_ROLES: readonly AppRole[] = ["admin", "finance"]
 
 // ---------------------------------------------------------------------------
 // Reading the database answers
@@ -261,7 +306,15 @@ function toScanEvents(value: unknown): ScanEventRow[] {
 // Who is calling
 // ---------------------------------------------------------------------------
 
-type OpsActor = { userId: string; roles: AppRole[] }
+type OpsActor = {
+  userId: string
+  roles: AppRole[]
+  /**
+   * The signed-in address, used for one thing: the test email goes to it and to
+   * nobody else. It is never shown on the page and never logged.
+   */
+  email: string | null
+}
 
 type OpsGuard = { ok: true; actor: OpsActor } | { ok: false; error: string }
 
@@ -297,7 +350,7 @@ async function requireOpsActor(action: "area:admin" | "roles:grant", onlyRoles?:
     return { ok: false, error: mfa }
   }
 
-  return { ok: true, actor: { userId: user.id, roles } }
+  return { ok: true, actor: { userId: user.id, roles, email: user.email } }
 }
 
 // ---------------------------------------------------------------------------
@@ -435,8 +488,55 @@ function readKobo(value: unknown): bigint {
 }
 
 // ---------------------------------------------------------------------------
+// The email half of the page
+// ---------------------------------------------------------------------------
+
+const NO_FAILURES: EmailFailureSummary = { total: 0, byReason: {} }
+
+/**
+ * What the deployment's email settings look like, and what failed in the last
+ * day.
+ *
+ * The health half cannot fail: it is five environment variables turned into
+ * categories. The failures half can, in two ways that are not errors: a role the
+ * function does not allow, and a table that could not be read. Both read as "not
+ * available", which is honest, rather than as zero failures, which would be a
+ * lie the page could act on.
+ */
+async function emailOverview(actor: OpsActor): Promise<EmailOverview> {
+  let health: EmailConfigHealth
+
+  try {
+    health = getEmailConfigHealth()
+  } catch {
+    logger.error("ops_email_health_failed", {})
+    health = getEmailConfigHealth({})
+  }
+
+  if (!EMAIL_FAILURE_ROLES.some((role) => actor.roles.includes(role))) {
+    return { health, failuresAvailable: false, last24h: NO_FAILURES, recent: [] }
+  }
+
+  try {
+    const overview = await getEmailFailureOverview(actor.userId, EMAIL_FAILURE_REASONS)
+
+    return {
+      health,
+      failuresAvailable: true,
+      last24h: overview.last24h,
+      recent: overview.recent,
+    }
+  } catch {
+    logger.error("ops_email_overview_failed", {})
+
+    return { health, failuresAvailable: false, last24h: NO_FAILURES, recent: [] }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // getSecurityOverviewAction
 // ---------------------------------------------------------------------------
+
 
 /**
  * Everything the Security page shows above the button: the scanner's health, the
@@ -456,13 +556,14 @@ export async function getSecurityOverviewAction(): Promise<SecurityOverviewResul
   try {
     const supabase = getSupabaseAdminClient()
 
-    const [health, scanAnswer, jobAnswer, eventAnswer, payments, payouts] = await Promise.all([
+    const [health, scanAnswer, jobAnswer, eventAnswer, payments, payouts, email] = await Promise.all([
       getScannerHealth(),
       supabase.rpc("scan_overview"),
       supabase.rpc("job_overview"),
       supabase.rpc("list_recent_scan_events", { p_limit: 20 }),
       paymentOverview(),
       payoutOverview(guard.actor.userId),
+      emailOverview(guard.actor),
     ])
 
     if (scanAnswer.error !== null || jobAnswer.error !== null || eventAnswer.error !== null) {
@@ -484,6 +585,7 @@ export async function getSecurityOverviewAction(): Promise<SecurityOverviewResul
         events: toScanEvents(eventAnswer.data),
         payments,
         payouts,
+        email,
         fetchedAt: new Date().toISOString(),
       },
     }
@@ -566,5 +668,86 @@ export async function runScannerSelfTestAction(): Promise<SelfTestActionResult> 
     })
 
     return { ok: false, error: GENERIC_ERROR }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// sendTestEmailAction
+// ---------------------------------------------------------------------------
+
+/** The subject of the test message. Nothing in it is secret. */
+const TEST_EMAIL_SUBJECT = "Affilova email test"
+
+const TEST_EMAIL_TEXT = [
+  "This is a test message from the Affilova admin console.",
+  "",
+  "If you are reading it, the deployment can reach Brevo, the API key is",
+  "accepted and the sender address is one Brevo will send from.",
+  "",
+  "Nothing was created and nothing was charged.",
+].join("\n")
+
+const TEST_EMAIL_HTML = [
+  "<p>This is a test message from the Affilova admin console.</p>",
+  "<p>If you are reading it, the deployment can reach Brevo, the API key is",
+  "accepted and the sender address is one Brevo will send from.</p>",
+  "<p>Nothing was created and nothing was charged.</p>",
+].join("\n")
+
+/**
+ * Send one plain message to the signed-in admin's own address.
+ *
+ * Admin only, three an hour. The address is the caller's own and comes from the
+ * session, never from the page: there is no argument to point at another inbox,
+ * and neither the address nor the provider's answer is logged or returned. What
+ * comes back on a failure is the reason code and the sentence that says what to
+ * do about it, which is the whole point of the button.
+ */
+export async function sendTestEmailAction(): Promise<SendTestEmailResult> {
+  const guard = await requireOpsActor("roles:grant", ["admin"])
+
+  if (!guard.ok) {
+    return { ok: false, error: guard.error }
+  }
+
+  const limit = await rateLimit({
+    key: rateLimitKey(["ops", "email-test", guard.actor.userId]),
+    limit: TEST_EMAIL_HOURLY_LIMIT,
+    windowSeconds: TEST_EMAIL_WINDOW_SECONDS,
+    onError: "deny",
+  })
+
+  if (!limit.allowed) {
+    return { ok: false, error: catalogErrorMessage("rate_limited") }
+  }
+
+  const to = guard.actor.email
+
+  // A staff account with no address is a state, not a failure of the sender, and
+  // saying so is the only useful answer.
+  if (to === null || to.trim() === "") {
+    return { ok: false, error: "Your account has no email address to send the test to." }
+  }
+
+  const sent = await sendEmail({
+    to,
+    subject: TEST_EMAIL_SUBJECT,
+    html: TEST_EMAIL_HTML,
+    text: TEST_EMAIL_TEXT,
+    template: "admin_email_test",
+  })
+
+  if (sent.ok) {
+    return { ok: true }
+  }
+
+  // The reason code and the advice, never the address and never Brevo's words.
+  logger.error("ops_email_test_failed", { reason: sent.reason })
+
+  return {
+    ok: false,
+    error: "The test message could not be sent.",
+    reason: sent.reason,
+    advice: EMAIL_REASON_ADVICE[sent.reason],
   }
 }

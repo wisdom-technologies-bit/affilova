@@ -21,6 +21,14 @@ const state = vi.hoisted(() => ({
   paystackMode: "test" as "test" | "live" | "invalid",
   paystackEnvFails: false,
   webhookCounts: { received: 1, processed: 12, ignored: 3, failed: 1 } as Record<string, number>,
+  // The email half. The health check and the failure table are their own
+  // modules with their own suites, so here they are driven directly.
+  emailHealth: null as unknown,
+  emailOverview: null as unknown,
+  emailOverviewError: null as { message: string } | null,
+  sent: [] as { to: string; subject: string; template: string }[],
+  sendResult: { ok: true, messageId: "m" } as unknown,
+  overviewRolesAsked: [] as string[],
 }))
 
 vi.mock("@/lib/identity/session", () => ({
@@ -80,8 +88,36 @@ vi.mock("@/lib/commerce/db", () => ({
   webhookEventCounts: async () => state.webhookCounts,
 }))
 
+vi.mock("@/lib/email/health", () => ({
+  getEmailConfigHealth: () => state.emailHealth,
+}))
+
+vi.mock("@/lib/email/failures", () => ({
+  getEmailFailureOverview: async (actorId: string) => {
+    state.overviewRolesAsked.push(actorId)
+
+    if (state.emailOverviewError !== null) {
+      throw new Error(state.emailOverviewError.message)
+    }
+
+    return state.emailOverview
+  },
+}))
+
+vi.mock("@/lib/email/brevo", () => ({
+  sendEmail: async (input: { to: string; subject: string; template: string }) => {
+    state.sent.push({ to: input.to, subject: input.subject, template: input.template })
+
+    return state.sendResult
+  },
+}))
+
 import { logger } from "@/lib/logger"
-import { getSecurityOverviewAction, runScannerSelfTestAction } from "@/lib/ops/actions"
+import {
+  getSecurityOverviewAction,
+  runScannerSelfTestAction,
+  sendTestEmailAction,
+} from "@/lib/ops/actions"
 import type { ScannerHealth } from "@/lib/ops/scanner-selftest"
 
 interface InsertCall {
@@ -172,6 +208,32 @@ beforeEach(() => {
   state.paystackEnvFails = false
   state.webhookCounts = { received: 1, processed: 12, ignored: 3, failed: 1 }
   rateLimitCalls.length = 0
+  state.emailHealth = {
+    apiKeyPresent: true,
+    apiKeyKind: "api",
+    fromPresent: true,
+    fromDomainKind: "own",
+    replyToPresent: true,
+    orderAccessSecretPresent: true,
+    stepUpSecretPresent: true,
+    ready: true,
+    problems: [],
+  }
+  state.emailOverview = {
+    last24h: { total: 2, byReason: { unauthorized: 2 } },
+    recent: [
+      {
+        template: "purchase_receipt",
+        status: 401,
+        reason: "unauthorized",
+        createdAt: "2026-11-18T12:00:00.000Z",
+      },
+    ],
+  }
+  state.emailOverviewError = null
+  state.sent.length = 0
+  state.sendResult = { ok: true, messageId: "m" }
+  state.overviewRolesAsked.length = 0
   vi.mocked(logger.error).mockClear()
   state.db = createDb({
     rpc: (name) => {
@@ -512,5 +574,181 @@ describe("getSecurityOverviewAction, payments", () => {
         failed: 0,
       })
     }
+  })
+})
+
+describe("getSecurityOverviewAction, the email card", () => {
+  it("reads the configuration health and the failures of the last day", async () => {
+    const result = await getSecurityOverviewAction()
+
+    if (!result.ok) {
+      throw new Error("expected the overview")
+    }
+
+    expect(result.overview.email.health.ready).toBe(true)
+    expect(result.overview.email.failuresAvailable).toBe(true)
+    expect(result.overview.email.last24h.total).toBe(2)
+    expect(result.overview.email.recent).toHaveLength(1)
+    expect(state.overviewRolesAsked).toEqual([ADMIN])
+  })
+
+  it("lets finance read the failures too", async () => {
+    state.roles = ["customer", "finance", "moderator"]
+
+    const result = await getSecurityOverviewAction()
+
+    if (!result.ok) {
+      throw new Error("expected the overview")
+    }
+
+    expect(result.overview.email.failuresAvailable).toBe(true)
+  })
+
+  it("does not ask for the failures when the role may not read them", async () => {
+    state.user = { id: MODERATOR, email: "moderator@example.com" }
+    state.roles = ["customer", "moderator"]
+
+    const result = await getSecurityOverviewAction()
+
+    if (!result.ok) {
+      throw new Error("expected the overview")
+    }
+
+    expect(state.overviewRolesAsked).toEqual([])
+    expect(result.overview.email.failuresAvailable).toBe(false)
+    // The health half is not a secret and is still reported.
+    expect(result.overview.email.health.apiKeyKind).toBe("api")
+  })
+
+  it("says the failures are unavailable rather than showing zero when the read fails", async () => {
+    state.emailOverviewError = { message: "permission denied for function email_failure_overview" }
+
+    const result = await getSecurityOverviewAction()
+
+    if (!result.ok) {
+      throw new Error("expected the overview")
+    }
+
+    expect(result.overview.email.failuresAvailable).toBe(false)
+    expect(JSON.stringify(result)).not.toContain("email_failure_overview")
+  })
+})
+
+describe("sendTestEmailAction", () => {
+  it("refuses a moderator: the button sends a real message", async () => {
+    state.user = { id: MODERATOR, email: "moderator@example.com" }
+    state.roles = ["customer", "moderator"]
+
+    const result = await sendTestEmailAction()
+
+    expect(result).toEqual({ ok: false, error: "You do not have access to that." })
+    expect(state.sent).toEqual([])
+  })
+
+  it("refuses support staff and a visitor who is not signed in", async () => {
+    state.roles = ["customer", "support"]
+    expect((await sendTestEmailAction()).ok).toBe(false)
+
+    state.user = null
+    expect((await sendTestEmailAction()).ok).toBe(false)
+  })
+
+  it("sends to the signed-in admin's own address and nowhere else", async () => {
+    const result = await sendTestEmailAction()
+
+    expect(result).toEqual({ ok: true })
+    expect(state.sent).toHaveLength(1)
+    expect(state.sent[0].to).toBe("admin@example.com")
+    expect(state.sent[0].template).toBe("admin_email_test")
+  })
+
+  it("never returns or logs the address", async () => {
+    state.sendResult = { ok: false, reason: "unauthorized" }
+
+    const result = await sendTestEmailAction()
+    const text = JSON.stringify(result)
+
+    expect(text).not.toContain("admin@example.com")
+    expect(text).not.toContain("@")
+
+    for (const call of vi.mocked(logger.error).mock.calls) {
+      expect(JSON.stringify(call)).not.toContain("admin@example.com")
+    }
+  })
+
+  it("counts three sends an hour per person, and denies when it cannot count", async () => {
+    await sendTestEmailAction()
+
+    expect(rateLimitCalls).toHaveLength(1)
+    expect(rateLimitCalls[0]).toEqual({
+      key: `ops|email-test|${ADMIN}`,
+      limit: 3,
+      windowSeconds: 3600,
+      onError: "deny",
+    })
+  })
+
+  it("does not send when the allowance is used up", async () => {
+    state.allowed = false
+
+    const result = await sendTestEmailAction()
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Too many attempts. Please wait a few minutes and try again.",
+    })
+    expect(state.sent).toEqual([])
+  })
+
+  it("returns the reason code and its advice when the send fails", async () => {
+    state.sendResult = { ok: false, reason: "invalid_sender" }
+
+    const result = await sendTestEmailAction()
+
+    if (result.ok) {
+      throw new Error("expected a failure")
+    }
+
+    expect(result.reason).toBe("invalid_sender")
+    expect(result.advice).toContain("free mail domain")
+    expect(result.error).toBe("The test message could not be sent.")
+  })
+
+  it("maps every reason to advice", async () => {
+    const reasons = [
+      "unauthorized",
+      "ip_not_authorized",
+      "invalid_sender",
+      "invalid_request",
+      "quota",
+      "provider_error",
+      "network",
+      "not_configured",
+    ] as const
+
+    for (const reason of reasons) {
+      state.sendResult = { ok: false, reason }
+
+      const result = await sendTestEmailAction()
+
+      if (result.ok) {
+        throw new Error(`expected a failure for ${reason}`)
+      }
+
+      expect(result.reason, reason).toBe(reason)
+      expect(result.advice, reason).toBeTruthy()
+    }
+  })
+
+  it("says so when the account has no address to send to", async () => {
+    state.user = { id: ADMIN, email: "" }
+
+    const result = await sendTestEmailAction()
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Your account has no email address to send the test to.",
+    })
+    expect(state.sent).toEqual([])
   })
 })

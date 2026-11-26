@@ -4,8 +4,14 @@ import { AlertTriangle, Check, Loader2, X } from "lucide-react"
 import { useState } from "react"
 
 import { formatLagosDateTime, scanStatusLabel, timeAgo } from "@/lib/catalog/format"
-import { runScannerSelfTestAction } from "@/lib/ops/actions"
-import type { JobHeartbeat, ScanEventRow, SecurityOverview } from "@/lib/ops/actions"
+import { runScannerSelfTestAction, sendTestEmailAction } from "@/lib/ops/actions"
+import type {
+  EmailOverview,
+  JobHeartbeat,
+  ScanEventRow,
+  SecurityOverview,
+  SendTestEmailResult,
+} from "@/lib/ops/actions"
 import type { ScannerHealth, SelfTestRow } from "@/lib/ops/scanner-selftest"
 
 // The admin Security page.
@@ -90,6 +96,22 @@ function statusWord(value: string): string {
   ]
 
   return known.includes(value) ? scanStatusLabel(value as Parameters<typeof scanStatusLabel>[0]) : value
+}
+
+/** The reason a send failed, in words a person reads rather than a machine word. */
+const EMAIL_REASON_WORDS: Readonly<Record<string, string>> = {
+  unauthorized: "Unauthorized",
+  ip_not_authorized: "Blocked IP address",
+  invalid_sender: "Invalid sender",
+  invalid_request: "Invalid request",
+  quota: "Quota or rate limit",
+  provider_error: "Provider error",
+  network: "Network",
+  not_configured: "Not configured",
+}
+
+function emailReasonWord(reason: string): string {
+  return EMAIL_REASON_WORDS[reason] ?? reason
 }
 
 function Badge({ tone, children }: { tone: "good" | "bad" | "neutral"; children: string }) {
@@ -569,6 +591,242 @@ function PayoutsSection({ payouts }: { payouts: SecurityOverview["payouts"] }) {
   )
 }
 
+/** One line of the configuration health: a word, and an icon that repeats it. */
+function HealthRow({
+  label,
+  tone,
+  text,
+}: {
+  label: string
+  tone: "good" | "bad" | "warn"
+  text: string
+}) {
+  return (
+    <div className="flex items-start gap-2">
+      {tone === "good" ? (
+        <Check aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#10813F]" />
+      ) : tone === "bad" ? (
+        <X aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+      ) : (
+        <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+      )}
+      <div>
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="text-sm text-brand-ink">{text}</p>
+      </div>
+    </div>
+  )
+}
+
+function apiKeyWords(kind: EmailOverview["health"]["apiKeyKind"]): { tone: "good" | "bad"; text: string } {
+  if (kind === "api") {
+    return { tone: "good", text: "An API key is set" }
+  }
+
+  if (kind === "smtp") {
+    return { tone: "bad", text: "An SMTP key is set, not an API key" }
+  }
+
+  if (kind === "unknown") {
+    return { tone: "bad", text: "A key is set, but it does not look like a Brevo API key" }
+  }
+
+  return { tone: "bad", text: "No API key is set" }
+}
+
+function fromWords(
+  kind: EmailOverview["health"]["fromDomainKind"],
+): { tone: "good" | "bad"; text: string } {
+  if (kind === "own") {
+    return { tone: "good", text: "An address on your own domain" }
+  }
+
+  if (kind === "free_mail") {
+    return { tone: "bad", text: "A free mail domain, which Brevo does not accept" }
+  }
+
+  if (kind === "invalid") {
+    return { tone: "bad", text: "Not a plain address" }
+  }
+
+  return { tone: "bad", text: "No sender address is set" }
+}
+
+function optionalWords(present: boolean, missing: string): { tone: "good" | "warn"; text: string } {
+  return present ? { tone: "good", text: "Set" } : { tone: "warn", text: missing }
+}
+
+/**
+ * The email half: what the deployment is configured with, what failed in the last
+ * day, and one button that sends a real message to the signed-in admin.
+ *
+ * Nothing on this card is a value. The key is "an API key" or "an SMTP key", the
+ * sender is "on your own domain" or "a free mail domain", and no address appears
+ * anywhere: not the sender, not the recipient, not the admin's own.
+ */
+function EmailSection({ email, now }: { email: EmailOverview; now: Date }) {
+  const key = apiKeyWords(email.health.apiKeyKind)
+  const from = fromWords(email.health.fromDomainKind)
+  const replyTo = optionalWords(email.health.replyToPresent, "Not set: a reply reaches nobody")
+  const orderSecret = optionalWords(
+    email.health.orderAccessSecretPresent,
+    "Not set or too short: download links cannot be signed",
+  )
+  const stepUpSecret = optionalWords(
+    email.health.stepUpSecretPresent,
+    "Not set or too short: step-up codes cannot be issued",
+  )
+
+  const failing = Object.entries(email.last24h.byReason).filter(([, count]) => count > 0)
+
+  return (
+    <Section
+      title="Email"
+      description="The Brevo settings this deployment is using, and what failed to send in the last 24 hours. No address is shown anywhere on this card."
+    >
+      <div className="flex items-center gap-2">
+        <Badge tone={email.health.ready ? "good" : "bad"}>
+          {email.health.ready ? "Ready to send" : "Not ready to send"}
+        </Badge>
+      </div>
+
+      <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        <HealthRow label="Brevo key" tone={key.tone} text={key.text} />
+        <HealthRow label="Sender address" tone={from.tone} text={from.text} />
+        <HealthRow label="Reply-to" tone={replyTo.tone} text={replyTo.text} />
+        <HealthRow label="Download link secret" tone={orderSecret.tone} text={orderSecret.text} />
+        <HealthRow label="Step-up secret" tone={stepUpSecret.tone} text={stepUpSecret.text} />
+      </div>
+
+      {email.health.problems.length === 0 ? null : (
+        <ul className="mt-4 space-y-2">
+          {email.health.problems.map((problem) => (
+            <li key={problem} className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-brand-ink">
+              {problem}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="mt-6">
+        <h3 className="text-sm font-semibold text-brand-ink">Failures, last 24 hours</h3>
+
+        {!email.failuresAvailable ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            The failure table is not readable for your role.
+          </p>
+        ) : email.last24h.total === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">No send has failed in the last 24 hours.</p>
+        ) : (
+          <>
+            <p className="mt-2 text-sm text-brand-ink">
+              {email.last24h.total === 1 ? "1 failed send" : `${email.last24h.total} failed sends`}
+            </p>
+            <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {failing.map(([reason, count]) => (
+                <div key={reason} className="rounded-md border border-border p-3">
+                  <dt className="text-xs text-muted-foreground">{emailReasonWord(reason)}</dt>
+                  <dd className="mt-1 text-lg font-semibold tabular-nums text-brand-ink">{count}</dd>
+                </div>
+              ))}
+            </dl>
+          </>
+        )}
+      </div>
+
+      <div className="mt-6">
+        <h3 className="text-sm font-semibold text-brand-ink">Recent failures</h3>
+
+        {!email.failuresAvailable ? null : email.recent.length === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">Nothing has failed yet.</p>
+        ) : (
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <caption className="sr-only">The last ten failed sends, newest first</caption>
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <th scope="col" className="py-2 pr-4 font-medium">Template</th>
+                  <th scope="col" className="py-2 pr-4 font-medium">Status</th>
+                  <th scope="col" className="py-2 pr-4 font-medium">Reason</th>
+                  <th scope="col" className="py-2 font-medium">When</th>
+                </tr>
+              </thead>
+              <tbody>
+                {email.recent.map((row) => (
+                  <tr key={`${row.createdAt}-${row.reason}-${row.template}`} className="border-b border-border">
+                    <td className="py-2 pr-4 font-mono text-xs text-brand-ink">{row.template}</td>
+                    <td className="py-2 pr-4 tabular-nums text-brand-ink">{row.status}</td>
+                    <td className="py-2 pr-4 text-brand-ink">{emailReasonWord(row.reason)}</td>
+                    <td className="py-2 text-brand-ink">
+                      <span className="block">{formatLagosDateTime(row.createdAt)}</span>
+                      <span className="block text-xs text-muted-foreground">{timeAgo(row.createdAt, now)}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <TestEmailButton />
+    </Section>
+  )
+}
+
+function TestEmailButton() {
+  const [result, setResult] = useState<SendTestEmailResult | null>(null)
+  const [sending, setSending] = useState(false)
+
+  async function send(): Promise<void> {
+    if (sending) {
+      return
+    }
+
+    setSending(true)
+    setResult(null)
+
+    const answer = await sendTestEmailAction()
+
+    setResult(answer)
+    setSending(false)
+  }
+
+  return (
+    <div className="mt-6">
+      <button
+        type="button"
+        onClick={() => {
+          void send()
+        }}
+        disabled={sending}
+        className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-[#10813F] px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-[#0d6b34] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 disabled:opacity-60"
+      >
+        {sending ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : null}
+        {sending ? "Sending…" : "Send test email"}
+      </button>
+
+      <p className="mt-2 text-xs text-muted-foreground">
+        Sends one plain message to your own address, through the real sender. Three an hour.
+      </p>
+
+      <div aria-live="polite" className="mt-2 text-sm">
+        {result === null ? null : result.ok ? (
+          <p className="text-[#10813F]">Sent. Check your inbox.</p>
+        ) : (
+          <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-destructive">
+            <p>{result.error}</p>
+            {result.advice === undefined ? null : <p className="mt-1">{result.advice}</p>}
+            {result.reason === undefined ? null : (
+              <p className="mt-1 font-mono text-xs">{result.reason}</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function SelfTestSection() {
   const [rows, setRows] = useState<readonly SelfTestRow[] | null>(null)
   const [summary, setSummary] = useState<string>("")
@@ -655,6 +913,7 @@ export function SecurityPanel({
           <JobsSection jobs={overview.jobs} />
           <PaymentsSection payments={overview.payments} />
           <PayoutsSection payouts={overview.payouts} />
+          <EmailSection email={overview.email} now={now} />
           <EventsSection events={overview.events} now={now} />
         </>
       )}

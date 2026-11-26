@@ -19,6 +19,9 @@ const adminState = vi.hoisted(() => ({
   // cleanup_rate_limits(): the RPC answer, or an error to throw on.
   cleanupData: 0 as unknown,
   cleanupError: null as { message: string } | null,
+  // purge_old_email_failures(): the RPC answer, or an error to throw on.
+  purgeEmailData: 0 as unknown,
+  purgeEmailError: null as { message: string } | null,
   // purge_old_webhook_events(): the RPC answer, or an error to throw on.
   purgeData: 0 as unknown,
   purgeError: null as { message: string } | null,
@@ -75,6 +78,10 @@ vi.mock("@/lib/supabase/admin", () => ({
         return { data: adminState.purgeClicksData, error: adminState.purgeClicksError }
       }
 
+      if (name === "purge_old_email_failures") {
+        return { data: adminState.purgeEmailData, error: adminState.purgeEmailError }
+      }
+
       if (name === "rollup_affiliate_stats") {
         return { data: adminState.rollupData, error: adminState.rollupError }
       }
@@ -128,6 +135,8 @@ beforeEach(() => {
   adminState.error = null
   adminState.cleanupData = 0
   adminState.cleanupError = null
+  adminState.purgeEmailData = 0
+  adminState.purgeEmailError = null
   adminState.purgeData = 0
   adminState.purgeError = null
   adminState.enqueued = []
@@ -260,6 +269,7 @@ describe("POST /api/cron/[job]", () => {
       storageCleanupQueued: true,
       webhookEventsPurged: 0,
       clicksPurged: 0,
+      emailFailuresPurged: 0,
     })
     expect(queue.recordHeartbeat).toHaveBeenCalledWith(
       "cleanup",
@@ -327,6 +337,7 @@ describe("POST /api/cron/[job]", () => {
       storageCleanupQueued: false,
       webhookEventsPurged: 0,
       clicksPurged: 0,
+      emailFailuresPurged: 0,
     })
     expect(queue.recordHeartbeat).toHaveBeenCalledWith("cleanup", "ok", expect.any(Number), null)
   })
@@ -342,6 +353,7 @@ describe("POST /api/cron/[job]", () => {
       storageCleanupQueued: true,
       webhookEventsPurged: 0,
       clicksPurged: 0,
+      emailFailuresPurged: 0,
     })
   })
 
@@ -357,6 +369,7 @@ describe("POST /api/cron/[job]", () => {
       storageCleanupQueued: true,
       webhookEventsPurged: 0,
       clicksPurged: 0,
+      emailFailuresPurged: 0,
     })
   })
 
@@ -421,6 +434,7 @@ describe("cleanup and the webhook log", () => {
       storageCleanupQueued: true,
       webhookEventsPurged: 4,
       clicksPurged: 0,
+      emailFailuresPurged: 0,
     })
   })
 
@@ -441,6 +455,45 @@ describe("cleanup and the webhook log", () => {
     expect(response.status).toBe(500)
     expect(body).toEqual({ ok: false })
     expect(JSON.stringify(body)).not.toContain("webhook_events")
+  })
+})
+
+describe("cleanup and the email diagnostics table", () => {
+  it("reports how many old failures were purged", async () => {
+    adminState.purgeEmailData = 12
+
+    const response = await callRoute("cleanup", `Bearer ${SECRET}`)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ ok: true, emailFailuresPurged: 12 })
+  })
+
+  it("accepts the purge answer in an array shape too", async () => {
+    adminState.purgeEmailData = [3]
+
+    const response = await callRoute("cleanup", `Bearer ${SECRET}`)
+
+    expect(await response.json()).toMatchObject({ ok: true, emailFailuresPurged: 3 })
+  })
+
+  it("treats an unexpected answer as zero, not as a failure", async () => {
+    adminState.purgeEmailData = null
+
+    const response = await callRoute("cleanup", `Bearer ${SECRET}`)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ ok: true, emailFailuresPurged: 0 })
+  })
+
+  it("answers 500 when the email purge fails, since the sweep did not finish", async () => {
+    adminState.purgeEmailError = { message: "function public.purge_old_email_failures does not exist" }
+
+    const response = await callRoute("cleanup", `Bearer ${SECRET}`)
+    const body = (await response.json()) as Record<string, unknown>
+
+    expect(response.status).toBe(500)
+    expect(body).toEqual({ ok: false })
+    expect(JSON.stringify(body)).not.toContain("purge_old_email_failures")
   })
 })
 

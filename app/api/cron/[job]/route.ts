@@ -74,6 +74,10 @@ const WEBHOOK_RETENTION_DAYS = 30
 // enough that the table stays a working set.
 const CLICK_RETENTION_MONTHS = 13
 
+// How long a failed email is kept. Long enough to see a pattern across a few
+// days, short enough that the diagnostics table stays a working set.
+const EMAIL_FAILURE_RETENTION_DAYS = 30
+
 // The expiry sweep is bounded so one call never holds a long lock.
 const EXPIRE_BATCH = 500
 
@@ -167,6 +171,29 @@ async function cleanupRateLimits(): Promise<number> {
 
   if (error) {
     throw new Error("Could not clean up rate limits")
+  }
+
+  if (typeof data === "number") {
+    return data
+  }
+
+  if (Array.isArray(data) && typeof data[0] === "number") {
+    return data[0]
+  }
+
+  return 0
+}
+
+// Empty the email diagnostics table of rows that can no longer explain anything.
+// public.purge_old_email_failures() returns the number of rows it deleted; the
+// answer is treated as untrusted and read defensively, like the rate limit one.
+async function purgeEmailFailures(): Promise<number> {
+  const { data, error } = await getSupabaseAdminClient().rpc("purge_old_email_failures", {
+    p_days: EMAIL_FAILURE_RETENTION_DAYS,
+  })
+
+  if (error) {
+    throw new Error("Could not purge email failures")
   }
 
   if (typeof data === "number") {
@@ -279,9 +306,23 @@ export async function POST(request: Request, context: RouteContext): Promise<Nex
       // cannot attribute anything: the attribution window is 30 days.
       const clicksPurged = await purgeOldClicks(CLICK_RETENTION_MONTHS)
 
+      // A failed send leaves one row saying why. Thirty days is long enough to
+      // spot a pattern and short enough that the table stays small.
+      const emailFailuresPurged = await purgeEmailFailures()
+
       await recordHeartbeatSafely(CLEANUP_JOB, "ok", startedAt)
 
-      return json({ ok: true, deleted, storageCleanupQueued, webhookEventsPurged, clicksPurged }, 200)
+      return json(
+        {
+          ok: true,
+          deleted,
+          storageCleanupQueued,
+          webhookEventsPurged,
+          clicksPurged,
+          emailFailuresPurged,
+        },
+        200,
+      )
     } catch (error) {
       await recordHeartbeatSafely(CLEANUP_JOB, "error", startedAt, shortMessage(error))
       logger.error("cron_job_failed", { job: CLEANUP_JOB, reason: shortMessage(error) })

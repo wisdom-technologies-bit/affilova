@@ -14,7 +14,6 @@ receives what, for which purpose.
 | Third party | What it receives | Why |
 | --- | --- | --- |
 | **Paystack** | the buyer's email address, the order total in kobo, the currency, and our order reference | to take the card payment and tell us whether it succeeded |
-| **Squad** | the buyer's email address, the transaction amount and currency, and our transaction reference | the second payment route, with the same purpose as Paystack |
 | **Brevo** | the recipient's email address and name, and the subject and body of a transactional email | to send order, account and payout email |
 | **Cloudflare R2** | the product files a vendor uploads, as private objects | to store the files a buyer downloads |
 | **Cloudflare Turnstile** | a browser challenge answer, and the visitor's IP address when we redeem it | to tell a person from a bot at checkout |
@@ -37,16 +36,11 @@ the outcome, which is how an order becomes paid.
 
 We do not send a name, an address, a phone number or any product content.
 
-### Squad: the second payment route
+### Squad (removed)
 
-`lib/squad.ts` and `app/api/payments/squad/*` are a second, independent payment
-provider, used where Paystack is not. A transaction initiation sends the
-**buyer's email address**, the **amount**, the **currency** and our **transaction
-reference**. As with Paystack, the card or bank details are collected on Squad's
-side and a webhook tells us the outcome.
-
-If only one payment route is live in production, say so in the policy; both are
-in the code.
+The legacy Squad payment route (`lib/squad.ts`, `app/api/payments/squad/*`) was
+deleted in `chore/remove-legacy`. Paystack is the only payment provider in the
+code, so the policy should name no second provider.
 
 ### Brevo: transactional email
 

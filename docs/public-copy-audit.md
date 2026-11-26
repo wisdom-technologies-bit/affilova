@@ -220,3 +220,6 @@ Kept because the routes exist: `/how-it-works`, `/blog`, `/contact`,
    support route.
 3. `app/dashboard/select-role/page.tsx:160` still says "thousands of affiliates"
    and needs the same treatment when dashboard copy is in scope.
+
+> **Note (chore/remove-legacy):** `components/squad-payment.tsx`, the legacy
+> dashboard pages and the blog pages mentioned above no longer exist.

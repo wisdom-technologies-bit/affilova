@@ -7,7 +7,11 @@ import { RANGE_PRESETS, type RangePreset } from "@/lib/dates/lagos"
 // It is plain HTML on purpose. A preset is an ordinary link, so the range is in
 // the URL and the page can be bookmarked or shared; the custom form is a GET
 // form, so it works before any JavaScript loads. The current preset is marked
-// with aria-current, not only with a background colour.
+// with aria-current and a border, not only with a background colour.
+//
+// Every control is 44px tall, which is the touch minimum: this row is used on a
+// phone as often as on a desktop, and two date inputs side by side are easy to
+// miss.
 
 function buildHref(
   basePath: string,
@@ -26,6 +30,9 @@ function buildHref(
 
   return `${basePath}?${search.toString()}`
 }
+
+const DATE_INPUT =
+  "focus-ring mt-1 h-control-md rounded-md border border-border-control bg-background px-3 text-dense text-foreground"
 
 export function DateRangePicker({
   value,
@@ -50,10 +57,10 @@ export function DateRangePicker({
                 <Link
                   href={buildHref(basePath, params, preset.value)}
                   aria-current={current ? "page" : undefined}
-                  className={`inline-flex min-h-[44px] items-center rounded-md border px-3 text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 ${
+                  className={`focus-ring inline-flex h-control-md items-center rounded-md border px-3 text-small transition-colors duration-150 ${
                     current
-                      ? "border-brand-600 bg-brand-50 font-medium text-brand-800"
-                      : "border-border text-brand-ink hover:bg-accent"
+                      ? "border-brand-600 bg-brand-50 font-medium text-brand-700"
+                      : "border-border text-text-muted hover:bg-surface-muted hover:text-foreground"
                   }`}
                 >
                   {preset.label}
@@ -73,7 +80,7 @@ export function DateRangePicker({
         )}
 
         <div>
-          <label htmlFor="range-from" className="block text-xs font-medium text-muted-foreground">
+          <label htmlFor="range-from" className="block text-small font-medium text-text-muted">
             From
           </label>
           <input
@@ -82,12 +89,12 @@ export function DateRangePicker({
             type="date"
             defaultValue={value.from}
             max={today}
-            className="mt-1 min-h-[44px] rounded-md border border-input bg-background px-3 text-sm text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+            className={DATE_INPUT}
           />
         </div>
 
         <div>
-          <label htmlFor="range-to" className="block text-xs font-medium text-muted-foreground">
+          <label htmlFor="range-to" className="block text-small font-medium text-text-muted">
             To
           </label>
           <input
@@ -96,13 +103,13 @@ export function DateRangePicker({
             type="date"
             defaultValue={value.to}
             max={today}
-            className="mt-1 min-h-[44px] rounded-md border border-input bg-background px-3 text-sm text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+            className={DATE_INPUT}
           />
         </div>
 
         <button
           type="submit"
-          className="inline-flex min-h-[44px] items-center rounded-md border border-input px-4 text-sm font-medium text-brand-ink transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+          className="focus-ring inline-flex h-control-md items-center rounded-md border border-border-control bg-background px-4 text-small font-medium text-foreground transition-colors duration-150 hover:bg-surface-muted"
         >
           Apply range
         </button>

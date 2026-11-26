@@ -3,6 +3,8 @@
 import * as Sentry from "@sentry/nextjs"
 import { useEffect } from "react"
 
+import { TOKENS } from "@/lib/design/tokens"
+
 // The last resort: an error thrown so high that the root layout itself could
 // not render. Next.js replaces the whole document with this component, so it
 // carries its own <html> and <body> and uses inline styles (the global
@@ -33,8 +35,8 @@ export default function GlobalError({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "#f7f8f7",
-          color: "#101812",
+          backgroundColor: TOKENS.surfaceSubtle.hex,
+          color: TOKENS.ink.hex,
           fontFamily:
             'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
           padding: "24px",
@@ -44,15 +46,15 @@ export default function GlobalError({
           <h1 style={{ fontSize: "24px", lineHeight: "1.3", margin: "0 0 12px" }}>
             Sorry, something went wrong
           </h1>
-          <p style={{ fontSize: "16px", lineHeight: "1.6", margin: "0 0 24px", color: "#46544a" }}>
+          <p style={{ fontSize: "16px", lineHeight: "1.6", margin: "0 0 24px", color: TOKENS.textMuted.hex }}>
             The page could not be loaded. Please try again.
           </p>
           <button
             type="button"
             onClick={reset}
             style={{
-              backgroundColor: "#10813F",
-              color: "#ffffff",
+              backgroundColor: TOKENS.brand600.hex,
+              color: TOKENS.background.hex,
               border: "none",
               borderRadius: "8px",
               padding: "12px 24px",

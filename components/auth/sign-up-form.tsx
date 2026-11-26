@@ -90,15 +90,15 @@ export function SignUpForm() {
   if (sent !== null) {
     return (
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900">Check your email</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          We sent a confirmation link to <span className="font-medium text-slate-900">{sent.email}</span>.
+        <h1 className="text-h1 text-foreground">Check your email</h1>
+        <p className="mt-2 text-body text-text-muted">
+          We sent a confirmation link to <span className="font-medium text-foreground">{sent.email}</span>.
         </p>
-        <p className="mt-3 text-sm text-slate-600">{sent.message}</p>
+        <p className="mt-3 text-body text-text-muted">{sent.message}</p>
         <button
           type="button"
           onClick={handleDifferentEmail}
-          className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-900 transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+          className="mt-6 inline-flex h-control-md w-full items-center justify-center rounded-md border border-border-control bg-background px-4 text-dense font-medium text-foreground transition-colors duration-150 hover:bg-surface-muted focus-ring"
         >
           Use a different email
         </button>
@@ -108,8 +108,8 @@ export function SignUpForm() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold tracking-tight text-slate-900">Create your account</h1>
-      <p className="mt-1 text-sm text-slate-600">Enter your details to get started.</p>
+      <h1 className="text-h1 text-foreground">Create your account</h1>
+      <p className="mt-1 text-body text-text-muted">Enter your details to get started.</p>
 
       {formError !== null ? (
         <div className="mt-5">
@@ -183,35 +183,35 @@ export function SignUpForm() {
         <GoogleButton />
       </div>
 
-      <p className="mt-6 text-center text-sm text-slate-600">
+      <p className="mt-6 text-center text-body text-text-muted">
         Already have an account?{" "}
         <Link
           href="/sign-in"
-          className="rounded-sm font-medium text-brand-700 underline-offset-2 transition-colors duration-150 hover:text-brand-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+          className="rounded-sm font-medium text-brand-600 underline-offset-2 transition-colors duration-150 hover:underline focus-ring"
         >
           Sign in
         </Link>
       </p>
 
-      <p className="mt-4 text-center text-xs leading-relaxed text-slate-500">
+      <p className="mt-4 text-center text-caption leading-relaxed text-text-subtle">
         By creating an account you agree to the{" "}
         <Link
           href="/terms-of-service"
-          className="underline underline-offset-2 transition-colors duration-150 hover:text-slate-900"
+          className="underline underline-offset-2 transition-colors duration-150 hover:text-foreground"
         >
           Terms of Service
         </Link>
         ,{" "}
         <Link
           href="/privacy-policy"
-          className="underline underline-offset-2 transition-colors duration-150 hover:text-slate-900"
+          className="underline underline-offset-2 transition-colors duration-150 hover:text-foreground"
         >
           Privacy Policy
         </Link>{" "}
         and{" "}
         <Link
           href="/cookie-policy"
-          className="underline underline-offset-2 transition-colors duration-150 hover:text-slate-900"
+          className="underline underline-offset-2 transition-colors duration-150 hover:text-foreground"
         >
           Cookie Policy
         </Link>

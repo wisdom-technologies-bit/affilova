@@ -67,7 +67,7 @@ export function GoogleButton() {
         onClick={handleClick}
         disabled={pending}
         aria-busy={pending}
-        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-900 transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+        className="focus-ring inline-flex h-control-md w-full items-center justify-center gap-2 rounded-md border border-border-control bg-background px-4 text-dense font-medium text-foreground transition-colors duration-150 hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
       >
         <GoogleMark />
         Continue with Google

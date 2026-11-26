@@ -88,7 +88,7 @@ export function DailyChart({ points }: { points: readonly DailyPoint[] }) {
           return (
             <div key={point.day} className="flex min-w-2 flex-1 flex-col justify-end">
               <div
-                className="w-full rounded-t bg-brand-green"
+                className="w-full rounded-t bg-brand-600"
                 style={{ height: `${Math.max(height, point.gmvKobo > BigInt(0) ? 2 : 0)}%` }}
               />
             </div>
@@ -103,10 +103,10 @@ export function DailyChart({ points }: { points: readonly DailyPoint[] }) {
 export function DailyTable({ points }: { points: readonly DailyPoint[] }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[32rem] border-collapse text-sm">
+      <table className="w-full min-w-[32rem] border-collapse text-dense">
         <caption className="sr-only">Gross sales, orders, refunds and platform revenue per Lagos day.</caption>
         <thead>
-          <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+          <tr className="border-b border-border text-left text-caption uppercase tracking-wide text-text-muted">
             <th scope="col" className="py-2 pr-3 font-semibold">
               Day
             </th>
@@ -127,7 +127,7 @@ export function DailyTable({ points }: { points: readonly DailyPoint[] }) {
         <tbody>
           {points.map((point) => (
             <tr key={point.day} className="border-b border-border last:border-0">
-              <th scope="row" className="py-2 pr-3 text-left font-medium text-brand-ink">
+              <th scope="row" className="py-2 pr-3 text-left font-medium text-foreground">
                 {formatLagosDate(`${point.day}T12:00:00+01:00`)}
               </th>
               <td className="py-2 pr-3 text-right tabular-nums">{point.orders}</td>
@@ -145,12 +145,12 @@ export function DailyTable({ points }: { points: readonly DailyPoint[] }) {
 export function AttentionPanel({ items }: { items: readonly AttentionItem[] }) {
   if (items.length === 0) {
     return (
-      <div className="rounded-md border border-brand-green/40 bg-brand-green/5 px-4 py-3">
-        <p className="flex items-center gap-2 text-sm font-semibold text-brand-ink">
+      <div className="rounded-md border border-success/40 bg-success-subtle px-4 py-3">
+        <p className="flex items-center gap-2 text-dense font-semibold text-foreground">
           <span aria-hidden="true">✓</span>
           Nothing needs attention
         </p>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-dense text-text-muted">
           No withdrawal, refund, dispute, review or job is waiting on a person.
         </p>
       </div>
@@ -164,13 +164,13 @@ export function AttentionPanel({ items }: { items: readonly AttentionItem[] }) {
           key={item.key}
           className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3"
         >
-          <span className="text-sm text-brand-ink">
+          <span className="text-dense text-foreground">
             <span aria-hidden="true" className="mr-2 font-semibold">
               !
             </span>
             {item.sentence}
           </span>
-          <Link href={item.href} className="text-sm font-semibold text-brand-green underline underline-offset-2">
+          <Link href={item.href} className="text-dense font-semibold text-brand-600 underline underline-offset-2">
             {item.linkLabel}
           </Link>
         </li>
@@ -206,18 +206,18 @@ export function OverviewPanel({
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {KPI.map((kpi) => (
             <div key={kpi.key} className="rounded-md border border-border bg-background px-4 py-3">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <dt className="text-caption font-semibold uppercase tracking-wide text-text-muted">
                 <span title={kpi.definition} className="cursor-help">
                   {kpi.label}
                 </span>
               </dt>
-              <dd className="mt-1 text-xl font-semibold tabular-nums text-brand-ink">
+              <dd className="mt-1 text-xl font-semibold tabular-nums text-foreground">
                 {figure(overview, kpi.key, kpi.money)}
               </dd>
             </div>
           ))}
         </dl>
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-2 text-caption text-text-muted">
           Hover a name for what it counts. Payables are current balances; the rest are the selected days.
         </p>
       </section>
@@ -233,24 +233,24 @@ export function OverviewPanel({
       </Section>
 
       <Section title="How these are calculated">
-        <dl className="space-y-2 text-sm text-muted-foreground">
+        <dl className="space-y-2 text-dense text-text-muted">
           <div>
-            <dt className="inline font-medium text-brand-ink">Gross sales: </dt>
+            <dt className="inline font-medium text-foreground">Gross sales: </dt>
             <dd className="inline">paid orders in the range, whatever happened to them afterwards.</dd>
           </div>
           <div>
-            <dt className="inline font-medium text-brand-ink">Platform revenue: </dt>
+            <dt className="inline font-medium text-foreground">Platform revenue: </dt>
             <dd className="inline">
               platform and withdrawal fee postings in the range, minus anything reversed. A refund reverses the fee it
               took.
             </dd>
           </div>
           <div>
-            <dt className="inline font-medium text-brand-ink">Processor fees: </dt>
+            <dt className="inline font-medium text-foreground">Processor fees: </dt>
             <dd className="inline">what Paystack kept, from the payment records themselves.</dd>
           </div>
           <div>
-            <dt className="inline font-medium text-brand-ink">Net margin: </dt>
+            <dt className="inline font-medium text-foreground">Net margin: </dt>
             <dd className="inline">platform revenue minus processor fees, before VAT and operating costs.</dd>
           </div>
         </dl>
@@ -263,7 +263,7 @@ export function OverviewPanel({
 export function InlineStat({ label, value, tone }: { label: string; value: string; tone?: "warning" | "danger" }) {
   return (
     <div className="flex items-baseline gap-2">
-      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-dense text-text-muted">{label}</span>
       <StatusTag tone={tone ?? "neutral"}>{value}</StatusTag>
     </div>
   )

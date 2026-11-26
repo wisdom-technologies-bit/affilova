@@ -49,7 +49,7 @@ export function WithdrawalHistory({
   function actions(row: ScreenWithdrawal) {
     if (row.status !== "requested") {
       return row.status === "rejected" && row.reason !== null ? (
-        <span className="text-sm text-muted-foreground">Reason: {row.reason}</span>
+        <span className="text-dense text-text-muted">Reason: {row.reason}</span>
       ) : null
     }
 

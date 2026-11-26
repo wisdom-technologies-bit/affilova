@@ -221,7 +221,7 @@ export function Turnstile({ action, onToken, onExpire, onError, resetSignal = 0 
     return (
       <p
         role="status"
-        className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-900"
+        className="rounded-md border border-warning/40 bg-warning-subtle px-3 py-2.5 text-dense text-warning"
       >
         {VERIFICATION_UNAVAILABLE_MESSAGE}
       </p>

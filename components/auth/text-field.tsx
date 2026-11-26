@@ -1,12 +1,17 @@
 import type { InputHTMLAttributes, ReactNode } from "react"
-import { AlertCircle } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import { Field } from "@/components/ds/field"
+import { Input } from "@/components/ui/input"
 
 // A labelled text input with optional helper text, an inline error and an
 // optional control on the right (used by the password field for show/hide).
 // autocomplete, inputMode, name and every other input attribute come from the
 // caller, so each field states its own purpose explicitly.
+//
+// It is a thin wrapper over the design system's Field, which owns the wiring:
+// the label is tied to the input by id, the hint and the error are joined into
+// one aria-describedby, and an error sets aria-invalid. The props here are the
+// ones the auth forms already use, so no caller changed.
 
 export interface TextFieldProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "id" | "className"> {
@@ -18,58 +23,25 @@ export interface TextFieldProps
   className?: string
 }
 
-export function TextField({
-  id,
-  label,
-  hint,
-  error,
-  trailing,
-  className,
-  ...props
-}: TextFieldProps) {
-  const hintId = hint ? `${id}-hint` : undefined
-  const errorId = error ? `${id}-error` : undefined
-  const describedBy = [hintId, errorId].filter((value) => value !== undefined).join(" ")
-
+export function TextField({ id, label, hint, error, trailing, className, ...props }: TextFieldProps) {
   return (
-    <div className={className}>
-      <label htmlFor={id} className="block text-sm font-medium text-slate-900">
-        {label}
-      </label>
+    <Field
+      id={id}
+      label={label}
+      help={hint}
+      error={error}
+      required={props.required === true}
+      className={className}
+    >
+      {(field) => (
+        <div className="relative">
+          <Input {...props} {...field} className={trailing === undefined ? undefined : "pr-12"} />
 
-      <div className="relative mt-1.5">
-        <input
-          id={id}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={describedBy === "" ? undefined : describedBy}
-          className={cn(
-            "h-11 w-full rounded-lg border bg-white px-3 text-sm text-slate-900",
-            "placeholder:text-slate-400 disabled:cursor-not-allowed disabled:bg-slate-50",
-            "transition-colors duration-150",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2",
-            error ? "border-red-400" : "border-slate-300",
-            trailing ? "pr-12" : undefined,
+          {trailing === undefined ? null : (
+            <div className="absolute inset-y-0 right-0 flex items-center pr-1">{trailing}</div>
           )}
-          {...props}
-        />
-
-        {trailing ? (
-          <div className="absolute inset-y-0 right-0 flex items-center pr-1">{trailing}</div>
-        ) : null}
-      </div>
-
-      {hint ? (
-        <p id={hintId} className="mt-1.5 text-xs text-slate-500">
-          {hint}
-        </p>
-      ) : null}
-
-      {error ? (
-        <p id={errorId} className="mt-1.5 flex items-start gap-1 text-xs text-red-700">
-          <AlertCircle aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
-          {error}
-        </p>
-      ) : null}
-    </div>
+        </div>
+      )}
+    </Field>
   )
 }

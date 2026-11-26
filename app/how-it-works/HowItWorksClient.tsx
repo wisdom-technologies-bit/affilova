@@ -92,7 +92,7 @@ export default function HowItWorksClient() {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="border-b border-[#E3E6E3]">
+      <header className="border-b border-border">
         <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-4">
           <Link href="/" aria-label="Affilova home" className="inline-flex">
             <Logo variant="horizontal" className="h-8 w-auto" />
@@ -116,7 +116,7 @@ export default function HowItWorksClient() {
           <div className="flex items-center gap-2 text-sm">
             <Link
               href="/sign-in"
-              className="rounded-md px-3 py-2 text-slate-700 transition-colors duration-150 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+              className="rounded-md px-3 py-2 text-slate-700 transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
             >
               Sign in
             </Link>
@@ -134,7 +134,7 @@ export default function HowItWorksClient() {
         {/* What Affilova is */}
         <section className="py-14 sm:py-20">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-600">How it works</p>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             How Affilova works
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-600">
@@ -147,8 +147,8 @@ export default function HowItWorksClient() {
         {/* The three roles */}
         <div className="space-y-4">
           {ROLES.map((role) => (
-            <section key={role.title} className="rounded-xl border border-[#E3E6E3] p-6 sm:p-8">
-              <h2 className="text-xl font-semibold tracking-tight text-slate-900">{role.title}</h2>
+            <section key={role.title} className="rounded-lg border border-border p-6 sm:p-8">
+              <h2 className="text-xl font-semibold tracking-tight text-foreground">{role.title}</h2>
               <p className="mt-2 text-sm leading-relaxed text-slate-600">{role.summary}</p>
               <ol className="mt-6 space-y-4">
                 {role.steps.map((step, index) => (
@@ -165,10 +165,10 @@ export default function HowItWorksClient() {
         </div>
 
         {/* Fees */}
-        <section className="mt-4 rounded-xl border border-[#E3E6E3] bg-[#F7F8F7] p-6 sm:p-8">
-          <h2 className="text-xl font-semibold tracking-tight text-slate-900">Fees</h2>
+        <section className="mt-4 rounded-lg border border-border bg-surface-subtle p-6 sm:p-8">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Fees</h2>
           <p className="mt-4 flex flex-wrap items-baseline gap-3">
-            <span className="text-4xl font-semibold tracking-tight text-slate-900">{PLATFORM_FEE_PERCENT}%</span>
+            <span className="text-4xl font-semibold tracking-tight text-foreground">{PLATFORM_FEE_PERCENT}%</span>
             <span className="text-sm text-slate-600">platform fee on each completed sale</span>
           </p>
           <p className="mt-4 text-sm leading-relaxed text-slate-600">
@@ -185,11 +185,11 @@ export default function HowItWorksClient() {
 
         {/* FAQ */}
         <section className="py-14 sm:py-16">
-          <h2 className="text-xl font-semibold tracking-tight text-slate-900">Questions</h2>
-          <div className="mt-6 divide-y divide-[#E3E6E3] border-y border-[#E3E6E3]">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Questions</h2>
+          <div className="mt-6 divide-y divide-border border-y border-border">
             {FAQ.map((item) => (
               <details key={item.question} className="group py-4">
-                <summary className="flex cursor-pointer items-center justify-between gap-4 text-sm font-medium text-slate-900 marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
+                <summary className="flex cursor-pointer items-center justify-between gap-4 text-sm font-medium text-foreground marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
                   {item.question}
                   <span
                     aria-hidden="true"
@@ -215,7 +215,7 @@ export default function HowItWorksClient() {
             </Link>
             <Link
               href="/sign-up"
-              className="inline-flex items-center justify-center rounded-md border border-[#E3E6E3] px-5 py-3 text-sm font-medium text-slate-900 transition-colors duration-150 hover:border-brand-500 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+              className="inline-flex items-center justify-center rounded-md border border-border px-5 py-3 text-sm font-medium text-foreground transition-colors duration-150 hover:border-border-strong hover:text-brand-600 focus-ring"
             >
               Promote on Affilova
             </Link>

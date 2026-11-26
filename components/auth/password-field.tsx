@@ -6,7 +6,7 @@ import { Eye, EyeOff } from "lucide-react"
 import { TextField, type TextFieldProps } from "./text-field"
 
 // A text field that starts as a password input and can be revealed. The toggle
-// is a real button with a 44px target, aria-pressed and a visible focus ring,
+// is a real button with a 44px target, aria-pressed and the system focus ring,
 // and the input keeps its own label and autocomplete value.
 
 export type PasswordFieldProps = Omit<TextFieldProps, "type" | "trailing">
@@ -25,12 +25,12 @@ export function PasswordField({ id, ...props }: PasswordFieldProps) {
           aria-pressed={shown}
           aria-controls={id}
           onClick={() => setShown((current) => !current)}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-md text-slate-500 transition-colors duration-150 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+          className="focus-ring inline-flex h-control-md w-control-md items-center justify-center rounded-md text-text-muted transition-colors duration-150 hover:bg-surface-muted hover:text-foreground"
         >
           {shown ? (
-            <EyeOff aria-hidden="true" className="size-4" />
+            <EyeOff aria-hidden="true" className="h-4 w-4" />
           ) : (
-            <Eye aria-hidden="true" className="size-4" />
+            <Eye aria-hidden="true" className="h-4 w-4" />
           )}
           <span className="sr-only">{shown ? "Hide password" : "Show password"}</span>
         </button>

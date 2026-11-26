@@ -67,7 +67,7 @@ export function BlackoutDatesPanel({
   return (
     <div className="space-y-6">
       <Section title="How blackout dates work">
-        <p className="text-sm text-brand-ink">
+        <p className="text-dense text-foreground">
           Payouts never run on Saturdays and Sundays, and you do not need to add them. Add a date here to
           pause payouts on a weekday, for example a public holiday. People see the reason on their payout
           pages, and their withdrawals wait for the next payout day.
@@ -83,13 +83,13 @@ export function BlackoutDatesPanel({
           aria-label="Add a blackout date"
         >
           <div>
-            <label htmlFor="blackout-day" className="block text-sm font-medium text-brand-ink">
+            <label htmlFor="blackout-day" className="block text-dense font-medium text-foreground">
               Date
             </label>
             <input id="blackout-day" type="date" value={day} onChange={(event) => setDay(event.target.value)} className={`${INPUT_CLASS} mt-2`} />
           </div>
           <div>
-            <label htmlFor="blackout-reason" className="block text-sm font-medium text-brand-ink">
+            <label htmlFor="blackout-reason" className="block text-dense font-medium text-foreground">
               Reason (shown to people)
             </label>
             <input
@@ -116,14 +116,14 @@ export function BlackoutDatesPanel({
         {days === null ? (
           <AlertLine>{error ?? "The dates could not be loaded. Refresh the page to try again."}</AlertLine>
         ) : days.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No extra blackout dates. Only weekends are blocked.</p>
+          <p className="text-dense text-text-muted">No extra blackout dates. Only weekends are blocked.</p>
         ) : (
           <ul className="divide-y divide-border">
             {days.map((entry) => (
               <li key={entry.day} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <span>
-                  <span className="font-medium text-brand-ink">{formatPayoutDay(entry.day)}</span>
-                  <span className="block text-sm text-muted-foreground">{entry.reason}</span>
+                  <span className="font-medium text-foreground">{formatPayoutDay(entry.day)}</span>
+                  <span className="block text-dense text-text-muted">{entry.reason}</span>
                 </span>
                 {removing === entry.day ? (
                   <span className="flex flex-wrap gap-2">

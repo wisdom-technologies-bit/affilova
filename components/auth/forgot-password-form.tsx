@@ -78,14 +78,14 @@ export function ForgotPasswordForm({ error }: ForgotPasswordFormProps) {
   if (sent) {
     return (
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900">Check your email</h1>
+        <h1 className="text-h1 text-foreground">Check your email</h1>
         <div className="mt-5">
           <FormAlert variant="success">{NEUTRAL_MESSAGE}</FormAlert>
         </div>
-        <p className="mt-6 text-center text-sm text-slate-600">
+        <p className="mt-6 text-center text-body text-text-muted">
           <Link
             href="/sign-in"
-            className="rounded-sm font-medium text-brand-700 underline-offset-2 transition-colors duration-150 hover:text-brand-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+            className="rounded-sm font-medium text-brand-600 underline-offset-2 transition-colors duration-150 hover:underline focus-ring"
           >
             Back to sign in
           </Link>
@@ -98,8 +98,8 @@ export function ForgotPasswordForm({ error }: ForgotPasswordFormProps) {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold tracking-tight text-slate-900">Reset your password</h1>
-      <p className="mt-1 text-sm text-slate-600">
+      <h1 className="text-h1 text-foreground">Reset your password</h1>
+      <p className="mt-1 text-body text-text-muted">
         Enter your email address and we will send you a reset link.
       </p>
 
@@ -139,10 +139,10 @@ export function ForgotPasswordForm({ error }: ForgotPasswordFormProps) {
         </SubmitButton>
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-600">
+      <p className="mt-6 text-center text-body text-text-muted">
         <Link
           href="/sign-in"
-          className="rounded-sm font-medium text-brand-700 underline-offset-2 transition-colors duration-150 hover:text-brand-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+          className="rounded-sm font-medium text-brand-600 underline-offset-2 transition-colors duration-150 hover:underline focus-ring"
         >
           Back to sign in
         </Link>

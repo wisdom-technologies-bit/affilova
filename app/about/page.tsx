@@ -7,7 +7,7 @@ import { Logo } from "@/components/brand/logo"
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-surface-subtle">
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
@@ -27,7 +27,7 @@ export default function AboutPage() {
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-16 text-center">
-        <Badge className="mb-4 bg-green-100 text-green-800 hover:bg-green-100">🚀 Empowering Digital Commerce</Badge>
+        <Badge className="mb-4 bg-green-100 text-green-800 hover:bg-green-100">Empowering Digital Commerce</Badge>
         <h1 className="text-5xl font-bold text-gray-900 mb-6">About Affilova</h1>
         <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
           Affilova is a marketplace where vendors list their products, affiliates apply to promote them, and every
@@ -233,7 +233,7 @@ export default function AboutPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-gradient-to-r from-green-600 to-green-700 py-16">
+      <section className="bg-brand-900 py-16">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-white mb-4">Ready to Get Started?</h2>
           <p className="text-green-100 text-lg mb-8 max-w-2xl mx-auto">

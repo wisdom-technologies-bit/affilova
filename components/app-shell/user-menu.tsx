@@ -54,15 +54,15 @@ export function UserMenu({ user }: { user: AccountSummary }) {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex min-h-11 items-center gap-2 rounded-md border border-border px-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+          className="focus-ring flex min-h-control-md items-center gap-2 rounded-md border border-border-control bg-background px-2 text-left transition-colors duration-150 hover:bg-surface-muted"
         >
           <span
             aria-hidden="true"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-caption font-medium text-brand-700"
           >
             {initials(user)}
           </span>
-          <span className="hidden max-w-32 truncate text-sm font-medium text-brand-ink sm:inline">
+          <span className="hidden max-w-32 truncate text-dense font-medium text-foreground sm:inline">
             {name}
           </span>
           <span className="sr-only">Open account menu</span>
@@ -71,21 +71,21 @@ export function UserMenu({ user }: { user: AccountSummary }) {
 
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="font-normal">
-          <span className="block truncate text-sm font-medium text-brand-ink">{name}</span>
+          <span className="block truncate text-dense font-medium text-foreground">{name}</span>
           {user.email !== null ? (
-            <span className="block truncate text-xs text-muted-foreground">{user.email}</span>
+            <span className="block truncate text-caption text-text-muted">{user.email}</span>
           ) : null}
         </DropdownMenuLabel>
 
         <div className="flex flex-wrap gap-1 px-2 pb-2">
           {user.roles.length === 0 ? (
-            <span className="text-xs text-muted-foreground">No roles</span>
+            <span className="text-caption text-text-muted">No roles</span>
           ) : (
             user.roles.map((entry) => (
               <Badge
                 key={entry.role}
                 variant={entry.status === "active" ? "secondary" : "outline"}
-                className="text-xs capitalize"
+                className="capitalize"
               >
                 {`${entry.role} · ${entry.status}`}
               </Badge>
@@ -101,7 +101,7 @@ export function UserMenu({ user }: { user: AccountSummary }) {
             event.preventDefault()
             void handleSignOut()
           }}
-          className="min-h-11 gap-2"
+          className="gap-2"
         >
           <LogOut className="h-4 w-4" aria-hidden="true" />
           {pending ? "Signing out…" : "Sign out"}

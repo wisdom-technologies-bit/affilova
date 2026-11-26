@@ -42,10 +42,10 @@ export interface WithdrawStart {
 
 function BalanceCard({ label, value, help }: { label: string; value: bigint; help: string }) {
   return (
-    <div className="rounded-lg border border-border p-4">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-brand-ink">{formatNaira(value)}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{help}</p>
+    <div className="rounded-md border border-border p-4">
+      <p className="text-dense text-text-muted">{label}</p>
+      <p className="mt-1 tabular text-h2 text-foreground">{formatNaira(value)}</p>
+      <p className="mt-1 text-caption text-text-muted">{help}</p>
     </div>
   )
 }
@@ -235,7 +235,7 @@ export function WithdrawPanel({
             <StatusLine>
               <strong>{result.outcome}</strong>
             </StatusLine>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-dense text-text-muted">
               {RESULT_EXPLANATION[result.outcome] ?? "You will get an email when it is paid."}
             </p>
             <button type="button" className={BUTTON_SECONDARY} onClick={() => setResult(null)}>
@@ -251,11 +251,11 @@ export function WithdrawPanel({
             aria-label="Request a withdrawal"
           >
             <div>
-              <label htmlFor="withdraw-amount" className="block text-sm font-medium text-brand-ink">
+              <label htmlFor="withdraw-amount" className="block text-dense font-medium text-foreground">
                 Amount in naira
               </label>
               <div className="relative mt-2 max-w-xs">
-                <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground">
+                <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-text-muted">
                   ₦
                 </span>
                 <input
@@ -277,29 +277,29 @@ export function WithdrawPanel({
                   disabled={account === null || busy}
                 />
               </div>
-              <p id="withdraw-help" className="mt-1 text-sm text-muted-foreground">
+              <p id="withdraw-help" className="mt-1 text-dense text-text-muted">
                 For example 5000 or 5,000.50.
               </p>
               {amount.trim() !== "" && kobo === null ? (
-                <p className="mt-1 text-sm text-destructive">Enter a valid amount in naira, with at most two decimals.</p>
+                <p className="mt-1 text-dense text-destructive">Enter a valid amount in naira, with at most two decimals.</p>
               ) : null}
             </div>
 
             <div aria-live="polite" className="space-y-3">
               {localReason !== null ? <AlertLine>{localReason}</AlertLine> : null}
               {previewing && preview === null && previewError === null && localReason === null && kobo !== null ? (
-                <p className="text-sm text-muted-foreground">Checking…</p>
+                <p className="text-dense text-text-muted">Checking…</p>
               ) : null}
               {previewError !== null ? <AlertLine>{previewError}</AlertLine> : null}
 
               {preview !== null && localReason === null ? (
-                <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1 rounded-md border border-border px-4 py-3 text-sm">
-                  <dt className="text-muted-foreground">Amount</dt>
+                <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1 rounded-md border border-border px-4 py-3 text-dense">
+                  <dt className="text-text-muted">Amount</dt>
                   <dd className="text-right tabular-nums">{formatNaira(preview.grossKobo)}</dd>
-                  <dt className="text-muted-foreground">Fee</dt>
+                  <dt className="text-text-muted">Fee</dt>
                   <dd className="text-right tabular-nums">{formatNaira(preview.feeKobo)}</dd>
-                  <dt className="font-medium text-brand-ink">You receive</dt>
-                  <dd className="text-right font-semibold tabular-nums text-brand-ink">{formatNaira(preview.netKobo)}</dd>
+                  <dt className="font-medium text-foreground">You receive</dt>
+                  <dd className="text-right font-semibold tabular-nums text-foreground">{formatNaira(preview.netKobo)}</dd>
                 </dl>
               ) : null}
 
@@ -314,7 +314,7 @@ export function WithdrawPanel({
               ) : null}
 
               {preview !== null && preview.allowed && preview.needsApproval ? (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-dense text-text-muted">
                   This amount needs a quick approval from our team before it is sent.
                 </p>
               ) : null}
@@ -328,7 +328,7 @@ export function WithdrawPanel({
 
             {canAsk && codeRequested ? (
               <div>
-                <label htmlFor="withdraw-code" className="block text-sm font-medium text-brand-ink">
+                <label htmlFor="withdraw-code" className="block text-dense font-medium text-foreground">
                   6 digit code from your email
                 </label>
                 <input

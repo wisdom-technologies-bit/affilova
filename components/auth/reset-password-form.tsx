@@ -66,11 +66,11 @@ export function ResetPasswordForm() {
   if (updated) {
     return (
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900">Password updated</h1>
-        <p className="mt-2 text-sm text-slate-600">Your password has been changed.</p>
+        <h1 className="text-h1 text-foreground">Password updated</h1>
+        <p className="mt-2 text-body text-text-muted">Your password has been changed.</p>
         <Link
           href="/"
-          className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white transition-colors duration-150 hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+          className="mt-6 inline-flex h-control-md w-full items-center justify-center rounded-md bg-brand-600 px-4 text-dense font-semibold text-white transition-colors duration-150 hover:bg-brand-700 focus-ring"
         >
           Continue
         </Link>
@@ -80,8 +80,8 @@ export function ResetPasswordForm() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold tracking-tight text-slate-900">Choose a new password</h1>
-      <p className="mt-1 text-sm text-slate-600">Use at least 10 characters.</p>
+      <h1 className="text-h1 text-foreground">Choose a new password</h1>
+      <p className="mt-1 text-body text-text-muted">Use at least 10 characters.</p>
 
       {formError !== null ? (
         <div className="mt-5">

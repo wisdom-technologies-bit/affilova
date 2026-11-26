@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { getLinkQrAction } from "@/lib/affiliate/read-actions"
 import { isSafeQrSvg } from "@/lib/affiliate/qr"
+import { TOKENS } from "@/lib/design/tokens"
 
 // The QR code for one link, made on the server for that link only.
 //
@@ -89,7 +90,7 @@ export function QrDialog({
         return
       }
 
-      context.fillStyle = "#ffffff"
+      context.fillStyle = TOKENS.background.hex
       context.fillRect(0, 0, canvas.width, canvas.height)
       context.drawImage(image, 0, 0, canvas.width, canvas.height)
 

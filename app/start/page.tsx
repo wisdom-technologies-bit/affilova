@@ -23,7 +23,8 @@ type RoleCard = {
   active: boolean
 }
 
-const CARD_CLASS = "block rounded-xl border border-[#E3E6E3] p-4 transition-colors duration-150"
+const CARD_CLASS =
+  "focus-ring block rounded-lg border border-border p-4 transition-colors duration-150 hover:border-border-strong"
 const LINK_CLASS = `${CARD_CLASS} hover:border-brand-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2`
 
 export default async function StartPage() {

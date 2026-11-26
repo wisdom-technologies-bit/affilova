@@ -60,10 +60,10 @@ export function AppShell({
   const nav = SHELL_NAVIGATION[app]
 
   return (
-    <div className="min-h-screen bg-background text-brand-ink">
+    <div className="min-h-screen bg-background text-foreground">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:border focus:border-border focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-brand-ink focus:ring-2 focus:ring-brand-600"
+        className="focus-ring sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:border focus:border-border-control focus:bg-background focus:px-4 focus:py-2 focus:text-dense focus:font-medium focus:text-foreground"
       >
         Skip to content
       </a>
@@ -76,7 +76,7 @@ export function AppShell({
         <main
           id="main-content"
           tabIndex={-1}
-          className="mx-auto w-full max-w-[1152px] px-6 py-8 focus-visible:outline-none"
+          className="container-dashboard py-8 focus-visible:outline-none"
         >
           {children}
         </main>

@@ -42,10 +42,10 @@ export async function PayoutDetailsPage({
 
       {includeWithdrawals ? (
         <div className="mt-10 space-y-6">
-          <h2 className="text-xl font-semibold tracking-tight text-brand-ink">Withdrawals</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Withdrawals</h2>
           <WithdrawPanel data={screen.data} payoutDetailsHref={payoutDetailsHref} />
           <div>
-            <h3 className="mb-3 text-lg font-semibold text-brand-ink">Recent withdrawals</h3>
+            <h3 className="mb-3 text-h3 text-foreground">Recent withdrawals</h3>
             <WithdrawalHistory withdrawals={screen.data.withdrawals} />
           </div>
         </div>
@@ -71,7 +71,7 @@ export async function WithdrawalsPage({ payoutDetailsHref }: { payoutDetailsHref
       <PageHeader title="Withdrawals" />
       <WithdrawPanel data={screen.data} payoutDetailsHref={payoutDetailsHref} />
       <div className="mt-8">
-        <h2 className="mb-3 text-lg font-semibold text-brand-ink">Recent withdrawals</h2>
+        <h2 className="mb-3 text-h3 text-foreground">Recent withdrawals</h2>
         <WithdrawalHistory withdrawals={screen.data.withdrawals} />
       </div>
     </>

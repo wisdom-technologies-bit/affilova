@@ -1,6 +1,10 @@
 import Link from "next/link"
+import { MousePointerClick } from "lucide-react"
 
 import { ClicksChart } from "@/components/affiliate/clicks-chart"
+import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/ds/empty-state"
+import { InlineAlert } from "@/components/ds/inline-alert"
 import { DataTable, type Column } from "@/components/affiliate/data-table"
 import { DateRangePicker } from "@/components/affiliate/date-range-picker"
 import { KpiCard } from "@/components/affiliate/kpi-card"
@@ -83,22 +87,22 @@ export function OverviewPanel({
           </dl>
 
           {overview.balance.negative ? (
-            <p className="rounded-md border border-destructive/40 px-3 py-2 text-sm text-destructive">
+            <InlineAlert tone="warning">
               Your balance is below zero by {formatNaira(Math.abs(overview.balance.totalKobo))}. This
               happens when a sale you had already earned from is refunded. New commission pays it
               back first.
-            </p>
+            </InlineAlert>
           ) : null}
 
           <details className="rounded-md border border-border px-4 py-3">
-            <summary className="inline-flex min-h-[44px] cursor-pointer items-center text-sm font-medium text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2">
+            <summary className="focus-ring inline-flex min-h-control-md cursor-pointer items-center rounded-sm text-dense font-medium text-foreground">
               How these are calculated
             </summary>
             <dl className="mt-3 space-y-3">
               {HOW_CALCULATED.map((metric) => (
                 <div key={metric.label}>
-                  <dt className="text-sm font-medium text-brand-ink">{metric.label}</dt>
-                  <dd className="text-sm text-muted-foreground">
+                  <dt className="text-dense font-medium text-foreground">{metric.label}</dt>
+                  <dd className="text-dense text-text-muted">
                     {metric.definition} {metric.how}
                   </dd>
                 </div>
@@ -107,27 +111,22 @@ export function OverviewPanel({
           </details>
 
           {isEmpty ? (
-            <div className="rounded-md border border-border px-6 py-10 text-center">
-              <p className="text-sm font-medium text-brand-ink">Nothing happened in these days yet.</p>
-              <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-                Pick a product in the marketplace and share your link. Clicks appear here within a
-                few minutes of the first visit.
-              </p>
-              <p className="mt-3">
-                <Link
-                  href="/marketplace"
-                  className="inline-flex min-h-[44px] items-center rounded-md bg-brand-600 px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
-                >
-                  Find a product to promote
-                </Link>
-              </p>
-            </div>
+            <EmptyState
+              icon={<MousePointerClick className="h-5 w-5" />}
+              title="Nothing happened in these days yet."
+              description="Pick a product in the marketplace and share your link. Clicks appear here within a few minutes of the first visit."
+              primaryAction={
+                <Button asChild>
+                  <Link href="/marketplace">Find a product to promote</Link>
+                </Button>
+              }
+            />
           ) : (
             <>
               <ClicksChart points={series} title={`Clicks per day, ${range.from} to ${range.to}`} />
 
               <div>
-                <h2 className="mb-2 text-sm font-semibold text-brand-ink">Every day in the range</h2>
+                <h2 className="mb-2 text-dense font-semibold text-foreground">Every day in the range</h2>
                 <DataTable
                   caption={`Daily clicks, orders and commission from ${range.from} to ${range.to}`}
                   columns={columns}

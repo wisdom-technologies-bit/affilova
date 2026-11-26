@@ -129,7 +129,7 @@ export default function HomePageClient() {
 
       {/* Hero Section with Gradient */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-green-50 via-white to-blue-50" />
+        <div className="absolute inset-0 bg-surface-subtle" />
         <div className="absolute top-0 right-0 w-96 h-96 bg-green-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
         <div className="absolute -bottom-8 left-20 w-72 h-72 bg-green-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-2000" />
 
@@ -137,7 +137,7 @@ export default function HomePageClient() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="space-y-8 animate-in fade-in slide-in-from-left duration-700">
               <div>
-                <h1 className="text-5xl md:text-6xl lg:text-7xl font-black text-gray-900 leading-tight mb-6 bg-gradient-to-r from-gray-900 via-green-700 to-gray-900 bg-clip-text text-transparent">
+                <h1 className="text-5xl md:text-6xl lg:text-7xl font-black text-foreground leading-tight mb-6">
                   Sell with affiliates
                 </h1>
               </div>
@@ -167,7 +167,7 @@ export default function HomePageClient() {
             </div>
 
             <div className="hidden md:block relative">
-              <div className="relative w-full h-96 bg-gradient-to-br from-green-100 to-green-50 rounded-2xl overflow-hidden group">
+              <div className="relative w-full h-96 bg-surface-muted rounded-2xl overflow-hidden group">
                 <img
                   src="/professional-affiliate-marketing-dashboard-with-gr.jpg"
                   alt="Affilova Dashboard"
@@ -273,7 +273,7 @@ export default function HomePageClient() {
                 className="relative group animate-in fade-in slide-in-from-bottom duration-700"
                 style={{ animationDelay: `${i * 150}ms` }}
               >
-                <div className="absolute -inset-1 bg-gradient-to-r from-green-600 to-green-700 rounded-2xl opacity-0 group-hover:opacity-10 transition-all duration-300" />
+                <div className="absolute -inset-1 bg-brand-600 rounded-2xl opacity-0 group-hover:opacity-10 transition-all duration-300" />
                 <div className="relative bg-white p-8 rounded-xl border border-gray-100 hover:border-green-500 transition-all">
                   <div className="text-5xl font-bold text-green-600 opacity-20 mb-4">{item.step}</div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-3">{item.title}</h3>
@@ -311,13 +311,12 @@ export default function HomePageClient() {
             </div>
           </div>
 
-          <div className="relative h-80 md:h-full min-h-96 bg-gradient-to-br from-green-100 to-green-50 rounded-2xl flex items-center justify-center overflow-hidden group">
+          <div className="relative h-80 md:h-full min-h-96 bg-surface-muted rounded-2xl flex items-center justify-center overflow-hidden group">
             <img
               src="/vendor-dashboard-analytics-green-professional-inte.jpg"
               alt="Vendor Dashboard"
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white opacity-50" />
             <div className="relative text-center space-y-4 z-10">
               <Zap className="w-16 h-16 text-white mx-auto group-hover:scale-110 transition-transform drop-shadow-lg" />
               <p className="text-white font-semibold drop-shadow">Vendor Dashboard</p>
@@ -330,13 +329,12 @@ export default function HomePageClient() {
       <section className="bg-gray-50 py-20 md:py-32">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div className="relative h-80 md:h-full min-h-96 bg-gradient-to-br from-green-100 to-green-50 rounded-2xl flex items-center justify-center overflow-hidden group order-last md:order-first">
+            <div className="relative h-80 md:h-full min-h-96 bg-surface-muted rounded-2xl flex items-center justify-center overflow-hidden group order-last md:order-first">
               <img
                 src="/affiliate-dashboard-earnings-tracking-professional.jpg"
                 alt="Affiliate Dashboard"
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-l from-transparent to-white opacity-50" />
               <div className="relative text-center space-y-4 z-10">
                 <TrendingUp className="w-16 h-16 text-white mx-auto group-hover:scale-110 transition-transform drop-shadow-lg" />
                 <p className="text-white font-semibold drop-shadow">Affiliate Dashboard</p>
@@ -371,7 +369,7 @@ export default function HomePageClient() {
 
       {/* CTA Section */}
       <section className="container mx-auto px-4 py-20 md:py-32">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-green-600 to-green-700 p-12 md:p-20 text-white">
+        <div className="relative overflow-hidden rounded-3xl bg-brand-900 p-12 md:p-20 text-white">
           <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-10 rounded-full -mr-48 -mt-48" />
           <div className="absolute bottom-0 left-0 w-72 h-72 bg-white opacity-5 rounded-full -ml-36 -mb-36" />
 

@@ -3,12 +3,18 @@
 import { Check, Copy } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
+import { cn } from "@/lib/utils"
+
 // Copy a value to the clipboard, and say so.
 //
 // The confirmation is written into a live region next to the button, so it is
 // heard as well as seen, and it clears itself after a moment. When the clipboard
 // is not available (an old browser, a denied permission) the button says so in
 // words instead of pretending it worked.
+//
+// This is the inline form: the value is already on the page next to the button.
+// Where the value is not visible, use CopyField from components/ds, which puts it
+// in a read-only input beside the button.
 
 export function CopyButton({
   value,
@@ -57,10 +63,10 @@ export function CopyButton({
         onClick={() => {
           void copy()
         }}
-        className={
-          className ??
-          "inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-input px-3 text-sm font-medium text-brand-ink transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
-        }
+        className={cn(
+          "focus-ring inline-flex min-h-control-md items-center gap-1.5 rounded-md border border-border-control bg-background px-3 text-small font-medium text-foreground transition-colors duration-150 hover:bg-surface-muted",
+          className,
+        )}
       >
         <Icon aria-hidden="true" className="h-4 w-4" />
         {text}

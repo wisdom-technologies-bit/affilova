@@ -397,10 +397,59 @@ describe("step-up codes", () => {
   })
 
   it("reports a failed send without leaking anything", async () => {
-    mocks.sendEmail.mockResolvedValue({ ok: false })
-    expect(await actions.requestStepUpCodeAction({ purpose: "withdrawal" })).toEqual({
-      ok: false, error: "We could not send the code. Please try again.",
+    mocks.sendEmail.mockResolvedValue({ ok: false, reason: "invalid_sender" })
+
+    const result = await actions.requestStepUpCodeAction({ purpose: "withdrawal" })
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Email is temporarily unavailable. Please contact support at hello@affilova.com.",
     })
+    expect(JSON.stringify(result)).not.toContain("ada@example.com")
+    expect(everything()).not.toContain("ada@example.com")
+  })
+
+  it.each([
+    "not_configured",
+    "invalid_sender",
+    "ip_not_authorized",
+    "unauthorized",
+    "invalid_request",
+  ])("points at support when the reason is %s, since waiting cannot fix it", async (reason) => {
+    mocks.sendEmail.mockResolvedValue({ ok: false, reason })
+
+    const result = await actions.requestStepUpCodeAction({ purpose: "withdrawal" })
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Email is temporarily unavailable. Please contact support at hello@affilova.com.",
+    })
+  })
+
+  it.each(["quota", "provider_error", "network"])(
+    "asks for a retry when the reason is %s, since it clears on its own",
+    async (reason) => {
+      mocks.sendEmail.mockResolvedValue({ ok: false, reason })
+
+      const result = await actions.requestStepUpCodeAction({ purpose: "withdrawal" })
+
+      expect(result).toEqual({
+        ok: false,
+        error: "We could not send the code right now. Please try again in a few minutes.",
+      })
+    },
+  )
+
+  it("logs the reason and never the address", async () => {
+    mocks.sendEmail.mockResolvedValue({ ok: false, reason: "quota" })
+
+    await actions.requestStepUpCodeAction({ purpose: "withdrawal" })
+
+    const logged = everything()
+
+    expect(logged).toContain("payout_step_up_email_failed")
+    expect(logged).toContain("quota")
+    expect(logged).not.toContain("ada@example.com")
   })
 
   it("needs an email address", async () => {

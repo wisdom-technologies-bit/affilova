@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/ops/actions", () => ({
   runScannerSelfTestAction: vi.fn(),
+  sendTestEmailAction: vi.fn(),
 }))
 
 import { SecurityPanel, SelfTestResults } from "@/components/ops/security-panel"
@@ -76,6 +77,35 @@ const OVERVIEW: SecurityOverview = {
     oldestRequestedMinutes: 90,
     paystackBalanceKobo: "25000000",
     lowBalance: false,
+  },
+  email: {
+    health: {
+      apiKeyPresent: true,
+      apiKeyKind: "api",
+      fromPresent: true,
+      fromDomainKind: "own",
+      replyToPresent: true,
+      orderAccessSecretPresent: true,
+      stepUpSecretPresent: true,
+      ready: true,
+      problems: [],
+    },
+    failuresAvailable: true,
+    last24h: { total: 3, byReason: { unauthorized: 2, provider_error: 1 } },
+    recent: [
+      {
+        template: "purchase_receipt",
+        status: 401,
+        reason: "unauthorized",
+        createdAt: "2026-11-18T12:30:00.000Z",
+      },
+      {
+        template: "step_up_code",
+        status: 503,
+        reason: "provider_error",
+        createdAt: "2026-11-18T11:00:00.000Z",
+      },
+    ],
   },
   events: [
     {
@@ -373,5 +403,104 @@ describe("the Security page, payments section", () => {
     expect(html).toContain("failed")
     expect(html).toContain("12")
     expect(html).toContain("3")
+  })
+})
+
+describe("the Security page, email section", () => {
+  it("says the deployment is ready when the key and the sender are right", () => {
+    const html = render()
+
+    expect(html).toContain("Email")
+    expect(html).toContain("Ready to send")
+    expect(html).toContain("An API key is set")
+    expect(html).toContain("An address on your own domain")
+  })
+
+  it("names the wrong key kind without showing the key", () => {
+    const html = render({
+      email: { ...OVERVIEW.email, health: { ...OVERVIEW.email.health, apiKeyKind: "smtp", ready: false } },
+    })
+
+    expect(html).toContain("An SMTP key is set, not an API key")
+    expect(html).toContain("Not ready to send")
+    expect(html).not.toContain("xkeysib")
+    expect(html).not.toContain("xsmtpsib")
+  })
+
+  it("names a free mail sender as the reason Brevo refuses", () => {
+    const html = render({
+      email: {
+        ...OVERVIEW.email,
+        health: {
+          ...OVERVIEW.email.health,
+          fromDomainKind: "free_mail",
+          ready: false,
+          problems: ["EMAIL_FROM uses a free mail domain, which Brevo does not accept as a sender; use an address on your own authenticated domain."],
+        },
+      },
+    })
+
+    expect(html).toContain("A free mail domain, which Brevo does not accept")
+    expect(html).toContain("EMAIL_FROM uses a free mail domain")
+  })
+
+  it("warns about the optional settings without calling the deployment broken", () => {
+    const html = render({
+      email: {
+        ...OVERVIEW.email,
+        health: {
+          ...OVERVIEW.email.health,
+          replyToPresent: false,
+          orderAccessSecretPresent: false,
+          stepUpSecretPresent: false,
+        },
+      },
+    })
+
+    expect(html).toContain("Not set: a reply reaches nobody")
+    expect(html).toContain("download links cannot be signed")
+    expect(html).toContain("step-up codes cannot be issued")
+    // The two that decide whether a message can be sent are still right.
+    expect(html).toContain("Ready to send")
+  })
+
+  it("counts the failures of the last day by reason", () => {
+    const html = render()
+
+    expect(html).toContain("3 failed sends")
+    expect(html).toContain("Unauthorized")
+    expect(html).toContain("Provider error")
+    expect(html).toContain("purchase_receipt")
+    expect(html).toContain("step_up_code")
+  })
+
+  it("says nothing has failed rather than showing an empty table", () => {
+    const html = render({
+      email: { ...OVERVIEW.email, last24h: { total: 0, byReason: {} }, recent: [] },
+    })
+
+    expect(html).toContain("No send has failed in the last 24 hours.")
+    expect(html).toContain("Nothing has failed yet.")
+  })
+
+  it("says the failure table is not readable rather than claiming zero", () => {
+    const html = render({
+      email: { ...OVERVIEW.email, failuresAvailable: false, last24h: { total: 0, byReason: {} }, recent: [] },
+    })
+
+    expect(html).toContain("The failure table is not readable for your role.")
+  })
+
+  it("never shows an address on the card", () => {
+    const html = render()
+
+    expect(html).not.toContain("@")
+  })
+
+  it("offers the test button and says where the message goes", () => {
+    const html = render()
+
+    expect(html).toContain("Send test email")
+    expect(html).toContain("to your own address")
   })
 })

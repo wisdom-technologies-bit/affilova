@@ -31,7 +31,7 @@ detail. `CRON_SECRET` must be at least 32 characters; see `.env.example`.
 | ----------------- | ------------- | --------------------------------------------------------------------- |
 | `process-queue`   | every minute  | Claims a small batch of queued jobs, runs them, records a heartbeat.   |
 | `heartbeat-check` | every 5 min   | Reports any schedule that has not checked in for over 5 minutes.       |
-| `cleanup`         | daily at 03:00 | Deletes old rate-limit windows, purges clicks older than 13 months, queues the storage sweep, records a heartbeat. |
+| `cleanup`         | daily at 03:00 | Deletes old rate-limit windows, purges clicks older than 13 months and email failures older than 30 days, queues the storage sweep, records a heartbeat. |
 | `scan-sweep`      | every 5 min   | Queues one scan sweep for the current minute, so new, failed and stale files are scanned. |
 | `reconcile-pending` | every 10 min | Asks Paystack about pending orders and posts the ones that were paid. |
 | `expire-orders`   | hourly        | Expires unpaid orders whose 24-hour window has passed.                  |
@@ -55,12 +55,19 @@ the function keeps a full day of history). Its answer adds the number of deleted
 rows to the usual body:
 
 ```json
-{"ok":true,"deleted":12,"storageCleanupQueued":true,"webhookEventsPurged":4,"clicksPurged":0}
+{"ok":true,"deleted":12,"storageCleanupQueued":true,"webhookEventsPurged":4,"clicksPurged":0,"emailFailuresPurged":2}
 ```
 
 `deleted` is `0` on a quiet day, which is normal. `clicksPurged` is the number
 of affiliate clicks older than 13 months that were deleted; see
 `docs/tracking.md` for why that is the window.
+
+`emailFailuresPurged` is the number of rows older than 30 days deleted from
+`public.email_failures`, the table behind the Email card on the Security page.
+The window is a parameter of `public.purge_old_email_failures(p_days int
+default 30)`, clamped to between one day and a year so a caller cannot empty the
+table. A purge that fails fails the run: the sweep did not finish, and a `500`
+is the honest answer. See `docs/email.md` for what a row means.
 
 `webhookEventsPurged` is the number of webhook deliveries older than 30 days that
 were forgotten. The log is only needed for as long as a Paystack retry can

@@ -241,6 +241,23 @@ const orderAccessSecretSchema = z.object({
   ),
 })
 
+// Email. Read only by lib/email/*, and only when a message is sent or when the
+// Security page asks what is configured.
+//
+// Every field is optional here so a deployment without Brevo still builds, still
+// renders the Security page and still runs every test. A missing key is a state
+// the diagnostics report, not a parse error: that is the whole point of
+// getEmailConfigHealth in lib/email/health.ts.
+const emailEnvSchema = z.object({
+  BREVO_API_KEY: optionalString,
+  EMAIL_FROM: optionalString,
+  EMAIL_REPLY_TO: optionalString,
+  ORDER_ACCESS_SECRET: optionalString,
+  STEP_UP_SECRET: optionalString,
+})
+
+export type EmailEnv = z.infer<typeof emailEnvSchema>
+
 // The secret that keys the HMAC of a step-up code. Deliberately separate from
 // every other secret: rotating it voids unused codes and nothing else.
 const stepUpSecretSchema = z.object({
@@ -372,6 +389,16 @@ export function parsePaystackEnv(source: EnvSource): PaystackEnv {
   }
 }
 
+export function parseEmailEnv(source: EnvSource): EmailEnv {
+  const result = emailEnvSchema.safeParse(source)
+
+  if (!result.success) {
+    throw new Error(formatIssues("email", result.error))
+  }
+
+  return result.data
+}
+
 export function parseOrderAccessSecret(source: EnvSource): string {
   const result = orderAccessSecretSchema.safeParse(source)
 
@@ -501,6 +528,19 @@ export function getPaystackEnv(): PaystackEnv {
     PAYSTACK_WEBHOOK_SECRET: process.env.PAYSTACK_WEBHOOK_SECRET,
     PAYSTACK_WEBHOOK_ENFORCE_IPS: process.env.PAYSTACK_WEBHOOK_ENFORCE_IPS,
     PAYSTACK_TRANSFER_APPROVAL_TOKEN: process.env.PAYSTACK_TRANSFER_APPROVAL_TOKEN,
+  })
+}
+
+// Deliberately uncached, like the storage credentials: the email settings are
+// read when a message is sent and when the Security page is opened, and a
+// deployment without them must still build.
+export function getEmailEnv(): EmailEnv {
+  return parseEmailEnv({
+    BREVO_API_KEY: process.env.BREVO_API_KEY,
+    EMAIL_FROM: process.env.EMAIL_FROM,
+    EMAIL_REPLY_TO: process.env.EMAIL_REPLY_TO,
+    ORDER_ACCESS_SECRET: process.env.ORDER_ACCESS_SECRET,
+    STEP_UP_SECRET: process.env.STEP_UP_SECRET,
   })
 }
 

@@ -35,7 +35,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
         <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {result.error}
         </p>
-        <Link href="/hosts/admin/users" className="mt-4 inline-block text-sm text-brand-700 underline-offset-4 hover:underline">
+        <Link href="/users" className="mt-4 inline-block text-sm text-brand-700 underline-offset-4 hover:underline">
           Back to users
         </Link>
       </>
@@ -74,7 +74,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
         verificationLevel={user.verificationLevel}
       />
 
-      <Link href="/hosts/admin/users" className="mt-6 inline-block text-sm text-brand-700 underline-offset-4 hover:underline">
+      <Link href="/users" className="mt-6 inline-block text-sm text-brand-700 underline-offset-4 hover:underline">
         Back to users
       </Link>
     </>

@@ -3,12 +3,14 @@
 import { z } from "zod"
 
 import { sendEmail } from "@/lib/email/brevo"
+import { emailFailureTone, type EmailSendFailureReason } from "@/lib/email/reasons"
 import { stepUpCodeEmail } from "@/lib/email/templates"
 import { catalogErrorCode, GENERIC_ERROR, catalogErrorMessage } from "@/lib/catalog/errors"
 import { isLagosDay, lagosDayOf, addDays } from "@/lib/dates/lagos"
 import { staffAal2Failure } from "@/lib/identity/mfa"
 import { can } from "@/lib/identity/permissions"
 import { appUrl } from "@/lib/identity/app-urls"
+import { LEGAL } from "@/lib/site-config"
 import { getAuthUser, getUserRoles, type AppRole } from "@/lib/identity/session"
 import { enqueueJob } from "@/lib/jobs/queue"
 import { logger } from "@/lib/logger"
@@ -333,6 +335,36 @@ export async function resolveAccountAction(input: {
   }
 }
 
+/** Where to send someone when email cannot carry the message. */
+function supportContact(): string {
+  const email = LEGAL.supportEmail.trim()
+
+  if (email !== "") {
+    return email
+  }
+
+  const path = LEGAL.contactPath.trim() === "" ? "/contact" : LEGAL.contactPath.trim()
+
+  return appUrl("public", path)
+}
+
+/**
+ * What to tell someone whose step-up code could not be sent.
+ *
+ * Two sentences, chosen by whether waiting can help. A quota, a provider error
+ * or a network failure clears on its own, so the answer is "try again in a few
+ * minutes". A missing key, a refused sender, a blocked IP or a refused key is a
+ * configuration problem a person cannot fix, so the answer names a way to reach
+ * one instead of inviting a retry that will fail the same way.
+ */
+function stepUpEmailFailureText(reason: EmailSendFailureReason): string {
+  if (emailFailureTone(reason) === "retry") {
+    return "We could not send the code right now. Please try again in a few minutes."
+  }
+
+  return `Email is temporarily unavailable. Please contact support at ${supportContact()}.`
+}
+
 export async function requestStepUpCodeAction(input: {
   purpose: StepUpPurpose
 }): Promise<ActionResult<{ expiresInMinutes: number }>> {
@@ -382,9 +414,10 @@ export async function requestStepUpCodeAction(input: {
     const sent = await sendEmail({ ...content, to: email, template: "step_up_code" })
 
     if (!sent.ok) {
-      logger.warn("payout_step_up_email_failed")
+      // The reason, never the address and never Brevo's words.
+      logger.warn("payout_step_up_email_failed", { reason: sent.reason })
 
-      return { ok: false, error: "We could not send the code. Please try again." }
+      return { ok: false, error: stepUpEmailFailureText(sent.reason) }
     }
 
     return { ok: true, data: { expiresInMinutes: STEP_UP_EXPIRY_SECONDS / 60 } }

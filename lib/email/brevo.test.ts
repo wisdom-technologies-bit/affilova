@@ -301,3 +301,70 @@ describe("recording the final failure", () => {
     }
   })
 })
+
+describe("the suppression list", () => {
+  it("does not call Brevo for a suppressed address, and records no failure", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ messageId: "<abc@brevo>" }))
+    const record = vi.fn(async () => {})
+    const isSuppressed = vi.fn(async () => true)
+
+    const result = await sendEmail(INPUT, {
+      ...deps(fetchMock as unknown as typeof fetch),
+      record,
+      isSuppressed,
+    })
+
+    expect(result).toEqual({ ok: false, reason: "suppressed" })
+    // Nothing was asked of Brevo, so nothing failed at Brevo.
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(record).not.toHaveBeenCalled()
+    expect(isSuppressed).toHaveBeenCalledWith("buyer@example.com")
+  })
+
+  it("sends when the address is not suppressed", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ messageId: "<abc@brevo>" }))
+
+    const result = await sendEmail(INPUT, {
+      ...deps(fetchMock as unknown as typeof fetch),
+      isSuppressed: async () => false,
+    })
+
+    expect(result).toEqual({ ok: true, messageId: "<abc@brevo>" })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("sends when the check itself throws, because failing closed would stop every message", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ messageId: "<abc@brevo>" }))
+
+    const result = await sendEmail(INPUT, {
+      ...deps(fetchMock as unknown as typeof fetch),
+      isSuppressed: async () => {
+        throw new Error("database down")
+      },
+    })
+
+    expect(result).toEqual({ ok: true, messageId: "<abc@brevo>" })
+  })
+
+  it("never puts the address in a log line, suppressed or not", async () => {
+    const logged: string[] = []
+
+    for (const method of ["log", "info", "warn", "error"] as const) {
+      vi.spyOn(console, method).mockImplementation((...args: unknown[]) => {
+        logged.push(args.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" "))
+      })
+    }
+
+    try {
+      await sendEmail(INPUT, {
+        ...deps((async () => jsonResponse({ messageId: "<abc@brevo>" })) as unknown as typeof fetch),
+        isSuppressed: async () => true,
+      })
+    } finally {
+      vi.restoreAllMocks()
+    }
+
+    expect(logged.join("\n")).not.toContain("buyer@example.com")
+    expect(logged.join("\n")).toContain("email_skipped_suppressed")
+  })
+})

@@ -5,6 +5,9 @@ import { useState } from "react"
 
 import { Section as DsSection } from "@/components/ds/section"
 import { formatLagosDateTime, scanStatusLabel, timeAgo } from "@/lib/catalog/format"
+// The five words, from the module that owns them. The card renders the list in
+// this order, so a reason added there appears here without a second edit.
+import { EMAIL_SUPPRESSION_REASONS } from "@/lib/email/reasons"
 import { runScannerSelfTestAction, sendTestEmailAction } from "@/lib/ops/actions"
 import type {
   EmailOverview,
@@ -109,6 +112,29 @@ const EMAIL_REASON_WORDS: Readonly<Record<string, string>> = {
   provider_error: "Provider error",
   network: "Network",
   not_configured: "Not configured",
+}
+
+/**
+ * The word a suppression reason is shown as.
+ *
+ * The same five words the table accepts, said the way a person would say them.
+ * The stored value is never shown: it is a database word, not a sentence.
+ */
+function suppressionReasonWord(reason: string): string {
+  switch (reason) {
+    case "hard_bounce":
+      return "Hard bounce"
+    case "complaint":
+      return "Spam complaint"
+    case "blocked":
+      return "Blocked by the mailbox"
+    case "invalid":
+      return "Invalid address"
+    case "unsubscribed":
+      return "Unsubscribed"
+    default:
+      return reason
+  }
 }
 
 function emailReasonWord(reason: string): string {
@@ -770,6 +796,42 @@ function EmailSection({ email, now }: { email: EmailOverview; now: Date }) {
               </tbody>
             </table>
           </div>
+        )}
+      </div>
+
+      <div className="mt-6">
+        <h3 className="text-dense font-semibold text-foreground">Suppressed addresses</h3>
+
+        {!email.suppressions.available ? (
+          <p className="mt-2 text-dense text-text-muted">
+            The suppression list is not readable for your role.
+          </p>
+        ) : email.suppressions.summary.total === 0 ? (
+          <p className="mt-2 text-dense text-text-muted">
+            Nothing is suppressed. An address is added when Brevo reports a hard bounce, a block, an
+            invalid address, an unsubscribe or a spam complaint, and nothing is sent to it again.
+          </p>
+        ) : (
+          <>
+            <p className="mt-2 text-dense text-foreground">
+              {email.suppressions.summary.total === 1
+                ? "1 address is not being written to"
+                : `${email.suppressions.summary.total} addresses are not being written to`}
+              . Counts only: the list holds a hash, never an address.
+            </p>
+            <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+              {EMAIL_SUPPRESSION_REASONS.map((reason) => {
+                const count = email.suppressions.summary.byReason[reason] ?? 0
+
+                return (
+                  <div key={reason} className="rounded-md border border-border p-3">
+                    <dt className="text-caption text-text-muted">{suppressionReasonWord(reason)}</dt>
+                    <dd className="mt-1 text-lg font-semibold tabular-nums text-foreground">{count}</dd>
+                  </div>
+                )
+              })}
+            </dl>
+          </>
         )}
       </div>
 

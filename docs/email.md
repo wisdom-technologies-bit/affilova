@@ -54,6 +54,7 @@ message only break the ties the status leaves open.
 | `provider_error` | Brevo answered 5xx. The send is retried first. | Usually clears on its own. If it does not, check Brevo's status page. |
 | `network` | The request never completed: a timeout, a refused connection or DNS. | The send is retried first. If it persists, the deployment cannot reach `api.brevo.com`. |
 | `not_configured` | `BREVO_API_KEY` or `EMAIL_FROM` is missing. No request is made. | Set both in the deployment. |
+| `suppressed` | The address is on the suppression list: an earlier message to it hard bounced, was blocked or was marked as spam. No request is made and **no failure row is written**, because nothing failed at Brevo. | Nothing, until an admin removes the entry on the Security page. See [The suppression list](#the-suppression-list). |
 
 The reason drives what a person is told. `quota`, `provider_error` and `network`
 produce "We could not send the code right now. Please try again in a few
@@ -136,6 +137,168 @@ sends them. They are in `emails/templates/auth.tsx` so they share the layout and
 the tokens, and they are rendered to static files by `pnpm emails:export` into
 `emails/dist/`, committed so the owner can paste them in without running
 anything. See `docs/auth-setup.md`.
+
+## The suppression list
+
+Writing to an address that has hard bounced, is blocked, or has complained is what
+damages a sending domain: the complaint rate is what providers judge a sender on.
+So Brevo's transactional webhook writes those addresses to a list, and every send
+asks the list first.
+
+### What is stored, and what is not
+
+`public.email_suppressions` (migration `20261127000100_email_suppressions.sql`)
+holds **no address**. A row is:
+
+| column | meaning |
+| --- | --- |
+| `recipient_hash` | SHA-256, 64 lower-case hex characters. Primary key. |
+| `reason` | `hard_bounce`, `complaint`, `blocked`, `invalid` or `unsubscribed`. |
+| `source` | Where it came from: `brevo_webhook`, `manual`, or a template name. |
+| `first_seen` | When the address was first suppressed. Never changes. |
+| `last_seen` | When it was last confirmed. Moves forward on every repeat. |
+| `events` | How many times it has been confirmed. |
+
+The hash is computed in one place, `lib/email/suppression.ts`:
+
+```
+sha256( EMAIL_HASH_PEPPER + ":" + lower(trim(address)) )  as 64 lower-case hex
+```
+
+`EMAIL_HASH_PEPPER` is required when an address is hashed, is at least 32
+characters, and lives only in the deployment. Without it the table cannot be
+turned back into a list of addresses by hashing a list of guesses, and a copy of
+the table is not a list of addresses. **Rotating the pepper makes every stored
+hash unreadable**, so it is rotated only with a decision to rebuild the list.
+
+### What the application does with it
+
+- `sendEmail()` asks `is_email_suppressed()` before the first attempt, for every
+  template. A suppressed address returns `{ ok: false, reason: "suppressed" }`,
+  no request goes to Brevo, and **no failure row is written**: the failures table
+  is "Brevo refused us", and this is "we chose not to ask".
+- **It fails open.** A database error, a timeout (one second) or a missing pepper
+  is logged and the message is sent anyway. Blocking every message because the
+  database blipped is worse than one message to an address that bounced last
+  month: the buyer waiting for a download link cannot tell the difference between
+  "we chose not to send" and "we are broken".
+- The functions are `SECURITY DEFINER` with `search_path = ''`, revoked from
+  `public`, `anon` and `authenticated`, granted to `service_role` only, and the
+  table has row level security on with no policy. `remove_email_suppression` is
+  admin only, requires a note, and writes an audit row.
+  `email_suppression_overview` is admin or finance and returns counts by reason
+  and the last ten entries, with no address in the payload (there is no address
+  column to return).
+- The admin **Security** page, Email card, shows the counts by reason and says
+  that an address is added when Brevo reports a bounce, a block, an invalid
+  address, an unsubscribe or a complaint.
+
+### The webhook
+
+```
+POST https://<admin host>/api/brevo/webhook/<BREVO_WEBHOOK_TOKEN>
+```
+
+- **POST only.** Anything else is 405 with `Allow: POST`.
+- **The path token is the credential.** Brevo documents no signature on a
+  transactional webhook, so the token must equal `BREVO_WEBHOOK_TOKEN` (at least
+  32 URL-safe characters), compared in constant time. A wrong token, or a
+  deployment with no token configured, answers **404 with an empty body**: a
+  prober learns nothing, not even that the route exists.
+- **64 KB body limit**, checked against `content-length` before the body is read
+  and against the decoded bytes after.
+- **Parsed with Zod** against the fields Brevo documents for a transactional
+  event: `event`, `email`, `id`. Everything else in the body (subject, tags,
+  `sending_ip`, `mirror_link`) is dropped unread.
+- **The address is hashed and written, and never stored, logged or returned.**
+  The log line carries the event name, the reason, Brevo's webhook id and whether
+  the write worked.
+- **A valid body always answers 200**, including when the write failed: a 5xx
+  makes Brevo retry, and a retry of "this address complained" does not become
+  truer. An unknown event is 200 as well, so a new Brevo event type does not
+  produce an endless retry.
+- **Rate limited** at 600 requests a minute per source address, keyed on a hash of
+  it, and set to allow when the limiter itself is unavailable.
+
+### Which events are acted on
+
+The `event` value in the body is snake_case. The dashboard and Brevo's
+`POST /v3/webhooks` API use different spellings for the same events, so both are
+listed:
+
+| Brevo event (payload `event`) | Dashboard / API name | What happens |
+| --- | --- | --- |
+| `hard_bounce` | Hard Bounce / `hardBounce` | suppressed as `hard_bounce` |
+| `spam` | Spam / `spam` | suppressed as `complaint` |
+| `blocked` | Blocked / `blocked` | suppressed as `blocked` |
+| `invalid_email` | Invalid Email / `invalid` | suppressed as `invalid` |
+| `unsubscribed` | Unsubscribed / `unsubscribed` | suppressed as `unsubscribed` |
+| `soft_bounce` | Soft Bounce / `softBounce` | **ignored**: a full mailbox is not a dead address |
+| `deferred`, `delivered`, `request`, `sent`, `opened`, `unique_opened`, `click`, `error`, `proxy_open`, `unique_proxy_open` | the same names | ignored |
+| anything else | — | ignored, and logged as `brevo_webhook_unknown_event` |
+
+### Setting it up in Brevo
+
+1. Generate the token and put it in the deployment, together with the pepper:
+
+   ```bash
+   openssl rand -hex 24     # BREVO_WEBHOOK_TOKEN
+   openssl rand -base64 48  # EMAIL_HASH_PEPPER
+   ```
+
+2. In Brevo, open **Transactional**, then **Settings**, then **Webhooks**, and
+   click **Add a new webhook**. (Brevo's current help centre describes outbound
+   webhooks under the account menu, **Integrations → Webhooks**; the
+   transactional page is the one that carries these events. *UNVERIFIED*: the
+   exact menu path in the dashboard at the time you read this. The event list and
+   the payload are verified; the labels move.)
+3. Set the **URL** to `https://<admin host>/api/brevo/webhook/<BREVO_WEBHOOK_TOKEN>`.
+   The path segment is the secret: do not put the token in a query string, where
+   it lands in logs.
+4. Tick **Hard Bounce**, **Blocked**, **Spam**, **Invalid Email** and
+   **Unsubscribed**. Leave **Soft Bounce** off; the route ignores it if it
+   arrives anyway.
+5. Save, then send one message to an address you know is dead (a domain that does
+   not resolve) and check that the row appears:
+
+   ```sql
+   SELECT reason, source, events, first_seen, last_seen
+     FROM public.email_suppressions
+    ORDER BY last_seen DESC
+    LIMIT 10;
+   ```
+
+   There is no address in that table, so match it by hashing the address you used:
+
+   ```sql
+   SELECT public.is_email_suppressed(
+     encode(sha256(convert_to('<EMAIL_HASH_PEPPER>:dead@example.invalid', 'utf8')), 'hex')
+   );
+   ```
+
+6. Brevo publishes its sending IP ranges; the webhook does not enforce them,
+   because a proxy in front of the deployment would then silently drop every
+   suppression. The path token is the control.
+
+**Brevo documentation used for this section** (read on 27 November 2026):
+
+- <https://developers.brevo.com/docs/transactional-webhooks> — the transactional
+  event list, the payload shape, the field names, and the note that `ts_epoch`
+  and `ts_event` are UTC while `date` is CET/CEST.
+- <https://developers.brevo.com/docs/how-to-use-webhooks> — the notify URL, the
+  event categories and the 40-webhook limit.
+- <https://developers.brevo.com/reference/create-webhook> — the API's event
+  spellings (`hardBounce`, `softBounce`, `invalid`, …) and the `type:
+  transactional` field, which is where the dashboard-name column above comes
+  from.
+- <https://help.brevo.com/hc/en-us/articles/27824932835474-Create-outbound-webhooks-to-send-real-time-data-from-Brevo-to-an-external-app>
+  — the account-menu path for outbound webhooks.
+
+Marked **UNVERIFIED**: the dashboard's exact menu path for *transactional*
+webhooks (the help-centre article above is the general outbound webhook flow), and
+whether Brevo sends an `unsubscribed` event for a transactional message in every
+case. The route treats it as a suppression if it arrives, which is the safe
+answer either way.
 
 ## The Brevo checklist
 

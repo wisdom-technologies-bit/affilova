@@ -10,6 +10,29 @@
 // Nothing in this file reads the environment, so it is safe to import from a
 // test and from a client component.
 
+/**
+ * The five words the suppression list accepts, in the order the admin card shows
+ * them. They mirror the check constraint in
+ * supabase/migrations/20261127000100_email_suppressions.sql, and they live here
+ * because this file has no imports: the Security card is a client component and
+ * may not import lib/email/suppression.ts, which is server-only.
+ */
+export const EMAIL_SUPPRESSION_REASONS = [
+  "hard_bounce",
+  "complaint",
+  "blocked",
+  "invalid",
+  "unsubscribed",
+] as const
+
+export type EmailSuppressionReason = (typeof EMAIL_SUPPRESSION_REASONS)[number]
+
+export function isEmailSuppressionReason(value: unknown): value is EmailSuppressionReason {
+  return (
+    typeof value === "string" && (EMAIL_SUPPRESSION_REASONS as readonly string[]).includes(value)
+  )
+}
+
 /** The reasons a send can fail, as they are stored and shown. */
 export const EMAIL_FAILURE_REASONS = [
   "unauthorized",
@@ -20,6 +43,10 @@ export const EMAIL_FAILURE_REASONS = [
   "provider_error",
   "network",
   "not_configured",
+  // Added with the suppression list: not a provider failure at all, so it is
+  // never recorded in the failures table and never retried. It is in this list
+  // because a caller that asks "did it send" deserves one vocabulary for "no".
+  "suppressed",
 ] as const
 
 export type EmailFailureReason = (typeof EMAIL_FAILURE_REASONS)[number]
@@ -61,6 +88,8 @@ export const EMAIL_REASON_ADVICE: Readonly<Record<EmailSendFailureReason, string
     "The request to Brevo never completed: the deployment could not reach api.brevo.com. Check the network and try again.",
   not_configured:
     "Email is not configured: BREVO_API_KEY or EMAIL_FROM is missing from the deployment.",
+  suppressed:
+    "This address is on the suppression list: an earlier message to it hard bounced, was blocked or was marked as spam. Nothing is sent to it until an admin removes it on the Security page.",
   rejected: "Brevo refused the message.",
   unavailable: "Brevo could not be reached.",
 }

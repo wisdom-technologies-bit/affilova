@@ -3,6 +3,7 @@
 import { webhookEventCounts } from "@/lib/commerce/db"
 import { sendEmail } from "@/lib/email/brevo"
 import { getEmailFailureOverview, type EmailFailureRow, type EmailFailureSummary } from "@/lib/email/failures"
+import { getEmailSuppressionSummary, type EmailSuppressionSummary } from "@/lib/email/suppression"
 import { getEmailConfigHealth, type EmailConfigHealth } from "@/lib/email/health"
 import {
   EMAIL_FAILURE_REASONS,
@@ -135,6 +136,17 @@ export interface EmailOverview {
   last24h: EmailFailureSummary
   /** The last ten failures, newest first. No address is in a row. */
   recent: readonly EmailFailureRow[]
+  /**
+   * How many addresses are on the suppression list, by reason.
+   *
+   * Additive: a role that may not read it, or a table that could not be read,
+   * answers zeros with available false, which the card states rather than
+   * showing a count it does not have.
+   */
+  suppressions: {
+    available: boolean
+    summary: EmailSuppressionSummary
+  }
 }
 
 export interface SecurityOverview {
@@ -493,6 +505,18 @@ function readKobo(value: unknown): bigint {
 
 const NO_FAILURES: EmailFailureSummary = { total: 0, byReason: {} }
 
+/** Every reason at zero: what the card shows when the counts could not be read. */
+const NO_SUPPRESSIONS: EmailSuppressionSummary = {
+  total: 0,
+  byReason: {
+    hard_bounce: 0,
+    complaint: 0,
+    blocked: 0,
+    invalid: 0,
+    unsubscribed: 0,
+  },
+}
+
 /**
  * What the deployment's email settings look like, and what failed in the last
  * day.
@@ -514,22 +538,44 @@ async function emailOverview(actor: OpsActor): Promise<EmailOverview> {
   }
 
   if (!EMAIL_FAILURE_ROLES.some((role) => actor.roles.includes(role))) {
-    return { health, failuresAvailable: false, last24h: NO_FAILURES, recent: [] }
-  }
-
-  try {
-    const overview = await getEmailFailureOverview(actor.userId, EMAIL_FAILURE_REASONS)
-
     return {
       health,
-      failuresAvailable: true,
-      last24h: overview.last24h,
-      recent: overview.recent,
+      failuresAvailable: false,
+      last24h: NO_FAILURES,
+      recent: [],
+      suppressions: { available: false, summary: NO_SUPPRESSIONS },
     }
-  } catch {
-    logger.error("ops_email_overview_failed", {})
+  }
 
-    return { health, failuresAvailable: false, last24h: NO_FAILURES, recent: [] }
+  // The suppression list is read alongside the failures and fails on its own: a
+  // page that shows the failures and says the suppression counts are unavailable
+  // is more useful than a page with neither.
+  const [failures, suppressions] = await Promise.all([
+    getEmailFailureOverview(actor.userId, EMAIL_FAILURE_REASONS)
+      .then((overview) => ({ ok: true as const, overview }))
+      .catch(() => {
+        logger.error("ops_email_overview_failed", {})
+
+        return { ok: false as const }
+      }),
+    getEmailSuppressionSummary(actor.userId)
+      .then((summary) => ({ ok: true as const, summary }))
+      .catch(() => {
+        logger.error("ops_email_suppression_overview_failed", {})
+
+        return { ok: false as const }
+      }),
+  ])
+
+  return {
+    health,
+    failuresAvailable: failures.ok,
+    last24h: failures.ok ? failures.overview.last24h : NO_FAILURES,
+    recent: failures.ok ? failures.overview.recent : [],
+    suppressions: {
+      available: suppressions.ok,
+      summary: suppressions.ok ? suppressions.summary : NO_SUPPRESSIONS,
+    },
   }
 }
 

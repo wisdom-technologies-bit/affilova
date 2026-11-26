@@ -64,6 +64,12 @@ export interface BrevoDeps {
    * in lib/email/failures.ts is used instead.
    */
   record?: (failure: EmailFailureRecord) => Promise<void>
+  /**
+   * Whether this address is on the suppression list. Injected so a test can
+   * answer without a database; the production path leaves it out and
+   * lib/email/suppression.ts is used instead.
+   */
+  isSuppressed?: (address: string) => Promise<boolean>
 }
 
 export type SendEmailResult =
@@ -194,6 +200,18 @@ async function recordWithAdminClient(failure: EmailFailureRecord): Promise<void>
   await recordEmailFailure(failure)
 }
 
+/**
+ * The production suppression check.
+ *
+ * Imported lazily for the same reason as the recorder: a test that calls
+ * sendEmail with its own deps must not drag the Supabase admin client in.
+ */
+async function checkWithAdminClient(address: string): Promise<boolean> {
+  const { isSuppressed } = await import("@/lib/email/suppression")
+
+  return isSuppressed(address)
+}
+
 /** Injected deps that did not ask for a recorder get none: no database in tests. */
 async function recordNowhere(): Promise<void> {
   // Deliberately empty.
@@ -280,6 +298,33 @@ export async function sendEmail(input: SendEmailInput, deps?: BrevoDeps): Promis
 
   const sleep = resolved.sleep ?? wait
   const record = resolved.record ?? (deps === undefined ? recordWithAdminClient : recordNowhere)
+  const check = resolved.isSuppressed ?? (deps === undefined ? checkWithAdminClient : null)
+
+  // The suppression list is asked before the first attempt, for every template.
+  // A buyer whose message bounced last month is not written to again: repeating
+  // it is what damages the domain, and a hard bounce is a fact about the mailbox
+  // that a retry cannot change.
+  //
+  // This is not a provider failure, so nothing is recorded in the failures
+  // table: the counts there are "Brevo refused us", and this is "we chose not
+  // to ask".
+  if (check !== null) {
+    let suppressed = false
+
+    try {
+      suppressed = await check(input.to)
+    } catch {
+      // isSuppressed already fails open and logs; this is the belt for an
+      // injected check that throws. Sending is the lesser harm.
+      suppressed = false
+    }
+
+    if (suppressed) {
+      logger.info("email_skipped_suppressed", { template: input.template })
+
+      return { ok: false, reason: "suppressed" }
+    }
+  }
 
   let last: AttemptOutcome = { result: { ok: false, reason: "network" }, status: null }
 

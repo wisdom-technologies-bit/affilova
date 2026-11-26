@@ -92,6 +92,13 @@ const OVERVIEW: SecurityOverview = {
     },
     failuresAvailable: true,
     last24h: { total: 3, byReason: { unauthorized: 2, provider_error: 1 } },
+    suppressions: {
+      available: true,
+      summary: {
+        total: 4,
+        byReason: { hard_bounce: 3, complaint: 1, blocked: 0, invalid: 0, unsubscribed: 0 },
+      },
+    },
     recent: [
       {
         template: "purchase_receipt",

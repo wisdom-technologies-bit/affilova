@@ -242,6 +242,14 @@ const emailEnvSchema = z.object({
   EMAIL_REPLY_TO: optionalString,
   ORDER_ACCESS_SECRET: optionalString,
   STEP_UP_SECRET: optionalString,
+  // Optional here for the same reason as the rest: a deployment without
+  // suppression configured still builds and still sends. Required, at least 32
+  // characters, by getEmailHashPepper(), which is the only reader.
+  EMAIL_HASH_PEPPER: optionalString,
+  // The secret path segment of the Brevo webhook. Optional here so a deployment
+  // that has not configured the webhook still builds; the route answers 404 for
+  // every token when it is absent.
+  BREVO_WEBHOOK_TOKEN: optionalString,
 })
 
 export type EmailEnv = z.infer<typeof emailEnvSchema>
@@ -254,6 +262,32 @@ const stepUpSecretSchema = z.object({
     z
       .string({ required_error: "is required" })
       .min(32, "must be at least 32 characters long"),
+  ),
+})
+
+// The pepper that is hashed with an address before the suppression list ever
+// sees it. Deliberately separate from every other secret: rotating it makes
+// every stored hash unreadable, which empties the list without deleting a row,
+// so it is rotated only with a decision to rebuild the list.
+const emailHashPepperSchema = z.object({
+  EMAIL_HASH_PEPPER: z.preprocess(
+    present,
+    z
+      .string({ required_error: "is required" })
+      .min(32, "must be at least 32 characters long"),
+  ),
+})
+
+// The Brevo webhook path token. The URL is the credential: Brevo documents no
+// signature on a transactional webhook, so the path is a shared secret compared
+// in constant time, and at least 32 characters of randomness.
+const brevoWebhookTokenSchema = z.object({
+  BREVO_WEBHOOK_TOKEN: z.preprocess(
+    present,
+    z
+      .string({ required_error: "is required" })
+      .min(32, "must be at least 32 characters long")
+      .regex(/^[A-Za-z0-9_-]+$/, "must be URL-safe: letters, digits, dash or underscore"),
   ),
 })
 
@@ -407,6 +441,26 @@ export function parseStepUpSecret(source: EnvSource): string {
   return result.data.STEP_UP_SECRET
 }
 
+export function parseEmailHashPepper(source: EnvSource): string {
+  const result = emailHashPepperSchema.safeParse(source)
+
+  if (!result.success) {
+    throw new Error(formatIssues("email hash pepper", result.error))
+  }
+
+  return result.data.EMAIL_HASH_PEPPER
+}
+
+export function parseBrevoWebhookToken(source: EnvSource): string {
+  const result = brevoWebhookTokenSchema.safeParse(source)
+
+  if (!result.success) {
+    throw new Error(formatIssues("Brevo webhook", result.error))
+  }
+
+  return result.data.BREVO_WEBHOOK_TOKEN
+}
+
 let serverEnvCache: ServerEnv | undefined
 let publicEnvCache: PublicEnv | undefined
 
@@ -529,6 +583,8 @@ export function getEmailEnv(): EmailEnv {
     EMAIL_REPLY_TO: process.env.EMAIL_REPLY_TO,
     ORDER_ACCESS_SECRET: process.env.ORDER_ACCESS_SECRET,
     STEP_UP_SECRET: process.env.STEP_UP_SECRET,
+    EMAIL_HASH_PEPPER: process.env.EMAIL_HASH_PEPPER,
+    BREVO_WEBHOOK_TOKEN: process.env.BREVO_WEBHOOK_TOKEN,
   })
 }
 
@@ -546,4 +602,23 @@ export function getStepUpSecret(): string {
   return parseStepUpSecret({
     STEP_UP_SECRET: process.env.STEP_UP_SECRET,
   })
+}
+
+// The pepper that is hashed with an address, read only when an address is
+// hashed or a suppression is written. A missing or short pepper is an error, not
+// a default: an unpeppered hash of an address is a hash anyone can reproduce.
+export function getEmailHashPepper(): string {
+  return parseEmailHashPepper({
+    EMAIL_HASH_PEPPER: process.env.EMAIL_HASH_PEPPER,
+  })
+}
+
+// The Brevo webhook path token, read only by that route. Absent means the route
+// answers 404 for every request rather than accepting an unauthenticated one.
+export function getBrevoWebhookToken(): string | undefined {
+  try {
+    return parseBrevoWebhookToken({ BREVO_WEBHOOK_TOKEN: process.env.BREVO_WEBHOOK_TOKEN })
+  } catch {
+    return undefined
+  }
 }

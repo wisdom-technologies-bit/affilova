@@ -2,6 +2,15 @@ import "server-only"
 
 import { getServerEnv } from "@/lib/env"
 import { logger } from "@/lib/logger"
+import {
+  emailFailureReason,
+  isEmailFailureReason,
+  isRetryableReason,
+  readProviderCode,
+  readProviderMessage,
+  type EmailFailureRecord,
+  type EmailSendFailureReason,
+} from "@/lib/email/reasons"
 
 // Brevo's transactional email API, called from the server only.
 //
@@ -12,6 +21,11 @@ import { logger } from "@/lib/logger"
 // Retries are deliberately narrow. A 5xx or a refused connection may succeed a
 // moment later, so those are retried; a 4xx is our mistake (a bad key, a blocked
 // sender, an invalid address) and retrying it only delays the failure.
+//
+// A failure is described by one reason from lib/email/reasons.ts, never by the
+// provider's words. The body of a non-2xx answer is read inside a try/catch and
+// only two things come out of it: a short machine code and, for the mapping
+// alone, the message text. Neither is logged, stored or returned.
 
 export const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email"
 
@@ -44,20 +58,29 @@ export interface BrevoDeps {
   /** Injected so tests need no network. */
   fetch: typeof fetch
   sleep?: (ms: number) => Promise<void>
+  /**
+   * Where the final failure is recorded. Injected so a test can watch it without
+   * a database; the production path leaves it out and the admin-client recorder
+   * in lib/email/failures.ts is used instead.
+   */
+  record?: (failure: EmailFailureRecord) => Promise<void>
 }
 
 export type SendEmailResult =
   | { ok: true; messageId: string | null }
-  | { ok: false; reason: "not_configured" | "rejected" | "unavailable" }
+  | { ok: false; reason: EmailSendFailureReason }
+
+/** One attempt's answer, with the status the reason came from. */
+interface AttemptOutcome {
+  result: SendEmailResult
+  /** The provider's status, or null when the request never produced one. */
+  status: number | null
+}
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms)
   })
-}
-
-function isRetryable(status: number): boolean {
-  return status >= 500
 }
 
 /** The provider's message id, when the answer carries one. */
@@ -71,7 +94,24 @@ function readMessageId(body: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null
 }
 
-async function attempt(deps: BrevoDeps, input: SendEmailInput): Promise<SendEmailResult> {
+/**
+ * The two things taken out of a refused answer: a short machine code and the
+ * message text, which is used to pick a reason and then thrown away.
+ *
+ * A body that is not JSON, or that takes too long, reads as "unknown" and maps
+ * on the status alone. Nothing from here is ever logged or stored.
+ */
+async function readFailureBody(response: Response): Promise<{ code: string; message: string }> {
+  try {
+    const body: unknown = await response.json()
+
+    return { code: readProviderCode(body), message: readProviderMessage(body) }
+  } catch {
+    return { code: "unknown", message: "" }
+  }
+}
+
+async function attempt(deps: BrevoDeps, input: SendEmailInput): Promise<AttemptOutcome> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), BREVO_TIMEOUT_MS)
 
@@ -96,15 +136,18 @@ async function attempt(deps: BrevoDeps, input: SendEmailInput): Promise<SendEmai
     })
 
     if (!response.ok) {
-      const retryable = isRetryable(response.status)
+      const { code, message } = await readFailureBody(response)
+      const reason = emailFailureReason(response.status, message, code)
+      const retryable = isRetryableReason(reason)
 
       logger.error("email_send_failed", {
         template: input.template,
         status: response.status,
+        reason,
         retryable,
       })
 
-      return { ok: false, reason: retryable ? "unavailable" : "rejected" }
+      return { result: { ok: false, reason }, status: response.status }
     }
 
     let body: unknown = null
@@ -122,14 +165,73 @@ async function attempt(deps: BrevoDeps, input: SendEmailInput): Promise<SendEmai
       messageId: messageId ?? "none",
     })
 
-    return { ok: true, messageId }
+    return { result: { ok: true, messageId }, status: response.status }
   } catch {
-    // A timeout or a refused connection: worth another try.
-    logger.error("email_send_failed", { template: input.template, retryable: true })
+    // A timeout or a refused connection: worth another try, and there is no
+    // status to record, so the row carries a zero.
+    logger.error("email_send_failed", {
+      template: input.template,
+      status: 0,
+      reason: "network",
+      retryable: true,
+    })
 
-    return { ok: false, reason: "unavailable" }
+    return { result: { ok: false, reason: "network" }, status: null }
   } finally {
     clearTimeout(timer)
+  }
+}
+
+/**
+ * The production recorder.
+ *
+ * Imported lazily so that nothing which imports this module (a test, a job, the
+ * health check) drags the Supabase admin client in with it.
+ */
+async function recordWithAdminClient(failure: EmailFailureRecord): Promise<void> {
+  const { recordEmailFailure } = await import("@/lib/email/failures")
+
+  await recordEmailFailure(failure)
+}
+
+/** Injected deps that did not ask for a recorder get none: no database in tests. */
+async function recordNowhere(): Promise<void> {
+  // Deliberately empty.
+}
+
+/** One second, as the brief requires: diagnostics never hold up a send. */
+export const FAILURE_RECORD_TIMEOUT_MS = 1_000
+
+/**
+ * Record one failure without ever failing or delaying the caller.
+ *
+ * The write is a nicety: a row in a diagnostics table. A database that is down,
+ * a table that does not exist yet or a call that hangs must not turn a failed
+ * email into a thrown error, and must not hold the request open. The race bounds
+ * the wait at a second, and a rejection after that is swallowed on its own
+ * promise rather than surfacing as an unhandled rejection.
+ */
+async function recordSafely(
+  record: (failure: EmailFailureRecord) => Promise<void>,
+  failure: EmailFailureRecord,
+): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+
+  try {
+    const pending = record(failure).catch(() => {})
+
+    await Promise.race([
+      pending,
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, FAILURE_RECORD_TIMEOUT_MS)
+      }),
+    ])
+  } catch {
+    // Nothing useful left to do: the send already failed for a better reason.
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer)
+    }
   }
 }
 
@@ -177,13 +279,15 @@ export async function sendEmail(input: SendEmailInput, deps?: BrevoDeps): Promis
   }
 
   const sleep = resolved.sleep ?? wait
-  let last: SendEmailResult = { ok: false, reason: "unavailable" }
+  const record = resolved.record ?? (deps === undefined ? recordWithAdminClient : recordNowhere)
+
+  let last: AttemptOutcome = { result: { ok: false, reason: "network" }, status: null }
 
   for (let attemptNumber = 1; attemptNumber <= BREVO_MAX_ATTEMPTS; attemptNumber += 1) {
     last = await attempt(resolved, input)
 
-    if (last.ok || last.reason === "rejected" || last.reason === "not_configured") {
-      return last
+    if (last.result.ok || !isRetryableReason(last.result.reason)) {
+      break
     }
 
     if (attemptNumber < BREVO_MAX_ATTEMPTS) {
@@ -191,5 +295,15 @@ export async function sendEmail(input: SendEmailInput, deps?: BrevoDeps): Promis
     }
   }
 
-  return last
+  // Only the final answer is recorded: a retry that worked is not a failure
+  // worth a row, and three rows for one message would make the counts lie.
+  if (!last.result.ok && isEmailFailureReason(last.result.reason)) {
+    await recordSafely(record, {
+      template: input.template,
+      status: last.status,
+      reason: last.result.reason,
+    })
+  }
+
+  return last.result
 }

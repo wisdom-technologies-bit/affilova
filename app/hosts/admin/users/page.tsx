@@ -64,7 +64,7 @@ function hrefWith(
 
   const query = params.toString()
 
-  return query === "" ? "/hosts/admin/users" : `/hosts/admin/users?${query}`
+  return query === "" ? "/users" : `/users?${query}`
 }
 
 export default async function AdminUsersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -177,7 +177,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
                 {rows.map((row) => (
                   <tr key={row.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3">
-                      <Link href={`/hosts/admin/users/${row.id}`} className="font-medium text-foreground underline-offset-4 hover:underline">
+                      <Link href={`/users/${row.id}`} className="font-medium text-foreground underline-offset-4 hover:underline">
                         {row.displayName ?? row.email ?? "Account"}
                       </Link>
                       {row.email === null ? null : (

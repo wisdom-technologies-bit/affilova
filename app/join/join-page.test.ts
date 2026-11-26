@@ -93,7 +93,10 @@ describe("the join page", () => {
 
     const markup = await render()
 
-    expect(markup).toContain("You can now promote Calm notebook")
+    // The product title is its own element so it can be set in bold, so the
+    // sentence is asserted in two parts rather than as one string.
+    expect(markup).toContain("You can now promote")
+    expect(markup).toContain("Calm notebook")
     expect(markup).toContain("Go to your affiliate dashboard")
   })
 

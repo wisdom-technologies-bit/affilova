@@ -29,7 +29,7 @@ describe("email templates", () => {
 
     expect(email.html).not.toContain("<script>")
     expect(email.html).toContain("&lt;script&gt;")
-    expect(email.html).toContain("O&#39;Brien")
+    expect(email.html).toContain("O&#x27;Brien")
     expect(email.html).toContain("&quot;Co&quot;")
     expect(email.text).toContain("<script>alert")
   })

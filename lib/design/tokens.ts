@@ -345,3 +345,100 @@ export const TOKENS = {
   info: INFO,
   infoSubtle: INFO_SUBTLE,
 } as const
+
+// ---------------------------------------------------------------------------
+// Email
+//
+// An email cannot read a CSS custom property, so it needs the same palette as
+// literal hex values. Every value below is a token's own hex: this map adds no
+// colour of its own, and a test (lib/design/tokens.test.ts) checks that each one
+// still matches the token it names.
+//
+// The choices are the ones an email can defend:
+//   * the card is white on the quiet surface, never the ink;
+//   * body text is INK, 19.22:1 on white and 18.05:1 on the surface;
+//   * the second and third lines use TEXT_MUTED (8.05:1 on white) and
+//     TEXT_SUBTLE (4.90:1), so a footnote is read rather than squinted at;
+//   * the one action is BRAND_600 with white text, the same 5.09:1 pair the
+//     product's primary button uses.
+// ---------------------------------------------------------------------------
+
+export const EMAIL_COLOURS = {
+  /** The page behind the card. */
+  page: SURFACE_SUBTLE.hex,
+  /** The card itself. */
+  card: BACKGROUND.hex,
+  /** Body text. */
+  ink: INK.hex,
+  /** The second line: a label, a helper sentence. */
+  muted: TEXT_MUTED.hex,
+  /** The third line: a footnote, a fallback link. */
+  subtle: TEXT_SUBTLE.hex,
+  /** The 1px rule around a box or between rows. */
+  border: BORDER.hex,
+  /** A quiet block: the info box, the code block, the order summary. */
+  surface: SURFACE_SUBTLE.hex,
+  /** A slightly stronger block, used behind the step-up code. */
+  surfaceMuted: SURFACE_MUTED.hex,
+  /** The primary button and the one link colour. */
+  brand: BRAND_600.hex,
+  /** The primary button's hover shade. Mail clients rarely honour it. */
+  brandHover: BRAND_700.hex,
+  /** The text on the primary button. */
+  onBrand: BACKGROUND.hex,
+  /** A refusal: a rejected withdrawal, a failed payout. */
+  danger: DANGER.hex,
+  /** The pale background behind danger text. */
+  dangerSurface: DANGER_SUBTLE.hex,
+  /** Something that needs a decision: a VAT return due. */
+  warning: WARNING.hex,
+  /** The pale background behind warning text. */
+  warningSurface: WARNING_SUBTLE.hex,
+  /** A completed payout. */
+  success: SUCCESS.hex,
+  /** The pale background behind success text. */
+  successSurface: SUCCESS_SUBTLE.hex,
+} as const
+
+/** The stack an email asks for: the reader's own system font, never a download. */
+export const EMAIL_FONT_STACK =
+  "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+
+/** The stack for a code: a monospace face every client already has. */
+export const EMAIL_MONO_STACK = "'Courier New',Courier,monospace"
+
+/**
+ * The width an email is designed for.
+ *
+ * 600px is the widest a mail client reliably gives a message; the layout is a
+ * single column below it, so a phone at 360px gets the same content with less
+ * padding rather than a second design.
+ */
+export const EMAIL_MAX_WIDTH = 600
+
+/**
+ * One step of the spacing scale, in pixels, for an email's inline styles.
+ *
+ * Read from SPACING_SCALE so the two cannot drift: an email cannot use a
+ * Tailwind class, and a number typed twice is a number that will disagree.
+ */
+export function emailSpacePx(token: "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl"): number {
+  const step = SPACING_SCALE.find((entry) => entry.token === token)
+
+  if (step === undefined) {
+    throw new Error(`Not a spacing token: ${token}`)
+  }
+
+  return step.px
+}
+
+/** One radius from RADII, in pixels, for an email's inline styles. */
+export function emailRadiusPx(token: "sm" | "md" | "lg" | "xl"): number {
+  const step = RADII.find((entry) => entry.token === token)
+
+  if (step === undefined) {
+    throw new Error(`Not a radius token: ${token}`)
+  }
+
+  return step.px
+}

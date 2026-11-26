@@ -169,6 +169,29 @@ switched on.
 ## 7. Email templates
 
 **Authentication → Emails → Templates.** Replace the content of four templates.
+
+> **These four templates are now files.** They are built with the same React
+> Email layout and tokens as the rest of the product, and rendered to static HTML
+> by `pnpm emails:export`:
+>
+> | Supabase template | File | Subject line |
+> | --- | --- | --- |
+> | Confirm signup | `emails/dist/supabase-confirm-signup.html` | `Confirm your Affilova email address` |
+> | Magic link | `emails/dist/supabase-magic-link.html` | `Your Affilova sign-in link` |
+> | Reset password | `emails/dist/supabase-reset-password.html` | `Reset your Affilova password` |
+> | Change email address | `emails/dist/supabase-change-email.html` | `Confirm your new Affilova email address` |
+>
+> The files are committed, so there is nothing to run: open one, copy the whole
+> file, and paste it into the template's **Message body (HTML)** box. Type the
+> subject from the table into the **Subject line** box: Supabase keeps it, not
+> this code. The variables (`{{ .SiteURL }}`, `{{ .TokenHash }}`, `{{ .Email }}`,
+> `{{ .NewEmail }}`) are already in the files exactly as Supabase expects them.
+>
+> If a template is edited, run `pnpm emails:export`, review the diff in
+> `emails/dist/`, and paste the file in again. The HTML below is the previous
+> hand-written version, kept so the shapes can be compared; the files in
+> `emails/dist/` are what the product sends.
+
 The subjects below are suggestions; the links are not.
 
 Every link has this shape, and **none of them use `{{ .ConfirmationURL }}`**:

@@ -1,6 +1,7 @@
 "use client"
 
 import { Archive, ArrowRight, CircleAlert, PackageSearch, Plus, Search, Trash2 } from "lucide-react"
+import Link from "next/link"
 import { useState } from "react"
 import { toast } from "sonner"
 
@@ -1083,6 +1084,28 @@ export function DesignSystemGuide() {
             />
           </Subsection>
         </div>
+      </Section>
+
+      <Section
+        id="emails"
+        title="Emails"
+        description="Every message the product sends, built from the same tokens with React Email."
+      >
+        <p className="max-w-reading text-dense text-text-muted">
+          Email is the one surface where a stylesheet is not an option: the tokens are inline, the
+          font stack is the reader&apos;s own, and there is no tracking pixel. Each template is shown
+          at 600px and 360px, inside a sandboxed frame with no scripts, with its plain-text version
+          underneath.
+        </p>
+        <p className="mt-3">
+          <Link
+            href="/design/emails"
+            className="inline-flex items-center gap-1.5 text-dense font-medium text-brand-600 underline underline-offset-4"
+          >
+            Open the email templates
+            <ArrowRight aria-hidden className="size-4" />
+          </Link>
+        </p>
       </Section>
 
       <Section id="rules" title="Do and don't" description="The short version of docs/design-system.md.">

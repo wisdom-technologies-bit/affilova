@@ -65,6 +65,78 @@ The one place the answer never changes is the "send me a new link" form: it
 answers the same sentence whatever happened, so that nobody can use it to ask
 "does this address shop here?". Its failure is logged, not shown.
 
+## The templates
+
+Every message is built with [React Email](https://react.email) and lives in
+`emails/`. The two packages this repository adds for it are
+`@react-email/components` and `@react-email/render`, both official.
+
+```
+emails/
+  components/        EmailLayout, Heading, Paragraph, PrimaryButton, InfoBox,
+                     OrderSummary, Code, SecondaryText
+  templates/         one file per message, each with typed props, a sample
+                     props export and a subject function
+  dist/              the four Supabase Auth templates, rendered and committed
+  catalog.ts         every template with the props the style guide shows it with
+  render.ts          one template to { html, text }
+```
+
+**The rules every template follows.** They are asserted for every template in
+`emails/templates.test.ts`, so a new template is covered by adding it to the
+catalogue.
+
+- 600px maximum width, `lang="en"`, one `<h1>`, and a preview line that is hidden
+  from the body.
+- The brand header uses the existing `/brand/email/affilova-logo-email.png` with
+  alt text. That image and the links are the only remote requests.
+- Inline styles only. No stylesheet, no `@import`, no `@font-face`, no external
+  font: the stack is the reader's own system font.
+- No tracking pixel, no open tracking, no click rewriting. The only images are
+  the logo.
+- The primary button is `brand-600` (#107F3E) with white text, at least 44px high,
+  and the link is **printed underneath it** as text, so a client that drops the
+  background colour still leaves a way through.
+- Colours and spacing come from `lib/design/tokens.ts` (`EMAIL_COLOURS`,
+  `EMAIL_SPACE_PX`, `EMAIL_FONT_STACK`). A test fails on a hex value in the HTML
+  that is not one of those tokens.
+- Contrast is checked at 4.5:1 for body text, the button label and each semantic
+  pair, using `lib/design/contrast.ts`.
+- Every message is under 100 KB, and every link in it is absolute `https`.
+- User-supplied text (a product title, a name, a rejection reason) is escaped by
+  React. A test renders a `<script>` tag, quotes, ampersands and a 500-character
+  title through a real template and asserts the markup is escaped and the message
+  stays small.
+- A product title in a **subject** is flattened to one line and cut to 80
+  characters, ellipsis included (`emails/subject.ts`).
+
+**The callers did not change.** The public functions in `lib/email/templates.ts`
+(`purchaseReceiptEmail`, `withdrawalNoticeEmail`, …) keep their names, their props
+and their `{ subject, html, text }` shape. They are now thin adapters over the
+templates in `emails/`, and they are still synchronous, because their callers are.
+The plain-text version is produced by `@react-email/render`'s own converter
+(`toPlainText`). In 2.3.1 that is exactly what its `plainText: true` option
+returns, so the text is the package's conversion and not a second format; a test
+asserts every template's text is that converter's output for that template's
+HTML. The package's async `render()` cannot be used here even from a test: under
+React 19.3.1 its streaming renderer fails on these templates with "Element type
+is invalid" while `renderToStaticMarkup` renders the same element, so the
+synchronous call is the one path.
+
+**Where to look at them.** The admin style guide has an **Emails** section at
+`/design/emails`, behind the same staff guard and two-factor wrapper as the rest
+of `/design`. Every template is rendered with its sample props inside an iframe
+with an empty `sandbox` attribute (no scripts, no forms, no top navigation), at
+600px and at 360px, with its plain-text version underneath. The frames are the
+real templates, not screenshots. `docs/design-review/emails/` holds the review
+screenshots taken from that page.
+
+**The four Supabase Auth templates** are not sent by this application: Supabase
+sends them. They are in `emails/templates/auth.tsx` so they share the layout and
+the tokens, and they are rendered to static files by `pnpm emails:export` into
+`emails/dist/`, committed so the owner can paste them in without running
+anything. See `docs/auth-setup.md`.
+
 ## The Brevo checklist
 
 Four things stop a deployment from sending, in the order they usually go wrong.

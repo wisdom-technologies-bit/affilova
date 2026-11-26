@@ -3,60 +3,133 @@
 exports[`email templates > snapshots the text versions 1`] = `
 "Payment received
 
-Order: AFV-2026-000142
-Product: Instagram Growth Playbook
-Amount: ₦25,000
-Date: 18 Nov 2026, 11:00 (West Africa Time)
+Order AFV-2026-000142 is paid. The link below opens your downloads.
 
-Downloads: https://affilova.example/access/token.sig
+Product
 
-Refunds: requests are accepted within 72 hours of purchase.
+Instagram Growth Playbook
 
-The link is personal to this order. If you forward it, whoever opens it can download your files.
+Amount paid
 
-Questions? Contact us through our contact page:
-https://affilova.example/contact"
+₦25,000
+
+Date
+
+18 Nov 2026, 11:00 (West Africa Time)
+
+Order
+
+AFV-2026-000142
+
+Open your downloads https://affilova.example/access/token.sig
+
+If the button does not work, copy this link into your browser: https://affilova.example/access/token.sig
+
+Refunds
+
+Requests are accepted within 72 hours of purchase. The download page has the request form while the window is open.
+
+Keep this email: it is the fastest way back to your downloads, and the link works while the order stands.
+
+You are receiving this because you bought this product on Affilova.
+
+Questions? Write to hello@affilova.com or use the contact page https://affilova.example/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)"
 `;
 
 exports[`email templates > snapshots the text versions 2`] = `
 "You made a sale
 
-Product: Instagram Growth Playbook
-Order: AFV-2026-000142
-Sale amount: ₦25,000
-Your share: ₦20,000
-Held until: 25 Nov 2026, 11:00 (West Africa Time)
+Instagram Growth Playbook sold on order AFV-2026-000142.
 
-The buyer's details are not included in this email.
+Sale amount
 
-Questions? Contact us through our contact page:
-https://affilova.example/contact"
+₦25,000
+
+Your share
+
+₦20,000
+
+Available to withdraw
+
+25 Nov 2026, 11:00 (West Africa Time)
+
+Order
+
+AFV-2026-000142
+
+Your share is held until the date above, then it can be withdrawn.
+
+Privacy
+
+The buyer's details are not included in this email. Your balance and every sale are on your dashboard.
+
+You are receiving this because you sell on Affilova.
+
+Questions? Write to hello@affilova.com or use the contact page https://affilova.example/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)"
 `;
 
 exports[`email templates > snapshots the text versions 3`] = `
 "You earned a commission
 
-Product: Instagram Growth Playbook
-Order: AFV-2026-000142
-Commission: ₦5,000
-Held until: 25 Nov 2026, 11:00 (West Africa Time)
+Your link led to a sale of Instagram Growth Playbook on order AFV-2026-000142.
 
-The buyer's details are not included in this email.
+Commission
 
-Questions? Contact us through our contact page:
-https://affilova.example/contact"
+₦5,000
+
+Available to withdraw
+
+25 Nov 2026, 11:00 (West Africa Time)
+
+Order
+
+AFV-2026-000142
+
+It is held until the date above, then it can be withdrawn.
+
+Privacy
+
+The buyer's details are not included in this email. Every commission is listed on your affiliate dashboard.
+
+You are receiving this because your affiliate link led to a sale on Affilova.
+
+Questions? Write to hello@affilova.com or use the contact page https://affilova.example/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)"
 `;
 
 exports[`email templates > snapshots the text versions 4`] = `
 "Your refund was issued
 
-Order: AFV-2026-000142
-Product: Instagram Growth Playbook
-Amount refunded: ₦25,000
+Order AFV-2026-000142 for Instagram Growth Playbook was refunded.
+
+Amount refunded
+
+₦25,000
+
+Product
+
+Instagram Growth Playbook
+
+Order
+
+AFV-2026-000142
+
+When the money arrives
 
 The money goes back to the account you paid with. How long it takes depends on that bank, not on us.
+
 Downloads for this order are no longer available.
 
-If you did not ask for this refund, contact us through our contact page:
-https://affilova.example/contact"
+If you did not ask for this refund, contact us using the address below.
+
+You are receiving this because you bought this product on Affilova and it was refunded.
+
+Questions? Write to hello@affilova.com or use the contact page https://affilova.example/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)"
 `;

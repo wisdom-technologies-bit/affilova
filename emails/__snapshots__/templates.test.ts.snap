@@ -1,0 +1,398 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`email templates: text snapshots > matches the committed text versions 1`] = `
+{
+  "admin_email_test": "This is a test message
+
+This message was sent from the Affilova admin console to check the email sender.
+
+Sent from
+
+The Affilova admin console
+
+Sent to
+
+The signed-in administrator
+
+What this proves
+
+If you are reading it, the deployment can reach Brevo, the API key is accepted and the sender address is one Brevo will send from.
+
+Nothing was created and nothing was charged.
+
+You are receiving this because an administrator asked for a test from the Affilova admin console.
+
+Questions? Write to hello@affilova.com or use the contact page https://affilova.example/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)",
+  "affiliate_commission": "You earned a commission
+
+Your link led to a sale of Instagram Growth Playbook on order AFV-2026-000142.
+
+Commission
+
+₦5,000
+
+Available to withdraw
+
+25 Nov 2026, 11:00 (West Africa Time)
+
+Order
+
+AFV-2026-000142
+
+It is held until the date above, then it can be withdrawn.
+
+Privacy
+
+The buyer's details are not included in this email. Every commission is listed on your affiliate dashboard.
+
+You are receiving this because your affiliate link led to a sale on Affilova.
+
+Questions? Write to hello@affilova.com or use the contact page https://affilova.example/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)",
+  "purchase_receipt": "Payment received
+
+Order AFV-2026-000142 is paid. The link below opens your downloads.
+
+Product
+
+Instagram Growth Playbook
+
+Amount paid
+
+₦25,000
+
+Date
+
+18 Nov 2026, 11:00 (West Africa Time)
+
+Order
+
+AFV-2026-000142
+
+Open your downloads https://affilova.example/access/token.sig
+
+If the button does not work, copy this link into your browser: https://affilova.example/access/token.sig
+
+Refunds
+
+Requests are accepted within 72 hours of purchase. The download page has the request form while the window is open.
+
+Keep this email: it is the fastest way back to your downloads, and the link works while the order stands.
+
+You are receiving this because you bought this product on Affilova.
+
+Questions? Write to hello@affilova.com or use the contact page https://affilova.example/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)",
+  "refund_notice": "Your refund was issued
+
+Order AFV-2026-000142 for Instagram Growth Playbook was refunded.
+
+Amount refunded
+
+₦25,000
+
+Product
+
+Instagram Growth Playbook
+
+Order
+
+AFV-2026-000142
+
+When the money arrives
+
+The money goes back to the account you paid with. How long it takes depends on that bank, not on us.
+
+Downloads for this order are no longer available.
+
+If you did not ask for this refund, contact us using the address below.
+
+You are receiving this because you bought this product on Affilova and it was refunded.
+
+Questions? Write to hello@affilova.com or use the contact page https://affilova.example/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)",
+  "step_up_code": "Your confirmation code
+
+Use this code to request a withdrawal:
+
+Your code
+
+004821
+
+It expires in 10 minutes and works once. We will never ask you to read it out to anyone.
+
+If you did not request this, change your password and contact us.
+
+You are receiving this because a confirmation code was requested for your Affilova account.
+
+Questions? Write to hello@affilova.com or use the contact page https://affilova.example/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)",
+  "supabase_change_email": "Confirm your new email address
+
+We received a request to change the email address on your Affilova account to {{ .NewEmail }}.
+
+Confirm new email address {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change
+
+If the button does not work, copy this link into your browser: {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change
+
+If you did not request this, you can ignore this email.
+
+You are receiving this because the email address on your Affilova account is being changed.
+
+Questions? Write to hello@affilova.com or use the contact page {{ .SiteURL }}/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)",
+  "supabase_confirm_signup": "Confirm your email address
+
+Thanks for signing up to Affilova. Confirm {{ .Email }} to finish creating your account.
+
+Confirm my email {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup
+
+If the button does not work, copy this link into your browser: {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup
+
+If you did not sign up, you can ignore this email and the address will not be used.
+
+You are receiving this because this address was used to sign up to Affilova.
+
+Questions? Write to hello@affilova.com or use the contact page {{ .SiteURL }}/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)",
+  "supabase_magic_link": "Your sign-in link
+
+Use this link to sign in to Affilova. The link can only be used once.
+
+Sign in to Affilova {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=magiclink
+
+If the button does not work, copy this link into your browser: {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=magiclink {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=magiclink
+
+If you did not request this, you can ignore this email.
+
+You are receiving this because a sign-in link was requested for this address.
+
+Questions? Write to hello@affilova.com or use the contact page {{ .SiteURL }}/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)",
+  "supabase_reset_password": "Reset your password
+
+We received a request to reset the password for your Affilova account. Choose a new password with the button below.
+
+Choose a new password {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/auth/reset-password
+
+If the button does not work, copy this link into your browser: {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/auth/reset-password {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/auth/reset-password
+
+If you did not request this, you can ignore this email. Your password has not changed.
+
+You are receiving this because a password reset was requested for this address.
+
+Questions? Write to hello@affilova.com or use the contact page {{ .SiteURL }}/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)",
+  "vat_reminder": "A VAT return is due soon
+
+The VAT return for September 2026 is due on 21 October 2026.
+
+Period
+
+September 2026
+
+Due date
+
+21 October 2026
+
+Net payable
+
+₦48,750
+
+Due soon
+
+Export the month from the VAT screen, file it with the tax authority, pay, then record the payment reference.
+
+Open the VAT screen https://admin.affilova.example/vat/2026-09
+
+If the button does not work, copy this link into your browser: https://admin.affilova.example/vat/2026-09
+
+This reminder is only sent to finance and admin accounts, and only once for each month and each reminder.
+
+You are receiving this because your account has the finance or admin role.
+
+Questions? Write to hello@affilova.com or use the contact page https://affilova.example/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)",
+  "vat_reminder_overdue": "A VAT return is overdue
+
+The VAT return for September 2026 is due on 21 October 2026.
+
+Period
+
+September 2026
+
+Due date
+
+21 October 2026
+
+Net payable
+
+₦48,750
+
+Overdue
+
+The due date has passed. File and pay as soon as you can, then record the payment reference on the VAT screen.
+
+Open the VAT screen https://admin.affilova.example/vat/2026-09
+
+If the button does not work, copy this link into your browser: https://admin.affilova.example/vat/2026-09
+
+This reminder is only sent to finance and admin accounts, and only once for each month and each reminder.
+
+You are receiving this because your account has the finance or admin role.
+
+Questions? Write to hello@affilova.com or use the contact page https://affilova.example/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)",
+  "vendor_sale": "You made a sale
+
+Instagram Growth Playbook sold on order AFV-2026-000142.
+
+Sale amount
+
+₦25,000
+
+Your share
+
+₦20,000
+
+Available to withdraw
+
+25 Nov 2026, 11:00 (West Africa Time)
+
+Order
+
+AFV-2026-000142
+
+Your share is held until the date above, then it can be withdrawn.
+
+Privacy
+
+The buyer's details are not included in this email. Your balance and every sale are on your dashboard.
+
+You are receiving this because you sell on Affilova.
+
+Questions? Write to hello@affilova.com or use the contact page https://affilova.example/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)",
+  "withdrawal_notice": "Your withdrawal was paid
+
+The transfer to your payout account has been sent.
+
+Amount
+
+₦5,000
+
+Fee
+
+₦100
+
+You receive
+
+₦4,900
+
+Sent
+
+How soon it shows in your account depends on your bank.
+
+Your account number is never included in our emails.
+
+You are receiving this because you requested a withdrawal from your Affilova balance.
+
+Questions? Write to hello@affilova.com or use the contact page https://affilova.example/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)",
+  "withdrawal_notice_failed": "Your withdrawal did not go through
+
+The transfer could not be completed.
+
+Amount
+
+₦5,000
+
+Fee
+
+₦100
+
+You receive
+
+₦4,900
+
+Back in your balance
+
+The full amount is back in your available balance. You can request it again.
+
+Your account number is never included in our emails.
+
+You are receiving this because you requested a withdrawal from your Affilova balance.
+
+Questions? Write to hello@affilova.com or use the contact page https://affilova.example/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)",
+  "withdrawal_notice_rejected": "Your withdrawal was not approved
+
+We reviewed this request and did not approve it.
+
+Amount
+
+₦5,000
+
+Fee
+
+₦100
+
+You receive
+
+₦4,900
+
+Not approved
+
+Reason: The account name did not match the name on your Affilova account.. The full amount is back in your available balance.
+
+Your account number is never included in our emails.
+
+You are receiving this because you requested a withdrawal from your Affilova balance.
+
+Questions? Write to hello@affilova.com or use the contact page https://affilova.example/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)",
+  "withdrawal_notice_reversed": "Your withdrawal was reversed
+
+The transfer was sent back before it reached your account.
+
+Amount
+
+₦5,000
+
+Fee
+
+₦100
+
+You receive
+
+₦4,900
+
+Back in your balance
+
+The full amount is back in your available balance. You can request it again.
+
+Your account number is never included in our emails.
+
+You are receiving this because you requested a withdrawal from your Affilova balance.
+
+Questions? Write to hello@affilova.com or use the contact page https://affilova.example/contact.
+
+Affilova is operated by WISDOM TECHNOLOGIES LIMITED (registration no. RC 9107303)",
+}
+`;
